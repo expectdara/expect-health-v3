@@ -95,6 +95,9 @@ const GUPI_PAIN=[
 // Additional clinical intake
 const CLINICAL_EXTRA=[
 {id:"bowel_constipation",text:"Over the past month, how often have you experienced constipation or straining during bowel movements?",opts:[["Never",0],["Rarely",1],["Sometimes",2],["Often",3],["Almost always",4]]},
+{id:"caffeine_intake",text:"How many caffeinated drinks (coffee, tea, soda, energy drinks) do you have per day on average?",opts:[["None",0],["1 per day",1],["2-3 per day",2],["4 or more per day",3]]},
+{id:"alcohol_intake",text:"How many alcoholic drinks do you have per week on average?",opts:[["None",0],["1-3 per week",1],["4-7 per week",2],["8 or more per week",3]]},
+{id:"water_intake",text:"How many glasses of water (8 oz) do you drink per day on average?",opts:[["1-3 glasses",0],["4-5 glasses",1],["6-8 glasses",2],["More than 8 glasses",3]]},
 {id:"symptom_triggers",text:"What activities tend to trigger your symptoms? Please select all that apply.",type:"multi",opts:[["Lifting or carrying","lifting"],["Running or jumping","running"],["Coughing or sneezing","coughing"],["Laughing","laughing"],["Getting up from sitting","standing"],["Climbing stairs","stairs"],["Sexual activity","sexual"],["None in particular","none"]]},
 {id:"avoid_activities",text:"Are you avoiding activities because of pelvic symptoms? Select all that apply.",type:"multi",opts:[["Exercise or sports","exercise"],["Social events","social"],["Travel","travel"],["Sexual activity","sexual"],["Lifting (children, groceries, etc.)","lifting"],["None — symptoms don't limit my activities","none"]]},
 {id:"medications",text:"Are you taking any medications that might affect your bladder? (e.g., diuretics, antihistamines, antidepressants)",type:"text",ph:"List medications or type 'None'"},
@@ -102,14 +105,14 @@ const CLINICAL_EXTRA=[
 {id:"prior_treatment",text:"Have you had any prior treatment for pelvic floor issues?",type:"multi",opts:[["None — this is my first time","none"],["Pelvic floor PT (in-person)","prior_pt"],["Kegel exercises on my own","self_kegel"],["Pessary","pessary"],["Biofeedback device","biofeedback"],["Medication","medication"],["Surgery","surgery"]]},
 {id:"cue_preference",text:"Which instruction style helps you best imagine \"lifting and closing\" your pelvic floor?",opts:[["Body function: \"Squeeze as if stopping the flow of urine\" (⚠ Never practice this during actual urination)","biologic"],["Imaginative: \"Imagine gently closing around and lifting a blueberry\"","imaginative"],["Breath-based: \"Breathe out and draw in and lift your pelvic floor\"","breathing"],["Not sure yet — surprise me","default"]]},
 {id:"patient_goal",text:"In your own words, what is the main thing you'd like to be able to do more comfortably?",type:"text",ph:"e.g., 'Exercise without leaking', 'Pick up my child without pain'"},
-{id:"video_breathing",text:"Optional: Would you like to upload a short video of your breathing pattern? This helps your PT assess your diaphragmatic breathing and core coordination. How to record: Stand or sit facing your camera, place one hand on your chest and one on your belly, and breathe normally for 15–30 seconds. Your PT is looking at whether your belly or chest moves more, and whether your shoulders rise.",type:"yn"},
+{id:"video_breathing",text:"Optional: Would you like to upload a short video of your breathing pattern? This helps your PT assess your diaphragmatic breathing and core coordination. If yes, a separate email will be sent with upload instructions.",type:"yn"},
 ];
 
 const REDFLAGS=[
 {id:"rf_bleed",text:"Are you experiencing any unexplained vaginal bleeding?",type:"yn",rf:true,act:"physician",msg:"Unexplained bleeding requires physician evaluation before starting PT."},
-{id:"rf_fever",text:"Do you currently have a fever — temperature above 100.4°F (38°C)?",type:"yn",rf:true,act:"er",msg:"A postpartum fever may indicate infection. Please call 911 or go to the ER immediately."},
+{id:"rf_fever",text:"Do you currently have a fever — temperature above 100.4°F (38°C)?",type:"yn",rf:true,act:"er",msg:"A fever at this level may indicate infection or a serious condition requiring medical evaluation. If you are postpartum, this is especially urgent. Please call 911 or go to the ER immediately."},
 {id:"rf_chest",text:"Are you experiencing any chest pain or difficulty breathing?",type:"yn",rf:true,act:"er",msg:"This requires immediate medical attention. Please call 911."},
-{id:"rf_head",text:"Do you have a severe headache along with any changes in your vision?",type:"yn",rf:true,act:"er",msg:"This could indicate a serious postpartum condition. Please call 911 immediately."},
+{id:"rf_head",text:"Do you have a severe headache along with any changes in your vision?",type:"yn",rf:true,act:"er",msg:"A severe headache with vision changes may indicate a serious neurological or vascular condition. In postpartum patients, this could signal preeclampsia or eclampsia. Please call 911 immediately."},
 {id:"rf_uti",text:"Are you experiencing burning during urination, blood in your urine, or frequent urination along with a fever?",type:"yn",rf:true,act:"physician",msg:"These may indicate a UTI. Please contact your physician before starting PT."},
 ];
 // SCORING (unchanged references — GUPI items still named gupiXX, pain items still painXX)
@@ -695,6 +698,11 @@ function PTNewIntakeReview({data,onBack}){
       <div><div className="h1">Intake Review — {nm}</div><div className="sub">DOB: {ans.dob||"—"} · {ans.pregnancy_status?.replace(/_/g," ")||"—"} · Ref: {ans.referral_source||"—"} · Insurance: {ans.insurance_type||"—"}{ans.patient_goal?` · Goal: "${ans.patient_goal}"`:""}</div></div>
       <AW/>
     </div>
+    {!approved&&<div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,padding:"8px 16px",background:C.purp,borderRadius:10,color:C.white}}>
+      <span style={{fontSize:22,fontWeight:700,fontFamily:"monospace"}}>{String(Math.floor(tSec/60)).padStart(2,"0")}:{String(tSec%60).padStart(2,"0")}</span>
+      <button style={{background:tRun?"#EF4444":"#22C55E",color:C.white,border:"none",borderRadius:6,padding:"4px 12px",fontSize:12,fontWeight:600,cursor:"pointer"}} onClick={()=>setTRun(!tRun)}>{tRun?"⏸ Pause":"▶ Start Timer"}</button>
+      <span style={{fontSize:11,opacity:0.7}}>CMS review time documentation</span>
+    </div>}
 
     {/* SCORE SUMMARY */}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:10,marginBottom:14}}>
