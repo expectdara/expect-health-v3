@@ -102,7 +102,7 @@ const CLINICAL_EXTRA=[
 {id:"prior_treatment",text:"Have you had any prior treatment for pelvic floor issues?",type:"multi",opts:[["None — this is my first time","none"],["Pelvic floor PT (in-person)","prior_pt"],["Kegel exercises on my own","self_kegel"],["Pessary","pessary"],["Biofeedback device","biofeedback"],["Medication","medication"],["Surgery","surgery"]]},
 {id:"cue_preference",text:"Which instruction style helps you best imagine \"lifting and closing\" your pelvic floor?",opts:[["Body function: \"Squeeze as if stopping the flow of urine\" (⚠ Never practice this during actual urination)","biologic"],["Imaginative: \"Imagine gently closing around and lifting a blueberry\"","imaginative"],["Breath-based: \"Breathe out and draw in and lift your pelvic floor\"","breathing"],["Not sure yet — surprise me","default"]]},
 {id:"patient_goal",text:"In your own words, what is the main thing you'd like to be able to do more comfortably?",type:"text",ph:"e.g., 'Exercise without leaking', 'Pick up my child without pain'"},
-{id:"video_breathing",text:"Optional: Would you like to upload a short video of your breathing pattern? This helps your PT assess your diaphragmatic breathing and core coordination.\n\nHow to record: Stand or sit facing your camera. Place one hand on your chest and one on your belly. Breathe normally for 15–30 seconds. Your PT is looking at whether your belly or chest moves more, and whether your shoulders rise. No special setup needed — phone camera is fine.",type:"yn"},
+{id:"video_breathing",text:"Optional: Would you like to upload a short video of your breathing pattern? This helps your PT assess your diaphragmatic breathing and core coordination. How to record: Stand or sit facing your camera, place one hand on your chest and one on your belly, and breathe normally for 15–30 seconds. Your PT is looking at whether your belly or chest moves more, and whether your shoulders rise.",type:"yn"},
 ];
 
 const REDFLAGS=[
@@ -474,7 +474,6 @@ function MyCareplan({data}){
       </div>}
     </div>;})}
   </div>;
-    </div>;})}\n  </div>;
   const StrategiesTab=()=><div>
     <div className="card"style={{borderLeft:"4px solid #0891B2"}}>
       <div style={{fontSize:14,fontWeight:600,color:C.purpD,marginBottom:8}}>Understanding Your Pattern</div>
