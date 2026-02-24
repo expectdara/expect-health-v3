@@ -97,12 +97,12 @@ const CLINICAL_EXTRA=[
 {id:"bowel_constipation",text:"Over the past month, how often have you experienced constipation or straining during bowel movements?",opts:[["Never",0],["Rarely",1],["Sometimes",2],["Often",3],["Almost always",4]]},
 {id:"symptom_triggers",text:"What activities tend to trigger your symptoms? Please select all that apply.",type:"multi",opts:[["Lifting or carrying","lifting"],["Running or jumping","running"],["Coughing or sneezing","coughing"],["Laughing","laughing"],["Getting up from sitting","standing"],["Climbing stairs","stairs"],["Sexual activity","sexual"],["None in particular","none"]]},
 {id:"avoid_activities",text:"Are you avoiding activities because of pelvic symptoms? Select all that apply.",type:"multi",opts:[["Exercise or sports","exercise"],["Social events","social"],["Travel","travel"],["Sexual activity","sexual"],["Lifting (children, groceries, etc.)","lifting"],["None — symptoms don't limit my activities","none"]]},
+{id:"medications",text:"Are you taking any medications that might affect your bladder? (e.g., diuretics, antihistamines, antidepressants)",type:"text",ph:"List medications or type 'None'"},
 {id:"med_modify",text:"Are you changing how you take any prescribed medication because of urinary symptoms? (e.g., skipping doses, changing timing)",opts:[["No",0],["Yes",1],["Not sure",2]]},
 {id:"prior_treatment",text:"Have you had any prior treatment for pelvic floor issues?",type:"multi",opts:[["None — this is my first time","none"],["Pelvic floor PT (in-person)","prior_pt"],["Kegel exercises on my own","self_kegel"],["Pessary","pessary"],["Biofeedback device","biofeedback"],["Medication","medication"],["Surgery","surgery"]]},
-{id:"medications",text:"Are you taking any medications that might affect your bladder? (e.g., diuretics, antihistamines, antidepressants)",type:"text",ph:"List medications or type 'None'"},
-{id:"cue_preference",text:"Which instruction style helps you best imagine engaging your pelvic floor? Pick the one that clicks.",opts:[["Body function: \"Squeeze as if stopping the flow of urine\"","biologic"],["Imaginative: \"Imagine gently closing around and lifting a blueberry\"","imaginative"],["Breath-based: \"Breathe out and draw in and lift your pelvic floor\"","breathing"],["Not sure yet — surprise me","default"]]},
+{id:"cue_preference",text:"Which instruction style helps you best imagine \"lifting and closing\" your pelvic floor?",opts:[["Body function: \"Squeeze as if stopping the flow of urine\" (⚠ Never practice this during actual urination)","biologic"],["Imaginative: \"Imagine gently closing around and lifting a blueberry\"","imaginative"],["Breath-based: \"Breathe out and draw in and lift your pelvic floor\"","breathing"],["Not sure yet — surprise me","default"]]},
 {id:"patient_goal",text:"In your own words, what is the main thing you'd like to be able to do more comfortably?",type:"text",ph:"e.g., 'Exercise without leaking', 'Pick up my child without pain'"},
-{id:"video_breathing",text:"Optional: Would you like to upload a short video of your breathing pattern? This helps your PT assess your diaphragmatic breathing and core coordination. (15–30 seconds, front view, standing or seated.)",type:"yn"},
+{id:"video_breathing",text:"Optional: Would you like to upload a short video of your breathing pattern? This helps your PT assess your diaphragmatic breathing and core coordination.\n\nHow to record: Stand or sit facing your camera. Place one hand on your chest and one on your belly. Breathe normally for 15–30 seconds. Your PT is looking at whether your belly or chest moves more, and whether your shoulders rise. No special setup needed — phone camera is fine.",type:"yn"},
 ];
 
 const REDFLAGS=[
@@ -123,28 +123,28 @@ function sPain(a){const c=a.pain1??0,v=a.pain2??0,f=a.pain3??0;const cm=Math.rou
 // PATIENT CONTENT LIBRARIES
 // ============================================================
 const PATIENT_EX={
-"Supine PF Activation":{name:"Lying Down Pelvic Floor Wake-Up",why:"When your pelvic floor muscles are weak, it\u2019s easiest to start lying down. Gravity isn\u2019t working against you, so your muscles can focus on learning the right movement pattern.",howTo:["Lie on your back with knees bent, feet flat, hip-width apart.","Place one hand on your lower belly. Relax your jaw, shoulders, belly, buttocks.","Imagine stopping the flow of urine, or gently lifting your vaginal opening upward and inward.","Hold the squeeze gently for 3-5 seconds, then fully release and rest for 5 seconds.","Repeat 8 times. Rest 30 seconds. Do the whole set again (2 sets)."],mistakes:["Holding your breath \u2014 keep breathing normally","Squeezing buttocks or inner thighs \u2014 only your pelvic floor should work","Bearing down instead of lifting up","Gripping too hard \u2014 about 50% effort"],stop:"Stop if pain above 3/10 or any sharp/burning sensation.",tips:"Do this before bed or first thing in the morning. You can practice while nursing or feeding your baby."},
-"Diaphragmatic Breathing + PF":{name:"Belly Breathing with Pelvic Floor",why:"Your diaphragm and pelvic floor move together. Learning to coordinate them helps your pelvic floor work automatically during daily life.",howTo:["Lie on your back with knees bent. One hand on chest, one on belly.","Breathe IN through nose for 4 seconds. Belly rises. Chest stays still. Pelvic floor relaxes.","Breathe OUT through pursed lips for 6 seconds. Gently lift your pelvic floor as you exhale.","EXHALE = gentle pelvic floor lift. INHALE = full pelvic floor release.","Do 5 full breath cycles. Rest 30 seconds. Repeat (2 sets)."],mistakes:["Breathing too fast \u2014 4 seconds in, 6 seconds out","Only breathing into chest \u2014 make belly rise","Forgetting to fully relax on inhale","Tensing neck and shoulders"],stop:"Should never cause pain. If dizzy, return to normal breathing.",tips:"The most important exercise in your program. Practice while watching TV, before sleep, during feeding time."},
+"Supine PF Activation":{name:"Lying Down Pelvic Floor Wake-Up",why:"When your pelvic floor muscles are weak, it's easiest to start lying down. Gravity isn't working against you, so your muscles can focus on learning the right movement pattern.",howTo:["Lie on your back with knees bent, feet flat, hip-width apart.","Place one hand on your lower belly. Relax your jaw, shoulders, belly, buttocks.","Imagine stopping the flow of urine, or gently lifting your vaginal opening upward and inward.","Hold the squeeze gently for 3-5 seconds, then fully release and rest for 5 seconds.","Repeat 8 times. Rest 30 seconds. Do the whole set again (2 sets)."],mistakes:["Holding your breath — keep breathing normally","Squeezing buttocks or inner thighs — only your pelvic floor should work","Bearing down instead of lifting up","Gripping too hard — about 50% effort"],stop:"Stop if pain above 3/10 or any sharp/burning sensation.",tips:"Do this before bed or first thing in the morning. You can practice while nursing or feeding your baby."},
+"Diaphragmatic Breathing + PF":{name:"Belly Breathing with Pelvic Floor",why:"Your diaphragm and pelvic floor move together. Learning to coordinate them helps your pelvic floor work automatically during daily life.",howTo:["Lie on your back with knees bent. One hand on chest, one on belly.","Breathe IN through nose for 4 seconds. Belly rises. Chest stays still. Pelvic floor relaxes.","Breathe OUT through pursed lips for 6 seconds. Gently lift your pelvic floor as you exhale.","EXHALE = gentle pelvic floor lift. INHALE = full pelvic floor release.","Do 5 full breath cycles. Rest 30 seconds. Repeat (2 sets)."],mistakes:["Breathing too fast — 4 seconds in, 6 seconds out","Only breathing into chest — make belly rise","Forgetting to fully relax on inhale","Tensing neck and shoulders"],stop:"Should never cause pain. If dizzy, return to normal breathing.",tips:"The most important exercise in your program. Practice while watching TV, before sleep, during feeding time."},
 "Gentle Bridge":{name:"Bridge Lift with Pelvic Floor",why:"Bridges strengthen your glutes, core, and pelvic floor together. Your pelvic floor, transverse abdominals, diaphragm, and deep back muscles all work as a team here.",howTo:["Lie on your back, knees bent, feet flat and hip-width apart. Arms at sides. Keep your spine neutral — don't arch your back.","Inhale into your diaphragm to prepare.","As you exhale, gently engage your pelvic floor FIRST — then begin lifting your hips. The pelvic floor initiates before the hips rise.","Slowly lift hips until your body makes a straight line from shoulders to knees. Keep shoulders level.","Hold for 5 seconds at the top, breathing normally — do not hold your breath.","Slowly lower back down. Fully release your pelvic floor. Rest 5 seconds.","Repeat 10 times per set. Aim for 2 sets."],mistakes:["Lifting hips before engaging pelvic floor — PF engages FIRST","Arching lower back at the top — keep a straight line","Holding your breath at the top — breathe normally","Squeezing knees together — keep hip-width apart","Moving too fast — slow and controlled"],stop:"If your back starts to hurt, your core muscles are tiring — stop and rest immediately. Pelvic floor engagement matters more than how high you lift.",tips:"You can gently tuck your pelvis slightly to help initiate the movement from your hips, not your lower back. Build up to holding for 10 seconds."},
-"Quick-Flick Kegels":{name:"Quick Squeeze Kegels",why:"These train the fast-twitch muscles \u2014 the ones that quickly tighten to prevent leaking when you cough, sneeze, laugh, or jump.",howTo:["Sit or lie comfortably.","Squeeze your pelvic floor as quickly and strongly as you can.","Immediately release completely.","Rest 2-3 seconds between each squeeze.","Do 8-10 squeezes per set, 2 sets."],mistakes:["Holding the squeeze too long \u2014 this is about speed","Not fully releasing between squeezes","Holding your breath","Using buttock or thigh muscles"],stop:"Stop if pain above 3/10.",tips:"Practice right before you cough, sneeze, or lift. This \u2018brace before you sneeze\u2019 technique (The Knack) is one of the most effective leak-prevention strategies."},
-"Endurance Kegels":{name:"Long Hold Kegels",why:"These train the slow-twitch muscles \u2014 the ones providing ongoing support throughout the day, keeping organs in place and maintaining continence.",howTo:["Lie on your side with a pillow between knees.","Gently squeeze your pelvic floor to about 50-70% effort.","Hold for 5 seconds while breathing normally.","Fully release and rest for 5 seconds.","Repeat 8 times, 2 sets."],mistakes:["Holding your breath during the hold","Squeezing at maximum effort \u2014 moderate is better","Cutting the rest short","Substituting with abs or glutes"],stop:"Stop if fatigue causes form breakdown, or pain above 3/10.",tips:"Gradually increase hold time to 10 seconds. Quality matters more than quantity."},
-"Pain De-Sensitization Breathing":{name:"Calming Breath for Pain Relief",why:"When in pain, your nervous system tightens pelvic floor muscles and makes pain worse. This breathing activates your calming response.",howTo:["Find a quiet, comfortable place. Lie down or sit supported.","Close your eyes. Place both hands on your belly.","Breathe in through nose for 4 seconds. Feel belly expand.","Breathe out through mouth for 8 seconds \u2014 as slowly as possible.","Continue for 2 full minutes.","Focus only on breathing. If your mind wanders, bring it back."],mistakes:["Making exhale too short","Getting frustrated if pain doesn\u2019t decrease immediately","Tensing jaw or shoulders"],stop:"Use as often as needed. No side effects.",tips:"Use before stressful situations, during pain flares, or before intimacy."},
+"Quick-Flick Kegels":{name:"Quick Squeeze Kegels",why:"These train the fast-twitch muscles — the ones that quickly tighten to prevent leaking when you cough, sneeze, laugh, or jump.",howTo:["Sit or lie comfortably.","Squeeze your pelvic floor as quickly and strongly as you can.","Immediately release completely.","Rest 2-3 seconds between each squeeze.","Do 8-10 squeezes per set, 2 sets."],mistakes:["Holding the squeeze too long — this is about speed","Not fully releasing between squeezes","Holding your breath","Using buttock or thigh muscles"],stop:"Stop if pain above 3/10.",tips:"Practice right before you cough, sneeze, or lift. This 'brace before you sneeze' technique (The Knack) is one of the most effective leak-prevention strategies."},
+"Endurance Kegels":{name:"Long Hold Kegels",why:"These train the slow-twitch muscles — the ones providing ongoing support throughout the day, keeping organs in place and maintaining continence.",howTo:["Lie on your side with a pillow between knees.","Gently squeeze your pelvic floor to about 50-70% effort.","Hold for 5 seconds while breathing normally.","Fully release and rest for 5 seconds.","Repeat 8 times, 2 sets."],mistakes:["Holding your breath during the hold","Squeezing at maximum effort — moderate is better","Cutting the rest short","Substituting with abs or glutes"],stop:"Stop if fatigue causes form breakdown, or pain above 3/10.",tips:"Gradually increase hold time to 10 seconds. Quality matters more than quantity."},
+"Pain De-Sensitization Breathing":{name:"Calming Breath for Pain Relief",why:"When in pain, your nervous system tightens pelvic floor muscles and makes pain worse. This breathing activates your calming response.",howTo:["Find a quiet, comfortable place. Lie down or sit supported.","Close your eyes. Place both hands on your belly.","Breathe in through nose for 4 seconds. Feel belly expand.","Breathe out through mouth for 8 seconds — as slowly as possible.","Continue for 2 full minutes.","Focus only on breathing. If your mind wanders, bring it back."],mistakes:["Making exhale too short","Getting frustrated if pain doesn't decrease immediately","Tensing jaw or shoulders"],stop:"Use as often as needed. No side effects.",tips:"Use before stressful situations, during pain flares, or before intimacy."},
 "Bridge + PF":{name:"Bridge Lift with Pelvic Floor",why:"Bridges strengthen glutes and core while your pelvic floor works against gravity. PF, transverse abs, diaphragm, and deep back muscles work as a team.",howTo:["Lie on your back, knees bent, feet flat hip-width apart. Arms at sides. Spine neutral.","Inhale into your diaphragm to prepare.","Exhale — engage pelvic floor FIRST, then lift hips to a straight line from shoulders to knees.","Hold 5-10 seconds at top, breathing normally.","Slowly lower. Fully release pelvic floor.","Repeat 10 times, 2 sets."],mistakes:["Lifting before engaging PF","Arching lower back","Moving too fast","Forgetting the pelvic floor engagement","Not fully releasing at bottom"],stop:"Stop if low back pain or pelvic pressure. Back pain = core fatigue.",tips:"As this gets easier, try lifting one foot slightly at the top (marching bridge). Build to 10s holds."},
-"Diaphragmatic Breathing":{name:"Belly Breathing",why:"Your diaphragm and pelvic floor move together. Proper breathing is the foundation of pelvic floor coordination.",howTo:["Lie or sit comfortably. One hand on chest, one on belly.","Breathe in through nose for 4 seconds \u2014 belly rises, chest still. Pelvic floor relaxes.","Breathe out through pursed lips for 6 seconds \u2014 belly falls. Pelvic floor lifts.","Do 5 full breath cycles, once daily."],mistakes:["Breathing only into chest","Forcing pelvic floor engagement","Breathing too fast"],stop:"Should never cause pain or dizziness.",tips:"Practice anytime \u2014 in the car, at your desk, before bed. Also helps with stress."}
+"Diaphragmatic Breathing":{name:"Belly Breathing",why:"Your diaphragm and pelvic floor move together. Proper breathing is the foundation of pelvic floor coordination.",howTo:["Lie or sit comfortably. One hand on chest, one on belly.","Breathe in through nose for 4 seconds — belly rises, chest still. Pelvic floor relaxes.","Breathe out through pursed lips for 6 seconds — belly falls. Pelvic floor lifts.","Do 5 full breath cycles, once daily."],mistakes:["Breathing only into chest","Forcing pelvic floor engagement","Breathing too fast"],stop:"Should never cause pain or dizziness.",tips:"Practice anytime — in the car, at your desk, before bed. Also helps with stress."}
 };
 const PATIENT_ADJ={
-"PF Biofeedback Device":{name:"Pelvic Floor Biofeedback Device",type:"device",what:"A small sensor that connects to your phone and shows exactly when you\u2019re squeezing correctly. Like a Fitbit for your pelvic floor.",why:"Research shows women who use biofeedback progress faster.",expect:"Improved awareness within the first week. Clear strength difference by week 4.",howToGet:"Elvie Trainer (~$200) or Pericoach (~$300). Some insurance covers with prescription.",note:"May be recommended if exercises alone aren\u2019t enough by week 4."},
-"Pessary Evaluation":{name:"Pessary (Support Device)",type:"device",what:"A small, flexible silicone device inside the vagina providing pelvic organ support \u2014 like an internal shelf.",why:"Provides immediate support while you build strength through exercises.",expect:"A provider fits you for the right size. Most women can\u2019t feel it once placed.",howToGet:"Requires fitting with a urogynecologist or OB/GYN.",note:"Not first-line \u2014 may be discussed if symptoms persist at week 8."},
+"PF Biofeedback Device":{name:"Pelvic Floor Biofeedback Device",type:"device",what:"A small sensor that connects to your phone and shows exactly when you're squeezing correctly. Like a Fitbit for your pelvic floor.",why:"Research shows women who use biofeedback progress faster.",expect:"Improved awareness within the first week. Clear strength difference by week 4.",howToGet:"Elvie Trainer (~$200) or Pericoach (~$300). Some insurance covers with prescription.",note:"May be recommended if exercises alone aren't enough by week 4."},
+"Pessary Evaluation":{name:"Pessary (Support Device)",type:"device",what:"A small, flexible silicone device inside the vagina providing pelvic organ support — like an internal shelf.",why:"Provides immediate support while you build strength through exercises.",expect:"A provider fits you for the right size. Most women can't feel it once placed.",howToGet:"Requires fitting with a urogynecologist or OB/GYN.",note:"Not first-line — may be discussed if symptoms persist at week 8."},
 "Bladder Training Program":{name:"Bladder Retraining",type:"behavioral",what:"A structured program to retrain your bladder and reduce urgency. Teaches your brain to override false signals.",why:"One of the most effective treatments for urge incontinence.",expect:"Most see improvement in 4-6 weeks.",howToGet:"Your PT creates a personalized schedule with a bladder diary.",note:"When you feel a sudden urge: STOP, do 5 quick squeezes, take 3 slow breaths, wait, then walk calmly to the bathroom."},
 "Vaginal Dilator Therapy":{name:"Vaginal Dilator Therapy",type:"device",what:"Medical-grade silicone cylinders in graduated sizes for gently desensitizing vaginal tissue.",why:"Teaches tight muscles to relax and your nervous system to stop interpreting touch as pain.",expect:"Most work through the set over 6-12 weeks at your own pace.",howToGet:"Intimate Rose or Soul Source (~$50-90). Use with water-based lubricant.",note:"Never rushed. You are always in control."},
-"Bowel Management Program":{name:"Bowel Health Program",type:"behavioral",what:"Simple changes to how you sit, eat, and go \u2014 designed to reduce straining.",why:"Straining puts enormous pressure on your pelvic floor \u2014 directly against the muscles you\u2019re strengthening.",expect:"Most notice easier bowel movements within 1-2 weeks.",howToGet:"Start today.",note:"Use a footstool on the toilet, get 25-30g fiber daily, drink 6-8 glasses water, never strain."},
+"Bowel Management Program":{name:"Bowel Health Program",type:"behavioral",what:"Simple changes to how you sit, eat, and go — designed to reduce straining.",why:"Straining puts enormous pressure on your pelvic floor — directly against the muscles you're strengthening.",expect:"Most notice easier bowel movements within 1-2 weeks.",howToGet:"Start today.",note:"Use a footstool on the toilet, get 25-30g fiber daily, drink 6-8 glasses water, never strain."},
 "Lifestyle Modifications":{name:"Lifestyle Changes That Help",type:"behavioral",what:"Simple daily habits that reduce symptoms alongside exercises.",why:"Certain habits directly stress your pelvic floor. Changing them helps even before exercises kick in.",expect:"Many notice fewer urgency episodes within 1-2 weeks.",howToGet:"Start with whichever feels easiest.",note:"Reduce caffeine, drink water throughout day, exhale before lifting, sit tall."},
-"In-Person PT Evaluation":{name:"In-Person PT Visit (If Needed)",type:"referral",what:"A hands-on evaluation for direct muscle assessment through internal exam.",why:"Some patients benefit from hands-on assessment if telehealth progress slows.",expect:"Involves a vaginal/rectal exam (with consent).",howToGet:"Discussed at week 4 check-in if scores haven\u2019t improved enough.",note:"Not a sign of failure \u2014 may benefit from hands-on techniques alongside exercises."},
-"TENS Unit for Pain":{name:"TENS Unit for Pain",type:"device",what:"A small device sending mild electrical pulses through skin pads for drug-free pain relief.",why:"Your pain scores are significant. TENS provides relief you control at home.",expect:"Relief usually begins within 15-30 min.",howToGet:"Available at pharmacies/online ($30-60).",note:"May be recommended if pain hasn\u2019t improved by week 2."}
+"In-Person PT Evaluation":{name:"In-Person PT Visit (If Needed)",type:"referral",what:"A hands-on evaluation for direct muscle assessment through internal exam.",why:"Some patients benefit from hands-on assessment if telehealth progress slows.",expect:"Involves a vaginal/rectal exam (with consent).",howToGet:"Discussed at week 4 check-in if scores haven't improved enough.",note:"Not a sign of failure — may benefit from hands-on techniques alongside exercises."},
+"TENS Unit for Pain":{name:"TENS Unit for Pain",type:"device",what:"A small device sending mild electrical pulses through skin pads for drug-free pain relief.",why:"Your pain scores are significant. TENS provides relief you control at home.",expect:"Relief usually begins within 15-30 min.",howToGet:"Available at pharmacies/online ($30-60).",note:"May be recommended if pain hasn't improved by week 2."}
 };
 const SCORE_EXP={
-iciq:{"None":"Your bladder leakage score is 0 \u2014 you\u2019re not currently experiencing leaking.","Slight":"Your score is in the mild range. Many patients see significant improvement within 4-6 weeks.","Moderate":"Your score is in the moderate range. Patients respond well to exercises, bladder training, and lifestyle changes.","Severe":"Your score is in the severe range. This IS treatable. Your program will be more intensive with frequent check-ins.","Very Severe":"Your score is in the very severe range. Your program will be comprehensive with close monitoring."},
-pain:{"None":"No current pain reported.","Mild":"Mild pain \u2014 typically improves well with breathing and relaxation exercises.","Moderate":"Moderate pain. Your program includes pain management. Don\u2019t push through pain above 3/10.","Severe":"Significant pain level. Pain reduction will be a primary focus."}};
+iciq:{"None":"Your bladder leakage score is 0 — you're not currently experiencing leaking.","Slight":"Your score is in the mild range. Many patients see significant improvement within 4-6 weeks.","Moderate":"Your score is in the moderate range. Patients respond well to exercises, bladder training, and lifestyle changes.","Severe":"Your score is in the severe range. This IS treatable. Your program will be more intensive with frequent check-ins.","Very Severe":"Your score is in the very severe range. Your program will be comprehensive with close monitoring."},
+pain:{"None":"No current pain reported.","Mild":"Mild pain — typically improves well with breathing and relaxation exercises.","Moderate":"Moderate pain. Your program includes pain management. Don't push through pain above 3/10.","Severe":"Significant pain level. Pain reduction will be a primary focus."}};
 
 function genPlan(iciq,pain,gupi,intake){
   const p={id:`TP-${Date.now()}`,at:new Date().toISOString(),status:"pending_review",risk:"green",dx:[],goals:[],ex:[],adjuncts:[],freq:"",dur:"",prec:[],prog:[],cpt:[]};
@@ -365,12 +365,12 @@ function Intake({onDone,mainRef}){
 
 function PatientWaiting({name}){
   return<div className="fi"style={{textAlign:"center",padding:"60px 20px"}}>
-    <div style={{fontSize:48,marginBottom:16}}>\u2728</div>
+    <div style={{fontSize:48,marginBottom:16}}>✨</div>
     <div className="h1"style={{fontSize:28}}>Thank you{name?`, ${name}`:""}</div>
     <p style={{fontSize:15,color:C.g500,maxWidth:480,margin:"12px auto 0",lineHeight:1.7}}>Your assessment is complete. A licensed Physical Therapist will review your responses and create a personalized treatment plan.</p>
     <div style={{marginTop:24,padding:16,background:C.g50,borderRadius:12,display:"inline-block"}}>
       <div style={{fontSize:12,color:C.g400,marginBottom:4}}>What happens next</div>
-      <div style={{fontSize:13,color:C.g700}}>PT review within 24 hours \u2192 Your care plan will appear here</div>
+      <div style={{fontSize:13,color:C.g700}}>PT review within 24 hours → Your care plan will appear here</div>
     </div>
     <div style={{marginTop:16,fontSize:12,color:C.g400}}>Switch to <strong>PT Provider View</strong> to review and approve the plan, then come back to see your care plan.</div>
   </div>;
@@ -381,7 +381,7 @@ function MyCareplan({data}){
   const[expanded,setExpanded]=useState({});
   const toggle=(id)=>setExpanded(p=>({...p,[id]:!p[id]}));
   const name=ans.name_first||"";
-  const tabs=[["scores","\ud83d\udcca My Scores"],["exercises","\ud83d\udcaa Exercises"],["adjuncts","\ud83d\udccb Recommendations"]];
+  const tabs=[["scores","📊 My Scores"],["exercises","💪 Exercises"],["adjuncts","📋 Recommendations"],["strategies","🧠 Strategies"],["report","📄 Full Report"]];
   const ScoresTab=()=><div>
     <div className="card"style={{borderLeft:`4px solid ${C.pink}`}}>
       <div style={{fontSize:11,textTransform:"uppercase",color:C.g400,letterSpacing:1,marginBottom:6}}>Bladder Leakage Score (ICIQ)</div>
@@ -402,30 +402,45 @@ function MyCareplan({data}){
       </div>
       <div style={{fontSize:13,color:C.g600,lineHeight:1.6}}>{SCORE_EXP.pain[pain.severity]||""}</div>
     </div>}
+    {gupi&&gupi.total>0&&<div className="card"style={{borderLeft:`4px solid #8B5CF6`}}>
+      <div style={{fontSize:11,textTransform:"uppercase",color:C.g400,letterSpacing:1,marginBottom:6}}>Pelvic Pain Index (GUPI)</div>
+      <div style={{display:"flex",alignItems:"baseline",gap:10,marginBottom:6,flexWrap:"wrap"}}>
+        <span style={{fontSize:32,fontWeight:700,color:C.purp}}>{gupi.total}</span>
+        <span style={{fontSize:13,color:C.g500}}>/45</span>
+        <span style={{background:gupi.severity==="Severe"?C.rd:gupi.severity==="Moderate"?C.or:C.gn,color:C.white,padding:"2px 10px",borderRadius:12,fontSize:11,fontWeight:600}}>{gupi.severity}</span>
+      </div>
+    </div>}
     {ans.patient_goal&&<div className="card"style={{borderLeft:`4px solid ${C.blue}`,background:C.g50}}>
       <div style={{fontSize:11,textTransform:"uppercase",color:C.g400,letterSpacing:1,marginBottom:6}}>Your Goal</div>
       <div style={{fontSize:15,color:C.purpD,fontStyle:"italic",lineHeight:1.6}}>"{ans.patient_goal}"</div>
-      <div style={{fontSize:12,color:C.g500,marginTop:6}}>Your PT will build your plan around what matters most to you.</div>
+      <div style={{fontSize:12,color:C.g500,marginTop:6}}>Your PT built your plan around what matters most to you.</div>
     </div>}
     <div className="card"style={{background:C.g50}}>
       <div style={{fontSize:11,textTransform:"uppercase",color:C.g400,letterSpacing:1,marginBottom:6}}>Treatment Overview</div>
       <div style={{fontSize:13,color:C.g700,lineHeight:1.6}}>
+        <div><strong>Program Tier:</strong> {iciq.total>=13?"Beginner (12 weeks)":iciq.total>=6?"Moderate (8 weeks)":"Advanced (6 weeks)"}</div>
         <div><strong>Frequency:</strong> {plan.freq}</div>
         <div><strong>Duration:</strong> {plan.dur}</div>
-        <div style={{marginTop:8,fontSize:12,color:C.g500}}>{plan.ex.length} exercises \u00b7 {plan.adjuncts.length} recommendations</div>
+        <div style={{marginTop:8,fontSize:12,color:C.g500}}>{plan.ex.length} exercises · {plan.adjuncts.length} recommendations</div>
       </div>
     </div>
+    {(()=>{const av=ans.avoid_activities||[];const avF=av.filter(x=>x!=="none");return avF.length>0?<div className="card"style={{borderLeft:`4px solid ${avF.length>=3?"#DC2626":"#D97706"}`}}>
+      <div style={{fontSize:11,textTransform:"uppercase",color:C.g400,letterSpacing:1,marginBottom:6}}>Activities You're Avoiding</div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>{avF.map((a,i)=><span key={i}style={{background:"#FEF3C7",color:"#92400E",padding:"3px 10px",borderRadius:12,fontSize:11,fontWeight:500}}>{a}</span>)}</div>
+      {avF.length>=3&&<div style={{fontSize:12,color:"#991B1B",lineHeight:1.6}}>You're avoiding {avF.length} types of activities. A key goal of your program is to help you gradually return to these.</div>}
+    </div>:null;})()}
   </div>;
   const ExTab=()=><div>
+    {ans.cue_preference==="biologic"&&<div className="card"style={{background:"#FEF3C7",borderLeft:"4px solid #D97706",marginBottom:16}}><div style={{fontSize:12,fontWeight:600,color:"#92400E",marginBottom:4}}>⚠ Important: About Your Cueing Style</div><div style={{fontSize:12,color:"#78350F",lineHeight:1.6}}>Your exercises use the "stop the flow of urine" cue to help you find the right muscles. <strong>Never practice pelvic floor exercises during actual urination.</strong> Doing so can disrupt normal bladder-pelvic floor coordination and may lead to incomplete emptying or urinary hesitancy over time. Use the cue as a mental image only.</div></div>}
     <div style={{fontSize:13,color:C.g500,marginBottom:16,lineHeight:1.6}}>Your personalized exercises based on your assessment. Tap each to see detailed instructions.</div>
     {plan.ex.map((ex,i)=>{const lib=PATIENT_EX[ex.n];const open=expanded["ex_"+i];return<div key={i}className="card"style={{cursor:"pointer",borderLeft:`3px solid ${C.purp}`,padding:0,overflow:"hidden"}}>
       <div style={{padding:"14px 16px"}}onClick={()=>toggle("ex_"+i)}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
           <div><div style={{fontSize:14,fontWeight:600,color:C.purpD}}>{lib?lib.name:ex.n}</div><div style={{fontSize:11,color:C.g400,marginTop:2}}>{ex.n}</div></div>
-          <div style={{fontSize:18,color:C.g400,flexShrink:0}}>{open?"\u25b2":"\u25bc"}</div>
+          <div style={{fontSize:18,color:C.g400,flexShrink:0}}>{open?"▲":"▼"}</div>
         </div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
-          <span style={{background:"#EDE9FE",color:C.purp,padding:"2px 8px",borderRadius:8,fontSize:11,fontWeight:500}}>{ex.s}\u00d7{ex.r}</span>
+          <span style={{background:"#EDE9FE",color:C.purp,padding:"2px 8px",borderRadius:8,fontSize:11,fontWeight:500}}>{ex.s}×{ex.r}</span>
           <span style={{background:"#ECFDF5",color:"#065F46",padding:"2px 8px",borderRadius:8,fontSize:11,fontWeight:500}}>Hold {ex.h}</span>
           <span style={{background:"#FFF7ED",color:"#92400E",padding:"2px 8px",borderRadius:8,fontSize:11,fontWeight:500}}>{ex.f}</span>
         </div>
@@ -435,9 +450,9 @@ function MyCareplan({data}){
         <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.purp,marginBottom:4}}>How to do it</div>
           {lib.howTo.map((s,j)=><div key={j}style={{fontSize:13,color:C.g700,lineHeight:1.6,paddingLeft:20,position:"relative",marginBottom:4}}><span style={{position:"absolute",left:0,color:C.pink,fontWeight:700}}>{j+1}.</span>{s}</div>)}</div>
         {lib.mistakes&&<div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.or,marginBottom:4}}>Common Mistakes</div>
-          {lib.mistakes.map((m,j)=><div key={j}style={{fontSize:12,color:C.g600,lineHeight:1.5,paddingLeft:16,position:"relative"}}><span style={{position:"absolute",left:0}}>\u26a0</span>{m}</div>)}</div>}
-        {lib.stop&&<div style={{marginBottom:12,background:"#FEF2F2",padding:"8px 12px",borderRadius:8,fontSize:12,color:"#991B1B",lineHeight:1.5}}>\ud83d\uded1 {lib.stop}</div>}
-        {lib.tips&&<div style={{fontSize:12,color:C.blue,lineHeight:1.5,fontStyle:"italic"}}>\ud83d\udca1 {lib.tips}</div>}
+          {lib.mistakes.map((m,j)=><div key={j}style={{fontSize:12,color:C.g600,lineHeight:1.5,paddingLeft:16,position:"relative"}}><span style={{position:"absolute",left:0}}>⚠</span>{m}</div>)}</div>}
+        {lib.stop&&<div style={{marginBottom:12,background:"#FEF2F2",padding:"8px 12px",borderRadius:8,fontSize:12,color:"#991B1B",lineHeight:1.5}}>🛑 {lib.stop}</div>}
+        {lib.tips&&<div style={{fontSize:12,color:C.blue,lineHeight:1.5,fontStyle:"italic"}}>💡 {lib.tips}</div>}
       </div>}
     </div>;})}
   </div>;
@@ -447,7 +462,7 @@ function MyCareplan({data}){
       <div style={{padding:"14px 16px"}}onClick={()=>toggle("adj_"+i)}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
           <div><span style={{background:tc[adj.type]||C.g200,color:C.white,padding:"1px 8px",borderRadius:8,fontSize:10,fontWeight:600,textTransform:"uppercase",marginRight:8}}>{adj.type}</span><span style={{fontSize:14,fontWeight:600,color:C.purpD}}>{lib?lib.name:adj.n}</span></div>
-          <div style={{fontSize:18,color:C.g400,flexShrink:0}}>{open?"\u25b2":"\u25bc"}</div>
+          <div style={{fontSize:18,color:C.g400,flexShrink:0}}>{open?"▲":"▼"}</div>
         </div>
       </div>
       {open&&lib&&<div style={{borderTop:`1px solid ${C.g200}`,padding:"14px 16px",background:C.g50}}>
@@ -455,13 +470,102 @@ function MyCareplan({data}){
         <div style={{marginBottom:10}}><div style={{fontSize:12,fontWeight:600,color:C.purp,marginBottom:4}}>Why recommended for you</div><div style={{fontSize:13,color:C.g600,lineHeight:1.6}}>{lib.why}</div></div>
         <div style={{marginBottom:10}}><div style={{fontSize:12,fontWeight:600,color:C.purp,marginBottom:4}}>What to expect</div><div style={{fontSize:13,color:C.g600,lineHeight:1.6}}>{lib.expect}</div></div>
         {lib.howToGet&&<div style={{marginBottom:10}}><div style={{fontSize:12,fontWeight:600,color:C.purp,marginBottom:4}}>How to get started</div><div style={{fontSize:13,color:C.g600,lineHeight:1.6}}>{lib.howToGet}</div></div>}
-        {lib.note&&<div style={{background:"#F0F9FF",padding:"8px 12px",borderRadius:8,fontSize:12,color:"#1E40AF",lineHeight:1.5}}>\u2139\ufe0f {lib.note}</div>}
+        {lib.note&&<div style={{background:"#F0F9FF",padding:"8px 12px",borderRadius:8,fontSize:12,color:"#1E40AF",lineHeight:1.5}}>ℹ️ {lib.note}</div>}
       </div>}
     </div>;})}
   </div>;
+    </div>;})}\n  </div>;
+  const StrategiesTab=()=><div>
+    <div className="card"style={{borderLeft:"4px solid #0891B2"}}>
+      <div style={{fontSize:14,fontWeight:600,color:C.purpD,marginBottom:8}}>Understanding Your Pattern</div>
+      <div style={{fontSize:13,color:C.g600,lineHeight:1.7}}>
+        {iciq.subtype==="Stress"?"Your responses suggest a Stress Urinary Incontinence pattern — leaking happens during physical activities like coughing, sneezing, laughing, or lifting. This is very common and responds well to pelvic floor strengthening.":
+         iciq.subtype==="Urge"?"Your responses suggest an Urgency pattern — a sudden, strong need to urinate that's hard to control. This responds well to bladder retraining combined with pelvic floor exercises.":
+         iciq.subtype==="Mixed"?"Your responses suggest a Combined (Mixed) pattern — both activity-related leaking and urgency. This is actually the most common pattern, and it responds very well to a combination of strengthening exercises, bladder retraining, and behavioral strategies.":
+         "Your PT has identified your specific pattern and built your program accordingly."}
+      </div>
+    </div>
+    {(iciq.subtype==="Urge"||iciq.subtype==="Mixed")&&<div className="card"style={{borderLeft:"4px solid #D97706"}}>
+      <div style={{fontSize:14,fontWeight:600,color:C.purpD,marginBottom:8}}>🧠 Bladder Retraining</div>
+      <div style={{fontSize:13,color:C.g600,lineHeight:1.7}}>Urgency often triggers a habit of rushing to the bathroom, which can actually make it worse over time. When you feel a sudden urge:</div>
+      <div style={{margin:"12px 0",padding:"12px 16px",background:"#F0F9FF",borderRadius:8}}>
+        <div style={{fontSize:13,color:"#1E40AF",lineHeight:1.8,fontWeight:500}}>1. STOP where you are<br/>2. Do 5 quick pelvic floor squeezes<br/>3. Take 3 slow breaths<br/>4. Wait until the urge passes (usually 30–60 seconds)<br/>5. Then walk calmly to the bathroom</div>
+      </div>
+      <div style={{fontSize:12,color:C.g500,lineHeight:1.6}}>The urge is like a wave — it peaks and then passes. Over time, your bladder learns to hold more comfortably.</div>
+    </div>}
+    {ans.bowel_constipation>=2&&<div className="card"style={{borderLeft:"4px solid #059669"}}>
+      <div style={{fontSize:14,fontWeight:600,color:C.purpD,marginBottom:8}}>Bowel Health</div>
+      <div style={{fontSize:13,color:C.g600,lineHeight:1.7}}>Straining puts enormous pressure on your pelvic floor — directly against the muscles you're strengthening.</div>
+      <div style={{fontSize:13,color:C.g700,lineHeight:1.8,padding:"8px 0 0 12px"}}>• Use a footstool to put your body in a natural position<br/>• Aim for 25–30g fiber daily<br/>• Drink 6–8 glasses of water spread throughout the day<br/>• Never strain — if it doesn't come, step away and try later</div>
+    </div>}
+    <div className="card"style={{borderLeft:"4px solid #7C3AED"}}>
+      <div style={{fontSize:14,fontWeight:600,color:C.purpD,marginBottom:8}}>Lifestyle Tips</div>
+      <div style={{fontSize:13,color:C.g700,lineHeight:1.8,padding:"0 0 0 12px"}}>• Exhale before lifting anything heavy<br/>• Reduce caffeine — it's a known bladder irritant<br/>• Drink water steadily, not large amounts at once<br/>• Practice "The Knack" — squeeze RIGHT BEFORE you cough, sneeze, or lift</div>
+    </div>
+    <div className="card"style={{background:"linear-gradient(135deg,#F5F3FF,#EDE9FE)"}}>
+      <div style={{fontSize:14,fontWeight:600,color:C.purpD,marginBottom:12}}>What to Expect</div>
+      <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+        {[["Weeks 1–2","Building awareness","Your muscles are learning the movements."],["Weeks 3–4","First improvements","You may notice fewer leaks or better control."],["Weeks 5–8+","Noticeable changes","Most patients see meaningful improvement."]].map(([t,h,d],i)=><div key={i}style={{flex:"1 1 140px",background:C.white,borderRadius:10,padding:12,minWidth:140}}>
+          <div style={{fontSize:11,color:C.pink,fontWeight:600,marginBottom:4}}>{t}</div>
+          <div style={{fontSize:13,fontWeight:600,color:C.purpD,marginBottom:4}}>{h}</div>
+          <div style={{fontSize:11,color:C.g500,lineHeight:1.5}}>{d}</div>
+        </div>)}
+      </div>
+    </div>
+  </div>;
+  const ReportTab=()=>{
+    const tier=iciq.total>=13?"Beginner (12wk)":iciq.total>=6?"Moderate (8wk)":"Advanced (6wk)";
+    const cueLbl={biologic:"Body function",imaginative:"Imaginative",breathing:"Breath-based",default:"Default"}[ans.cue_preference]||"Default";
+    const avArr=ans.avoid_activities||[];const avF=avArr.filter(x=>x!=="none");
+    return<div>
+    <div className="card"style={{background:"#F8FAFC"}}>
+      <div style={{fontSize:12,color:C.g400,marginBottom:12}}>Complete care plan for your records. Print or share with your referring provider.</div>
+      <div style={{borderBottom:"2px solid #E2E8F0",paddingBottom:12,marginBottom:16}}>
+        <div style={{fontSize:18,fontWeight:700,color:C.purp}}>Pelvic Floor Physical Therapy Care Plan</div>
+        <div style={{fontSize:12,color:C.g500,marginTop:4}}>Patient: {ans.name_first||""} {ans.name_last||""} | DOB: {ans.dob||"—"} | {new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</div>
+        {ans.patient_goal&&<div style={{fontSize:12,color:C.purpD,marginTop:4,fontStyle:"italic"}}>Goal: "{ans.patient_goal}"</div>}
+      </div>
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:13,fontWeight:600,color:C.purpD,marginBottom:8}}>Clinical Scores</div>
+        <div style={{fontSize:12,color:C.g700,lineHeight:1.8}}>
+          ICIQ-UI SF: {iciq.total}/21 ({iciq.severity}{iciq.subtype?", "+iciq.subtype:""}) · Tier: {tier}<br/>
+          {pain.composite>0?<>Pain: {pain.composite}/10 ({pain.severity})<br/></>:null}
+          {gupi&&gupi.total>0?<>GUPI: {gupi.total}/45 ({gupi.severity})<br/></>:null}
+          Cueing: {cueLbl}
+          {avF.length>0?<><br/>Avoided: {avF.join(", ")}{avF.length>=3?" (HIGH IMPACT)":""}</>:null}
+          {(ans.med_modify??0)===1?<><br/><strong style={{color:"#DC2626"}}>⚠ Medication modification — provider referral recommended</strong></>:null}
+        </div>
+      </div>
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:13,fontWeight:600,color:C.purpD,marginBottom:8}}>Exercise Prescription</div>
+        {plan.ex.map((ex,i)=>{const lib=PATIENT_EX[ex.n];return<div key={i}style={{fontSize:12,color:C.g700,lineHeight:1.6,marginBottom:8,paddingLeft:12,borderLeft:"2px solid #E2E8F0"}}>
+          <strong>{lib?lib.name:ex.n}</strong> — {ex.s}×{ex.r}, hold {ex.h}, {ex.f}
+        </div>;})}
+      </div>
+      {plan.adjuncts.length>0&&<div style={{marginBottom:16}}>
+        <div style={{fontSize:13,fontWeight:600,color:C.purpD,marginBottom:8}}>Recommendations</div>
+        {plan.adjuncts.map((adj,i)=>{const lib=PATIENT_ADJ[adj.n];return<div key={i}style={{fontSize:12,color:C.g700,lineHeight:1.6,marginBottom:6,paddingLeft:12,borderLeft:"2px solid #E2E8F0"}}>
+          <strong>{lib?lib.name:adj.n}</strong>{lib?" — "+lib.what:""}
+        </div>;})}
+      </div>}
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:13,fontWeight:600,color:C.purpD,marginBottom:8}}>Plan Details</div>
+        <div style={{fontSize:12,color:C.g700,lineHeight:1.8}}>
+          Frequency: {plan.freq} · Duration: {plan.dur}<br/>
+          {plan.goals&&plan.goals.length>0?<>Goals: {plan.goals.join("; ")}<br/></>:null}
+          {plan.prec&&plan.prec.length>0?<>Precautions: {plan.prec.join("; ")}<br/></>:null}
+        </div>
+      </div>
+      <div style={{borderTop:"1px solid #E2E8F0",paddingTop:12,fontSize:11,color:C.g400,lineHeight:1.6}}>
+        AI-supported plan reviewed and approved by a licensed physical therapist.<br/>
+        © {new Date().getFullYear()} Expect Health, Inc. · Utah OAIP Pilot · Plan ID: {plan.id}
+      </div>
+    </div>
+    <button style={{width:"100%",padding:12,background:C.purp,color:C.white,border:"none",borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer",marginTop:8}} onClick={()=>window.print()}>🖨 Print This Report</button>
+  </div>;};
   return<div className="fi">
     <div style={{textAlign:"center",marginBottom:20}}>
-      <div style={{fontSize:28,fontWeight:700,color:C.purp}}>\u2726 My Care Plan</div>
+      <div style={{fontSize:28,fontWeight:700,color:C.purp}}>✦ My Care Plan</div>
       {name&&<div style={{fontSize:14,color:C.g500,marginTop:4}}>Prepared for {name}</div>}
       <div style={{fontSize:12,color:C.g400,marginTop:2}}>Your personalized pelvic floor therapy program</div>
     </div>
@@ -471,9 +575,11 @@ function MyCareplan({data}){
     {tab==="scores"&&<ScoresTab/>}
     {tab==="exercises"&&<ExTab/>}
     {tab==="adjuncts"&&<AdjTab/>}
+    {tab==="strategies"&&<StrategiesTab/>}
+    {tab==="report"&&<ReportTab/>}
     <div style={{marginTop:24,padding:16,background:C.g50,borderRadius:12,textAlign:"center"}}>
       <div style={{fontSize:12,color:C.g400,marginBottom:4}}>Plan status</div>
-      <div style={{fontSize:13,color:C.g700}}>{plan.status==="pending_review"?"\u23f3 Awaiting PT review \u2014 you\u2019ll be notified when approved":"\u2713 Reviewed by your PT"}</div>
+      <div style={{fontSize:13,color:C.g700}}>{plan.status==="pending_review"?"⏳ Awaiting PT review — you'll be notified when approved":"✓ Reviewed by your PT"}</div>
     </div>
   </div>;
 }
