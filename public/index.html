@@ -216,6 +216,7 @@ const DPTS=[
 ];
 // STYLES
 const css=`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}body{background:#F8F7FC;color:#252238;font-family:'Helvetica Neue',Helvetica,'Inter',sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
 .topnav{background:linear-gradient(135deg,#4C2C84 0%,#3A1F68 100%);padding:0 32px;display:flex;align-items:center;height:56px;gap:24px;position:sticky;top:0;z-index:100}
 .topnav-logo{font-size:22px;font-weight:700;color:white;letter-spacing:3px}
@@ -298,6 +299,34 @@ function Q({q,ans,set,togM,rfs,setRfs}){
   return<div className="qc fi"><div className="qt">{q.text}</div>{q.opts.map(([l,v])=><button key={v}className={`ob ${ans[q.id]===v?"s":""}`}onClick={()=>set(q.id,v)}>{l}</button>)}</div>;
 }
 
+// Consistency Checker — flags contradictions in real-time
+function getInconsistencies(ans){
+  const flags=[];
+  // ICIQ says "never leaks" but FLUTS says leaks sometimes
+  if(ans.iciq1===0&&(ans.fl10a>=1||ans.fl9a>=1||ans.fl11a>=1))flags.push({field:"fl10a",msg:"You said you never leak urine (ICIQ), but reported leaking in the urinary symptoms section. Please review your answers."});
+  if(ans.iciq1>=2&&ans.fl10a===0&&ans.fl9a===0&&ans.fl11a===0&&ans.fl12a===0&&ans.fl13a===0)flags.push({field:"iciq1",msg:"You reported frequent leaking (ICIQ) but said you never leak in all urinary symptom questions. Please review."});
+  // Says "never leaks" in ICIQ but selects leak triggers
+  if(ans.iciq1===0&&Array.isArray(ans.iciq4)&&ans.iciq4.length>0&&!ans.iciq4.includes("never"))flags.push({field:"iciq4",msg:"You said you never leak, but selected circumstances when urine leaks. Please review."});
+  // Says "none" for leak amount but reports high interference
+  if(ans.iciq2===0&&ans.iciq3>=5)flags.push({field:"iciq3",msg:"You said no urine leaks, but rated high interference with daily life. Please confirm."});
+  // Reports no pain anywhere but high pain score
+  if(Array.isArray(ans.pain4)&&ans.pain4.includes("none")&&(ans.pain1>=3||ans.pain2>=3))flags.push({field:"pain4",msg:"You selected 'no pain locations' but reported moderate-to-high pain scores. Please review."});
+  // Reports high pain but says no effect on activities
+  if((ans.pain1>=5||ans.pain2>=5)&&ans.pain3===0)flags.push({field:"pain3",msg:"You reported significant pain but said it has no effect on daily activities. Please confirm."});
+  // Says never has urgency but reports urgency-type leaking
+  if(ans.fl3a===0&&Array.isArray(ans.iciq4)&&ans.iciq4.includes("urgency"))flags.push({field:"fl3a",msg:"You said you never rush to the toilet, but reported leaking before reaching it. Please review."});
+  // PHQ-2 positive — not a contradiction but a clinical flag
+  if((ans.phq2_interest||0)+(ans.phq2_mood||0)>=3)flags.push({field:"phq2_mood",msg:"Your responses suggest you may be experiencing some depression symptoms. Your PT will follow up with additional screening.",severity:"info"});
+  return flags;
+}
+
+function ConsistencyAlerts({ans,currentQIds}){
+  const flags=getInconsistencies(ans);
+  const relevant=flags.filter(f=>currentQIds.includes(f.field));
+  if(relevant.length===0)return null;
+  return<div>{relevant.map((f,i)=><div key={i}style={{background:f.severity==="info"?"#EFF6FF":"#FFF7ED",borderLeft:`4px solid ${f.severity==="info"?"#3B82F6":"#F59E0B"}`,borderRadius:10,padding:"10px 14px",margin:"8px 0",fontSize:12,color:f.severity==="info"?"#1E40AF":"#92400E",lineHeight:1.5,display:"flex",gap:8,alignItems:"flex-start"}}><span style={{fontSize:16,flexShrink:0}}>{f.severity==="info"?"ℹ️":"⚠️"}</span><span>{f.msg}</span></div>)}</div>;
+}
+
 // Shared state for intake data flowing to PT view
 let sharedIntake = null;
 
@@ -355,6 +384,10 @@ function Intake({onDone,mainRef}){
     {t:"Your History & Goals",s:"A few more questions to help your PT create the best plan for you.",qs:CLINICAL_EXTRA},
   ];
   const hasER=rfs.some(f=>f.act==="er");
+  const hasAnyRF=rfs.length>0;
+  const hasExclusion=EXCLUSIONS.some(e=>ans[e.id]==="yes");
+  // Block on safety (step 1) for ANY red flag, block on exclusions (step 2) for ANY exclusion
+  const blocked=(step===1&&hasAnyRF)||(step===2&&hasExclusion);
   if(step===steps.length){
     const iciq=sICIQ(ans),pain=sPain(ans),gupi=sGUPI(ans),fluts=sFLUTS(ans),fsex=sFSEX(ans),plan=genPlan(iciq,pain,gupi,ans);
     L("intake_done",{iciq:iciq.total,pain:pain.composite,gupi:gupi.total});
@@ -369,11 +402,14 @@ function Intake({onDone,mainRef}){
       <div style={{background:C.purp,color:C.white,padding:"6px 14px",borderRadius:20,fontSize:12,fontWeight:600,flexShrink:0}}>{step+1} / {steps.length}</div>
     </div>
     <div style={{display:"flex",gap:3,marginBottom:20}}>{steps.map((_,i)=><div key={i}style={{flex:1,height:4,borderRadius:2,background:i<=step?`linear-gradient(90deg,${C.pink},${C.purp})`:C.g200,transition:"all .3s"}}/>)}</div>
-    {hasER&&step===1&&<div className="ra"style={{background:"#FEE2E2",borderColor:C.rd,color:"#991B1B",fontSize:15,fontWeight:600,marginBottom:14}}>!! STOP — Please call 911 or go to the nearest emergency room.</div>}
+    {hasER&&step===1&&<div className="ra"style={{background:"#FEE2E2",borderColor:C.rd,color:"#991B1B",fontSize:15,fontWeight:600,marginBottom:14}}>⛔ STOP — Please call 911 or go to the nearest emergency room immediately.</div>}
+    {hasAnyRF&&!hasER&&step===1&&<div className="ra"style={{background:"#FEF3C7",borderColor:C.or,color:"#92400E",fontSize:14,fontWeight:600,marginBottom:14}}>⚠ Based on your responses, you need to see your physician before starting this program. Please contact your doctor for evaluation.</div>}
+    {hasExclusion&&step===2&&<div className="ra"style={{background:"#FEF3C7",borderColor:C.or,color:"#92400E",fontSize:14,fontWeight:600,marginBottom:14}}>⚠ Based on your responses, this program may not be appropriate for your condition. Please consult your physician or a specialist PT for in-person evaluation.</div>}
     {steps[step].qs.map(q=><Q key={q.id}q={q}ans={ans}set={set}togM={togM}rfs={rfs}setRfs={setRfs}/>)}
+    <ConsistencyAlerts ans={ans} currentQIds={steps[step].qs.map(q=>q.id)}/>
     <div style={{display:"flex",justifyContent:"space-between",marginTop:20}}>
       <button className="btn bo"onClick={()=>step>0&&goStep(step-1)}disabled={step===0}>← Back</button>
-      <button className="btn bpk"onClick={()=>{if(!(hasER&&step===1))goStep(step+1)}}disabled={hasER&&step===1}>{step===steps.length-1?"Submit Assessment →":"Continue →"}</button>
+      <button className="btn bpk"onClick={()=>{if(!blocked)goStep(step+1)}}disabled={blocked}style={{opacity:blocked?.4:1}}>{step===steps.length-1?"Submit Assessment →":"Continue →"}</button>
     </div></div>;
 }
 
@@ -390,220 +426,278 @@ function PatientWaiting({name}){
   </div>;
 }
 function MyCareplan({data}){
-  const{ans,iciq,pain,gupi,plan}=data;
+  const{ans,iciq,pain,gupi,fluts,fsex,plan}=data;
   const[tab,setTab]=useState("scores");
   const[expanded,setExpanded]=useState({});
   const toggle=(id)=>setExpanded(p=>({...p,[id]:!p[id]}));
-  const name=ans.name_first||"";
-  const tabs=[["scores","📊 My Scores"],["exercises","💪 Exercises"],["adjuncts","📋 Recommendations"],["strategies","🧠 Strategies"],["report","📄 Full Report"]];
+  const fullName=(ans.name_first||"")+" "+(ans.name_last||"");
+  const tier=iciq.total>=13?"Beginner":iciq.total>=6?"Moderate":"Advanced";
+  const tierWks=iciq.total>=13?"12":iciq.total>=6?"8":"6";
+  const cueLbl={biologic:"Body function",imaginative:'Imaginative ("blueberry" cue per Crane & Dugan, 2025)',breathing:"Breath-based",default:"Default"}[ans.cue_preference]||"Default";
+  const avF=(ans.avoid_activities||[]).filter(x=>x!=="none");
+  const phq2=(ans.phq2_interest||0)+(ans.phq2_mood||0);
+  const dateStr=new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
+
+  // Polished care plan CSS (from sample-patient-care-plan design)
+  const cpCSS=`
+  .cp-shell{max-width:820px;margin:0 auto;font-family:'DM Sans',sans-serif;color:#1F2937;line-height:1.6}
+  .cp-hdr{background:linear-gradient(135deg,#4C1D95 0%,#6D28D9 50%,#DB2777 100%);border-radius:14px;padding:32px;color:#fff;margin-bottom:20px;position:relative;overflow:hidden}
+  .cp-hdr::after{content:'';position:absolute;top:-40%;right:-10%;width:300px;height:300px;background:radial-gradient(circle,rgba(255,255,255,.08) 0%,transparent 70%);pointer-events:none}
+  .cp-hdr .cp-logo{font-size:14px;font-weight:700;letter-spacing:4px;opacity:.8;margin-bottom:8px}
+  .cp-hdr .cp-sub{font-size:13px;opacity:.75;margin-bottom:16px}
+  .cp-hdr .cp-name{font-size:22px;font-weight:700;margin-bottom:2px}
+  .cp-hdr .cp-meta{font-size:12px;opacity:.7}
+  .cp-hdr .cp-badge{display:inline-block;background:rgba(255,255,255,.15);backdrop-filter:blur(4px);padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;margin-top:12px;margin-right:8px}
+  .cp-sample{background:#FEF3C7;border:2px dashed #D97706;border-radius:10px;padding:12px 16px;margin-bottom:16px;text-align:center}
+  .cp-sample strong{color:#D97706;font-size:13px}
+  .cp-sample p{font-size:11px;color:#4B5563;margin-top:2px}
+  .cp-tabs{display:flex;gap:0;border-bottom:2px solid #E5E7EB;margin-bottom:20px;overflow-x:auto}
+  .cp-tab{padding:12px 18px;font-size:13px;font-weight:500;color:#9CA3AF;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:.2s}
+  .cp-tab:hover{color:#4B5563}
+  .cp-tab.on{color:#6D28D9;border-bottom-color:#DB2777;font-weight:600}
+  .cp-card{background:#fff;border-radius:14px;padding:24px;margin-bottom:16px;border:1px solid #E5E7EB;box-shadow:0 2px 8px rgba(0,0,0,.03)}
+  .cp-card-title{font-family:'DM Serif Display',serif;font-size:18px;color:#111827;margin-bottom:12px}
+  .cp-card-sub{font-size:12px;color:#9CA3AF;margin-bottom:16px}
+  .cp-scores-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .cp-score-chip{background:#F3F4F6;border-radius:12px;padding:16px;text-align:center;overflow:hidden;word-wrap:break-word}
+  .cp-score-chip .cp-sv{font-size:28px;font-weight:700;color:#6D28D9;overflow-wrap:break-word;word-break:break-word}
+  .cp-score-chip .cp-sl{font-size:11px;color:#9CA3AF;margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+  .cp-score-chip .cp-sd{font-size:12px;color:#4B5563;margin-top:4px;font-weight:500}
+  .cp-score-chip.warn{background:#FEF3C7}.cp-score-chip.warn .cp-sv{color:#D97706}
+  .cp-score-chip.good{background:#D1FAE5}.cp-score-chip.good .cp-sv{color:#059669}
+  .cp-bar-wrap{margin:20px 0}
+  .cp-bar-label{display:flex;justify-content:space-between;font-size:11px;color:#9CA3AF;margin-bottom:4px}
+  .cp-bar{height:8px;background:#E5E7EB;border-radius:4px;overflow:hidden}
+  .cp-bar-fill{height:100%;border-radius:4px;transition:width .6s ease}
+  .cp-exc{border:1px solid #E5E7EB;border-radius:12px;margin-bottom:14px;overflow:hidden}
+  .cp-exh{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;cursor:pointer;background:#fff;transition:.2s}
+  .cp-exh:hover{background:#F3F4F6}
+  .cp-exh .cp-exn{font-weight:600;font-size:14px;color:#111827}
+  .cp-exh .cp-exr{font-size:12px;color:#6D28D9;font-weight:500}
+  .cp-exb{padding:0 20px 20px;display:none;border-top:1px solid #E5E7EB}
+  .cp-exb.open{display:block;padding-top:16px}
+  .cp-exstep{margin-bottom:10px;display:flex;gap:8px;align-items:flex-start}
+  .cp-exstep .cp-num{display:inline-flex;width:22px;height:22px;border-radius:50%;background:#EDE9FE;color:#6D28D9;font-size:11px;font-weight:700;align-items:center;justify-content:center;flex-shrink:0}
+  .cp-exstep .cp-txt{font-size:13px;color:#4B5563}
+  .cp-exwarn{background:#FEF3C7;border-radius:8px;padding:10px 14px;font-size:12px;color:#78350F;margin-top:10px;line-height:1.5}
+  .cp-exstop{background:#FEE2E2;border-radius:8px;padding:10px 14px;font-size:12px;color:#991B1B;margin-top:8px;line-height:1.5}
+  .cp-adj-item{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid #F3F4F6}
+  .cp-adj-item:last-child{border-bottom:none}
+  .cp-adj-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .cp-strat-section{margin-bottom:24px}
+  .cp-strat-h{font-family:'DM Serif Display',serif;font-size:16px;color:#111827;margin-bottom:8px}
+  .cp-strat-body{font-size:13px;color:#4B5563;line-height:1.7}
+  .cp-strat-body ol,.cp-strat-body ul{padding-left:20px;margin:8px 0}
+  .cp-strat-body li{margin-bottom:6px}
+  .cp-tl{border-left:3px solid #E5E7EB;padding-left:20px;margin-top:16px}
+  .cp-tl-item{margin-bottom:16px;position:relative}
+  .cp-tl-item::before{content:'';position:absolute;left:-26px;top:4px;width:12px;height:12px;border-radius:50%;background:#6D28D9;border:2px solid #fff;box-shadow:0 0 0 2px #6D28D9}
+  .cp-tl-wk{font-size:12px;font-weight:700;color:#6D28D9;margin-bottom:2px}
+  .cp-tl-desc{font-size:13px;color:#4B5563;line-height:1.6}
+  .cp-rpt-section{margin-bottom:20px}
+  .cp-rpt-h{font-family:'DM Serif Display',serif;font-size:15px;color:#111827;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #E5E7EB}
+  .cp-rpt-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F3F4F6;font-size:12px}
+  .cp-rpt-row:last-child{border-bottom:none}
+  .cp-rpt-row .cp-rl{color:#6B7280}.cp-rpt-row .cp-rv{color:#111827;font-weight:500;text-align:right;max-width:60%}
+  .cp-att{background:#EDE9FE;border-radius:12px;padding:16px;margin-top:20px;font-size:12px;color:#4C1D95;line-height:1.6}
+  .cp-att-h{font-family:'DM Serif Display',serif;font-size:14px;color:#4C1D95;margin-bottom:6px}
+  .cp-prn{background:#fff;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;color:#4B5563;font-family:inherit}
+  .cp-prn:hover{border-color:#6D28D9;color:#6D28D9}
+  .cp-footer{text-align:center;padding:20px 0;font-size:11px;color:#9CA3AF}
+  .cp-footer a{color:#6D28D9;text-decoration:none}
+  `;
+
   const ScoresTab=()=><div>
-    <div className="card"style={{borderLeft:`4px solid ${C.pink}`}}>
-      <div style={{fontSize:11,textTransform:"uppercase",color:C.g400,letterSpacing:1,marginBottom:6}}>Bladder Leakage Score (ICIQ)</div>
-      <div style={{display:"flex",alignItems:"baseline",gap:10,marginBottom:6,flexWrap:"wrap"}}>
-        <span style={{fontSize:32,fontWeight:700,color:C.purp}}>{iciq.total}</span>
-        <span style={{fontSize:13,color:C.g500}}>/21</span>
-        <span style={{background:iciq.severity==="Severe"||iciq.severity==="Very Severe"?C.rd:iciq.severity==="Moderate"?C.or:C.gn,color:C.white,padding:"2px 10px",borderRadius:12,fontSize:11,fontWeight:600}}>{iciq.severity}</span>
-        {iciq.subtype&&<span style={{background:C.g100,color:C.g600,padding:"2px 10px",borderRadius:12,fontSize:11}}>{iciq.subtype}</span>}
+    <div className="cp-card">
+      <div className="cp-card-title">Your Assessment Results</div>
+      <div className="cp-card-sub">These scores come from validated clinical instruments used worldwide. They help your PT understand your symptoms and track your progress.</div>
+      <div className="cp-scores-grid">
+        <div className={`cp-score-chip ${iciq.total>=6?"warn":""}`}><div className="cp-sv">{iciq.total}</div><div className="cp-sl">ICIQ Score</div><div className="cp-sd">{iciq.severity} (out of 21)</div></div>
+        <div className="cp-score-chip"><div className="cp-sv">{iciq.subtype.replace(" UI","")}</div><div className="cp-sl">Leakage Type</div><div className="cp-sd">{iciq.subtype.includes("Mixed")?"Stress + Urge":iciq.subtype}</div></div>
+        <div className="cp-score-chip"><div className="cp-sv">{pain.composite}/10</div><div className="cp-sl">Pain Level</div><div className="cp-sd">{pain.severity}</div></div>
+        <div className="cp-score-chip"><div className="cp-sv">{gupi.total}</div><div className="cp-sl">GUPI Score</div><div className="cp-sd">{gupi.severity} (out of 45)</div></div>
+        <div className="cp-score-chip good"><div className="cp-sv" style={{fontSize:18}}>{tier}</div><div className="cp-sl">Program Tier</div><div className="cp-sd">{tierWks}-week program</div></div>
+        {avF.length>0&&<div className="cp-score-chip"><div className="cp-sv">{avF.length}</div><div className="cp-sl">Avoided Activities</div><div className="cp-sd">{avF.join(", ")}</div></div>}
       </div>
-      <div style={{fontSize:13,color:C.g600,lineHeight:1.6}}>{SCORE_EXP.iciq[iciq.severity]||""}</div>
-    </div>
-    {pain.composite>0&&<div className="card"style={{borderLeft:`4px solid ${C.or}`}}>
-      <div style={{fontSize:11,textTransform:"uppercase",color:C.g400,letterSpacing:1,marginBottom:6}}>Pelvic Pain Score</div>
-      <div style={{display:"flex",alignItems:"baseline",gap:10,marginBottom:6,flexWrap:"wrap"}}>
-        <span style={{fontSize:32,fontWeight:700,color:C.purp}}>{pain.composite}</span>
-        <span style={{fontSize:13,color:C.g500}}>/10</span>
-        <span style={{background:pain.composite>=6?C.rd:pain.composite>=3?C.or:C.gn,color:C.white,padding:"2px 10px",borderRadius:12,fontSize:11,fontWeight:600}}>{pain.severity}</span>
-      </div>
-      <div style={{fontSize:13,color:C.g600,lineHeight:1.6}}>{SCORE_EXP.pain[pain.severity]||""}</div>
-    </div>}
-    {gupi&&gupi.total>0&&<div className="card"style={{borderLeft:`4px solid #8B5CF6`}}>
-      <div style={{fontSize:11,textTransform:"uppercase",color:C.g400,letterSpacing:1,marginBottom:6}}>Pelvic Pain Index (GUPI)</div>
-      <div style={{display:"flex",alignItems:"baseline",gap:10,marginBottom:6,flexWrap:"wrap"}}>
-        <span style={{fontSize:32,fontWeight:700,color:C.purp}}>{gupi.total}</span>
-        <span style={{fontSize:13,color:C.g500}}>/45</span>
-        <span style={{background:gupi.severity==="Severe"?C.rd:gupi.severity==="Moderate"?C.or:C.gn,color:C.white,padding:"2px 10px",borderRadius:12,fontSize:11,fontWeight:600}}>{gupi.severity}</span>
-      </div>
-    </div>}
-    {ans.patient_goal&&<div className="card"style={{borderLeft:`4px solid ${C.blue}`,background:C.g50}}>
-      <div style={{fontSize:11,textTransform:"uppercase",color:C.g400,letterSpacing:1,marginBottom:6}}>Your Goal</div>
-      <div style={{fontSize:15,color:C.purpD,fontStyle:"italic",lineHeight:1.6}}>"{ans.patient_goal}"</div>
-      <div style={{fontSize:12,color:C.g500,marginTop:6}}>Your PT built your plan around what matters most to you.</div>
-    </div>}
-    <div className="card"style={{background:C.g50}}>
-      <div style={{fontSize:11,textTransform:"uppercase",color:C.g400,letterSpacing:1,marginBottom:6}}>Treatment Overview</div>
-      <div style={{fontSize:13,color:C.g700,lineHeight:1.6}}>
-        <div><strong>Program Tier:</strong> {iciq.total>=13?"Beginner (12 weeks)":iciq.total>=6?"Moderate (8 weeks)":"Advanced (6 weeks)"}</div>
-        <div><strong>Frequency:</strong> {plan.freq}</div>
-        <div><strong>Duration:</strong> {plan.dur}</div>
-        <div style={{marginTop:8,fontSize:12,color:C.g500}}>{plan.ex.length} exercises · {plan.adjuncts.length} recommendations</div>
+      <div className="cp-bar-wrap">
+        <div className="cp-bar-label"><span>Less Severe</span><span>ICIQ: {iciq.total}/21</span><span>More Severe</span></div>
+        <div className="cp-bar"><div className="cp-bar-fill"style={{width:`${iciq.total/21*100}%`,background:`linear-gradient(90deg,#059669,#D97706${iciq.total>15?",#DC2626":""})`}}/></div>
       </div>
     </div>
-    {(()=>{const av=ans.avoid_activities||[];const avF=av.filter(x=>x!=="none");return avF.length>0?<div className="card"style={{borderLeft:`4px solid ${avF.length>=3?"#DC2626":"#D97706"}`}}>
-      <div style={{fontSize:11,textTransform:"uppercase",color:C.g400,letterSpacing:1,marginBottom:6}}>Activities You're Avoiding</div>
-      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>{avF.map((a,i)=><span key={i}style={{background:"#FEF3C7",color:"#92400E",padding:"3px 10px",borderRadius:12,fontSize:11,fontWeight:500}}>{a}</span>)}</div>
-      {avF.length>=3&&<div style={{fontSize:12,color:"#991B1B",lineHeight:1.6}}>You're avoiding {avF.length} types of activities. A key goal of your program is to help you gradually return to these.</div>}
-    </div>:null;})()}
+    <div className="cp-card">
+      <div className="cp-card-title">What Your Scores Mean</div>
+      <p style={{fontSize:13,color:"#4B5563",lineHeight:1.7}}>
+        We assessed your symptoms using the International Consultation on Incontinence Questionnaire (ICIQ), the global gold standard used by doctors to measure pelvic health. Your ICIQ score of <strong>{iciq.total}</strong> places you in the <strong>{iciq.severity.toLowerCase()} severity</strong> range. {iciq.subtype==="Mixed UI"?"Your leakage is mixed type — a combination of stress incontinence (leaking during coughing, sneezing, or activity) and urge incontinence (sudden strong need to urinate). This is the most common pattern and responds well to the combination approach in your program.":iciq.subtype==="Stress UI"?"Your leakage is stress type — leaking during physical activity, coughing, or sneezing. This responds very well to pelvic floor strengthening.":iciq.subtype==="Urge UI"?"Your leakage is urge type — a sudden, strong need to urinate that's hard to control. This responds well to bladder retraining combined with exercises.":"Your PT has identified your specific pattern and built your program accordingly."}
+      </p>
+      {ans.patient_goal&&<p style={{fontSize:13,color:"#4B5563",lineHeight:1.7,marginTop:10}}>Your goal: <em>"{ans.patient_goal}"</em> Your program is designed specifically around this.</p>}
+    </div>
   </div>;
+
+  // Cueing phrase based on patient preference
+  const cueMap={
+    biologic:{phrase:"Squeeze as if stopping the flow of urine",short:"stop urine flow"},
+    imaginative:{phrase:"Imagine gently closing around and lifting a blueberry",short:"lift a blueberry"},
+    breathing:{phrase:"As you breathe out, draw in and lift your pelvic floor",short:"exhale and lift"},
+    default:{phrase:"Gently squeeze and lift your pelvic floor",short:"squeeze and lift"}
+  };
+  const cue=cueMap[ans.cue_preference]||cueMap.default;
+  // Replace generic PF cues in howTo text with patient's preferred cue
+  function applyCue(text){
+    return text
+      .replace(/Squeeze your pelvic floor/gi,cue.phrase)
+      .replace(/engage your pelvic floor/gi,cue.phrase.charAt(0).toLowerCase()+cue.phrase.slice(1))
+      .replace(/gently squeeze your pelvic floor/gi,cue.phrase)
+      .replace(/Imagine stopping the flow of urine/gi,cue.phrase)
+      .replace(/stopping the flow of urine/gi,cue.short)
+      .replace(/pelvic floor FIRST/gi,"pelvic floor FIRST — "+cue.short);
+  }
+
   const ExTab=()=><div>
-    {ans.cue_preference==="biologic"&&<div className="card"style={{background:"#FEF3C7",borderLeft:"4px solid #D97706",marginBottom:16}}><div style={{fontSize:12,fontWeight:600,color:"#92400E",marginBottom:4}}>⚠ Important: About Your Cueing Style</div><div style={{fontSize:12,color:"#78350F",lineHeight:1.6}}>Your exercises use the "stop the flow of urine" cue to help you find the right muscles. <strong>Never practice pelvic floor exercises during actual urination.</strong> Doing so can disrupt normal bladder-pelvic floor coordination and may lead to incomplete emptying or urinary hesitancy over time. Use the cue as a mental image only.</div></div>}
-    <div style={{fontSize:13,color:C.g500,marginBottom:16,lineHeight:1.6}}>Your personalized exercises based on your assessment. Tap each to see detailed instructions.</div>
-    {plan.ex.map((ex,i)=>{const lib=PATIENT_EX[ex.n];const open=expanded["ex_"+i];return<div key={i}className="card"style={{cursor:"pointer",borderLeft:`3px solid ${C.purp}`,padding:0,overflow:"hidden"}}>
-      <div style={{padding:"14px 16px"}}onClick={()=>toggle("ex_"+i)}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-          <div><div style={{fontSize:14,fontWeight:600,color:C.purpD}}>{lib?lib.name:ex.n}</div><div style={{fontSize:11,color:C.g400,marginTop:2}}>{ex.n}</div></div>
-          <div style={{fontSize:18,color:C.g400,flexShrink:0}}>{open?"▲":"▼"}</div>
-        </div>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
-          <span style={{background:"#EDE9FE",color:C.purp,padding:"2px 8px",borderRadius:8,fontSize:11,fontWeight:500}}>{ex.s}×{ex.r}</span>
-          <span style={{background:"#ECFDF5",color:"#065F46",padding:"2px 8px",borderRadius:8,fontSize:11,fontWeight:500}}>Hold {ex.h}</span>
-          <span style={{background:"#FFF7ED",color:"#92400E",padding:"2px 8px",borderRadius:8,fontSize:11,fontWeight:500}}>{ex.f}</span>
-        </div>
+    <div className="cp-card">
+      <div className="cp-card-title">Your Exercise Program</div>
+      <div className="cp-card-sub">{tier} Tier · {tierWks} weeks · {plan.freq} · Cueing style: {cueLbl.split("(")[0].trim()}</div>
+      {ans.cue_preference==="biologic"&&<div className="cp-exwarn"style={{marginBottom:14}}>⚠ <strong>Important:</strong> Your exercises use the "stop the flow of urine" cue to help you find the right muscles. <strong>Never practice pelvic floor exercises during actual urination.</strong> Use the cue as a mental image only.</div>}
+      {/* Cueing reminder */}
+      <div style={{background:ans.cue_preference==="imaginative"?"#EDE9FE":ans.cue_preference==="breathing"?"#E0F2FE":"#FEF3C7",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,lineHeight:1.5,color:ans.cue_preference==="imaginative"?"#4C1D95":ans.cue_preference==="breathing"?"#0C4A6E":"#78350F"}}>
+        <strong>Your cueing style:</strong> When instructions say to engage your pelvic floor, use this cue: <em>"{cue.phrase}"</em>
       </div>
-      {open&&lib&&<div style={{borderTop:`1px solid ${C.g200}`,padding:"14px 16px",background:C.g50}}>
-        <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.purp,marginBottom:4}}>Why this exercise?</div><div style={{fontSize:13,color:C.g600,lineHeight:1.6}}>{lib.why}</div></div>
-        <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.purp,marginBottom:4}}>How to do it</div>
-          {lib.howTo.map((s,j)=><div key={j}style={{fontSize:13,color:C.g700,lineHeight:1.6,paddingLeft:20,position:"relative",marginBottom:4}}><span style={{position:"absolute",left:0,color:C.pink,fontWeight:700}}>{j+1}.</span>{s}</div>)}</div>
-        {lib.mistakes&&<div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.or,marginBottom:4}}>Common Mistakes</div>
-          {lib.mistakes.map((m,j)=><div key={j}style={{fontSize:12,color:C.g600,lineHeight:1.5,paddingLeft:16,position:"relative"}}><span style={{position:"absolute",left:0}}>⚠</span>{m}</div>)}</div>}
-        {lib.stop&&<div style={{marginBottom:12,background:"#FEF2F2",padding:"8px 12px",borderRadius:8,fontSize:12,color:"#991B1B",lineHeight:1.5}}>🛑 {lib.stop}</div>}
-        {lib.tips&&<div style={{fontSize:12,color:C.blue,lineHeight:1.5,fontStyle:"italic"}}>💡 {lib.tips}</div>}
-      </div>}
-    </div>;})}
+      {plan.ex.map((ex,i)=>{const lib=PATIENT_EX[ex.n];const open=expanded["ex_"+i];return<div key={i}className="cp-exc">
+        <div className="cp-exh"onClick={()=>toggle("ex_"+i)}>
+          <div><div className="cp-exn">{i+1}. {lib?lib.name:ex.n}</div><div style={{fontSize:11,color:"#9CA3AF",marginTop:2}}>{ex.f}</div></div>
+          <div className="cp-exr">{ex.s}×{ex.r} · {ex.h} hold</div>
+        </div>
+        <div className={`cp-exb ${open?"open":""}`}>
+          {lib?.howTo?.map((s,j)=>{const cued=applyCue(s);const hasCue=cued!==s;return<div key={j}className="cp-exstep"><span className="cp-num">{j+1}</span><span className="cp-txt">{hasCue?cued.split(cue.phrase).map((part,pi,arr)=>pi<arr.length-1?<React.Fragment key={pi}>{part}<strong style={{color:"#6D28D9",background:"#EDE9FE",padding:"1px 4px",borderRadius:4}}>{cue.phrase}</strong></React.Fragment>:<React.Fragment key={pi}>{part}</React.Fragment>):cued}</span></div>;})}
+          {lib?.mistakes&&<div className="cp-exwarn">⚠ <strong>Common mistake{lib.mistakes.length>1?"s":""}:</strong> {lib.mistakes.join(". ")}.</div>}
+          {lib?.stop&&<div className="cp-exstop">🛑 <strong>Stop if:</strong> {lib.stop}</div>}
+          {lib?.tips&&<div style={{fontSize:12,color:"#0369A1",lineHeight:1.5,fontStyle:"italic",marginTop:8}}>💡 {lib.tips}</div>}
+        </div>
+      </div>;})}
+    </div>
   </div>;
+
   const AdjTab=()=><div>
-    <div style={{fontSize:13,color:C.g500,marginBottom:16,lineHeight:1.6}}>Additional recommendations to support your recovery. Tap each for details.</div>
-    {plan.adjuncts.map((adj,i)=>{const lib=PATIENT_ADJ[adj.n];const open=expanded["adj_"+i];const tc={"device":"#7C3AED","behavioral":"#0891B2","referral":"#6B7280"};return<div key={i}className="card"style={{cursor:"pointer",borderLeft:`3px solid ${tc[adj.type]||C.g400}`,padding:0,overflow:"hidden"}}>
-      <div style={{padding:"14px 16px"}}onClick={()=>toggle("adj_"+i)}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-          <div><span style={{background:tc[adj.type]||C.g200,color:C.white,padding:"1px 8px",borderRadius:8,fontSize:10,fontWeight:600,textTransform:"uppercase",marginRight:8}}>{adj.type}</span><span style={{fontSize:14,fontWeight:600,color:C.purpD}}>{lib?lib.name:adj.n}</span></div>
-          <div style={{fontSize:18,color:C.g400,flexShrink:0}}>{open?"▲":"▼"}</div>
-        </div>
-      </div>
-      {open&&lib&&<div style={{borderTop:`1px solid ${C.g200}`,padding:"14px 16px",background:C.g50}}>
-        <div style={{marginBottom:10}}><div style={{fontSize:12,fontWeight:600,color:C.purp,marginBottom:4}}>What is this?</div><div style={{fontSize:13,color:C.g600,lineHeight:1.6}}>{lib.what}</div></div>
-        <div style={{marginBottom:10}}><div style={{fontSize:12,fontWeight:600,color:C.purp,marginBottom:4}}>Why recommended for you</div><div style={{fontSize:13,color:C.g600,lineHeight:1.6}}>{lib.why}</div></div>
-        <div style={{marginBottom:10}}><div style={{fontSize:12,fontWeight:600,color:C.purp,marginBottom:4}}>What to expect</div><div style={{fontSize:13,color:C.g600,lineHeight:1.6}}>{lib.expect}</div></div>
-        {lib.howToGet&&<div style={{marginBottom:10}}><div style={{fontSize:12,fontWeight:600,color:C.purp,marginBottom:4}}>How to get started</div><div style={{fontSize:13,color:C.g600,lineHeight:1.6}}>{lib.howToGet}</div></div>}
-        {lib.note&&<div style={{background:"#F0F9FF",padding:"8px 12px",borderRadius:8,fontSize:12,color:"#1E40AF",lineHeight:1.5}}>ℹ️ {lib.note}</div>}
-      </div>}
-    </div>;})}
+    <div className="cp-card">
+      <div className="cp-card-title">Your Personalized Recommendations</div>
+      <div className="cp-card-sub">Based on your assessment, your PT recommends the following additional support alongside your exercises.</div>
+      {plan.adjuncts.map((adj,i)=>{const lib=PATIENT_ADJ[adj.n];const icons={"behavioral":"🔄","device":"📊","referral":"🏥"};const bgs={"behavioral":"#E0F2FE","device":"#EDE9FE","referral":"#F3F4F6"};return<div key={i}className="cp-adj-item">
+        <div className="cp-adj-icon"style={{background:bgs[adj.type]||"#F3F4F6"}}>{icons[adj.type]||"📋"}</div>
+        <div><div style={{fontWeight:600,fontSize:13,color:"#111827"}}>{lib?lib.name:adj.n}</div><div style={{fontSize:12,color:"#4B5563",marginTop:2,lineHeight:1.5}}>{lib?lib.what:adj.d||""}{lib?.why?` ${lib.why}`:""}</div></div>
+      </div>;})}
+    </div>
   </div>;
+
   const StrategiesTab=()=><div>
-    <div className="card"style={{borderLeft:"4px solid #0891B2"}}>
-      <div style={{fontSize:14,fontWeight:600,color:C.purpD,marginBottom:8}}>Understanding Your Pattern</div>
-      <div style={{fontSize:13,color:C.g600,lineHeight:1.7}}>
-        {iciq.subtype==="Stress"?"Your responses suggest a Stress Urinary Incontinence pattern — leaking happens during physical activities like coughing, sneezing, laughing, or lifting. This is very common and responds well to pelvic floor strengthening.":
-         iciq.subtype==="Urge"?"Your responses suggest an Urgency pattern — a sudden, strong need to urinate that's hard to control. This responds well to bladder retraining combined with pelvic floor exercises.":
-         iciq.subtype==="Mixed"?"Your responses suggest a Combined (Mixed) pattern — both activity-related leaking and urgency. This is actually the most common pattern, and it responds very well to a combination of strengthening exercises, bladder retraining, and behavioral strategies.":
-         "Your PT has identified your specific pattern and built your program accordingly."}
+    <div className="cp-card">
+      <div className="cp-card-title">Behavioral Strategies & Education</div>
+      <div className="cp-strat-section"><div className="cp-strat-h">Understanding Your Pattern: {iciq.subtype}</div>
+        <div className="cp-strat-body">{iciq.subtype==="Mixed UI"||iciq.subtype==="Mixed"?<>You have <strong>mixed incontinence</strong> — a combination of stress leaking (during coughing, sneezing, jumping) and urge leaking (sudden strong need to go). This is the most common pattern and responds very well to the combination of pelvic floor strengthening + bladder retraining in your program.</>:iciq.subtype==="Stress UI"||iciq.subtype==="Stress"?<>You have <strong>stress incontinence</strong> — leaking happens during physical activities. This responds well to pelvic floor strengthening.</>:iciq.subtype==="Urge UI"||iciq.subtype==="Urge"?<>You have <strong>urge incontinence</strong> — a sudden, strong need to urinate. This responds well to bladder retraining combined with exercises.</>:"Your PT has identified your specific pattern and built your program accordingly."}</div>
       </div>
-    </div>
-    {(iciq.subtype==="Urge"||iciq.subtype==="Mixed")&&<div className="card"style={{borderLeft:"4px solid #D97706"}}>
-      <div style={{fontSize:14,fontWeight:600,color:C.purpD,marginBottom:8}}>🧠 Bladder Retraining</div>
-      <div style={{fontSize:13,color:C.g600,lineHeight:1.7}}>Urgency often triggers a habit of rushing to the bathroom, which can actually make it worse over time. When you feel a sudden urge:</div>
-      <div style={{margin:"12px 0",padding:"12px 16px",background:"#F0F9FF",borderRadius:8}}>
-        <div style={{fontSize:13,color:"#1E40AF",lineHeight:1.8,fontWeight:500}}>1. STOP where you are<br/>2. Do 5 quick pelvic floor squeezes<br/>3. Take 3 slow breaths<br/>4. Wait until the urge passes (usually 30–60 seconds)<br/>5. Then walk calmly to the bathroom</div>
+      {(iciq.subtype.includes("Urge")||iciq.subtype.includes("Mixed"))&&<div className="cp-strat-section"><div className="cp-strat-h">The "Freeze and Squeeze" — Bladder Retraining</div>
+        <div className="cp-strat-body">When you feel a sudden, strong urge to urinate:<ol><li><strong>STOP</strong> where you are. Do not rush to the bathroom.</li><li>Do <strong>5 quick pelvic floor squeezes</strong> (1 second each).</li><li>Take <strong>3 slow breaths</strong> (in for 4, out for 6).</li><li><strong>Wait</strong> until the urge wave passes (usually 30–60 seconds).</li><li>Then walk <strong>calmly</strong> to the bathroom.</li></ol>This retrains your bladder to respond to your brain, not the other way around.</div>
+      </div>}
+      <div className="cp-strat-section"><div className="cp-strat-h">"The Knack" — Pre-Emptive Protection</div>
+        <div className="cp-strat-body">Before any activity that might cause a leak (coughing, sneezing, lifting, jumping):<ol><li><strong>Exhale</strong> and simultaneously <strong>squeeze your pelvic floor</strong>.</li><li>Maintain the squeeze <strong>during</strong> the cough/sneeze/lift.</li><li>Release after the effort.</li></ol>This is the single most effective technique for preventing stress leaks and is backed by strong evidence.</div>
       </div>
-      <div style={{fontSize:12,color:C.g500,lineHeight:1.6}}>The urge is like a wave — it peaks and then passes. Over time, your bladder learns to hold more comfortably.</div>
-    </div>}
-    {ans.bowel_constipation>=2&&<div className="card"style={{borderLeft:"4px solid #059669"}}>
-      <div style={{fontSize:14,fontWeight:600,color:C.purpD,marginBottom:8}}>Bowel Health</div>
-      <div style={{fontSize:13,color:C.g600,lineHeight:1.7}}>Straining puts enormous pressure on your pelvic floor — directly against the muscles you're strengthening.</div>
-      <div style={{fontSize:13,color:C.g700,lineHeight:1.8,padding:"8px 0 0 12px"}}>• Use a footstool to put your body in a natural position<br/>• Aim for 25–30g fiber daily<br/>• Drink 6–8 glasses of water spread throughout the day<br/>• Never strain — if it doesn't come, step away and try later</div>
-    </div>}
-    <div className="card"style={{borderLeft:"4px solid #7C3AED"}}>
-      <div style={{fontSize:14,fontWeight:600,color:C.purpD,marginBottom:8}}>Lifestyle Tips</div>
-      <div style={{fontSize:13,color:C.g700,lineHeight:1.8,padding:"0 0 0 12px"}}>• Exhale before lifting anything heavy<br/>• Reduce caffeine — it's a known bladder irritant<br/>• Drink water steadily, not large amounts at once<br/>• Practice "The Knack" — squeeze RIGHT BEFORE you cough, sneeze, or lift</div>
-    </div>
-    <div className="card"style={{background:"linear-gradient(135deg,#F5F3FF,#EDE9FE)"}}>
-      <div style={{fontSize:14,fontWeight:600,color:C.purpD,marginBottom:12}}>What to Expect</div>
-      <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
-        {[["Weeks 1–2","Building awareness","Your muscles are learning the movements."],["Weeks 3–4","First improvements","You may notice fewer leaks or better control."],["Weeks 5–8+","Noticeable changes","Most patients see meaningful improvement."]].map(([t,h,d],i)=><div key={i}style={{flex:"1 1 140px",background:C.white,borderRadius:10,padding:12,minWidth:140}}>
-          <div style={{fontSize:11,color:C.pink,fontWeight:600,marginBottom:4}}>{t}</div>
-          <div style={{fontSize:13,fontWeight:600,color:C.purpD,marginBottom:4}}>{h}</div>
-          <div style={{fontSize:11,color:C.g500,lineHeight:1.5}}>{d}</div>
-        </div>)}
+      <div className="cp-strat-section"><div className="cp-strat-h">Daily Habits That Help</div>
+        <div className="cp-strat-body"><ul><li><strong>Caffeine:</strong> Reduce to 1 cup/day or switch to half-caf. Caffeine irritates the bladder.</li><li><strong>Water:</strong> Drink steadily throughout the day (not all at once). 6–8 glasses is ideal.</li><li><strong>Fiber:</strong> Aim for 25–30g/day. Constipation increases pelvic floor strain.</li><li><strong>Exhale before exertion:</strong> Always breathe out when lifting, pushing, or straining.</li></ul></div>
+      </div>
+      <div className="cp-strat-section"><div className="cp-strat-h">What to Expect: Your Timeline</div>
+        <div className="cp-tl">
+          {[["Weeks 1–2","Building awareness. Learning to find and engage the right muscles. Exercises may feel awkward — that's completely normal."],["Weeks 3–4","First improvements. Many women notice fewer \"close calls\" and better ability to hold. Urgency episodes may start to reduce."],["Weeks 5–6","Noticeable changes. Begin reintroducing avoided activities with The Knack. PT will help with graduated activity plan."],["Weeks 7–8","Consolidation. Exercises become automatic. Most women see significant improvement by this point. Re-assessment to measure progress."]].map(([wk,desc],i)=><div key={i}className="cp-tl-item"><div className="cp-tl-wk">{wk}</div><div className="cp-tl-desc">{desc}</div></div>)}
+        </div>
       </div>
     </div>
   </div>;
-  const ReportTab=()=>{
-    const tier=iciq.total>=13?"Beginner (12wk)":iciq.total>=6?"Moderate (8wk)":"Advanced (6wk)";
-    const cueLbl={biologic:"Body function",imaginative:"Imaginative",breathing:"Breath-based",default:"Default"}[ans.cue_preference]||"Default";
-    const avArr=ans.avoid_activities||[];const avF=avArr.filter(x=>x!=="none");
-    return<div>
-    <div className="card"style={{background:"#F8FAFC"}}>
-      <div style={{fontSize:12,color:C.g400,marginBottom:12}}>Complete care plan for your records. Print or share with your referring provider.</div>
-      <div style={{borderBottom:"2px solid #E2E8F0",paddingBottom:12,marginBottom:16}}>
-        <div style={{fontSize:18,fontWeight:700,color:C.purp}}>Pelvic Floor Physical Therapy Care Plan</div>
-        <div style={{fontSize:12,color:C.g500,marginTop:4}}>Patient: {ans.name_first||""} {ans.name_last||""} | DOB: {ans.dob||"—"} | {new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</div>
-        {ans.patient_goal&&<div style={{fontSize:12,color:C.purpD,marginTop:4,fontStyle:"italic"}}>Goal: "{ans.patient_goal}"</div>}
-      </div>
-      <div style={{marginBottom:16}}>
-        <div style={{fontSize:13,fontWeight:600,color:C.purpD,marginBottom:8}}>Clinical Scores</div>
-        <div style={{fontSize:12,color:C.g700,lineHeight:1.8}}>
-          ICIQ-UI SF: {iciq.total}/21 ({iciq.severity}{iciq.subtype?", "+iciq.subtype:""}) · Tier: {tier}<br/>
-          {pain.composite>0?<>Pain: {pain.composite}/10 ({pain.severity})<br/></>:null}
-          {gupi&&gupi.total>0?<>GUPI: {gupi.total}/45 ({gupi.severity})<br/></>:null}
-          Cueing: {cueLbl}
-          {avF.length>0?<><br/>Avoided: {avF.join(", ")}{avF.length>=3?" (HIGH IMPACT)":""}</>:null}
-          {(ans.med_modify??0)===1?<><br/><strong style={{color:"#DC2626"}}>⚠ Medication modification — provider referral recommended</strong></>:null}
+
+  const ReportTab=()=><div>
+    <div className="cp-card">
+      <div className="cp-card-title">Clinical Summary — For Your Records</div>
+      <div className="cp-card-sub">Print or share this summary with your referring provider.</div>
+      <button className="cp-prn"onClick={()=>window.print()}>🖨️ Print This Report</button>
+      <div style={{marginTop:24}}>
+        <div className="cp-rpt-section"><div className="cp-rpt-h">Patient Information</div>
+          <div className="cp-rpt-row"><span className="cp-rl">Name</span><span className="cp-rv">{fullName}</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">DOB</span><span className="cp-rv">{ans.dob||"—"}</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">Status</span><span className="cp-rv">{(ans.pregnancy_status||"").replace(/_/g," ")}</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">Assessment Date</span><span className="cp-rv">{dateStr}</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">Plan Approved</span><span className="cp-rv">{dateStr}</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">Reviewing PT</span><span className="cp-rv">Nicole L. Dugan, PT, DPT, WCS</span></div>
         </div>
-      </div>
-      <div style={{marginBottom:16}}>
-        <div style={{fontSize:13,fontWeight:600,color:C.purpD,marginBottom:8}}>Exercise Prescription</div>
-        {plan.ex.map((ex,i)=>{const lib=PATIENT_EX[ex.n];return<div key={i}style={{fontSize:12,color:C.g700,lineHeight:1.6,marginBottom:8,paddingLeft:12,borderLeft:"2px solid #E2E8F0"}}>
-          <strong>{lib?lib.name:ex.n}</strong> — {ex.s}×{ex.r}, hold {ex.h}, {ex.f}
-        </div>;})}
-      </div>
-      {plan.adjuncts.length>0&&<div style={{marginBottom:16}}>
-        <div style={{fontSize:13,fontWeight:600,color:C.purpD,marginBottom:8}}>Recommendations</div>
-        {plan.adjuncts.map((adj,i)=>{const lib=PATIENT_ADJ[adj.n];return<div key={i}style={{fontSize:12,color:C.g700,lineHeight:1.6,marginBottom:6,paddingLeft:12,borderLeft:"2px solid #E2E8F0"}}>
-          <strong>{lib?lib.name:adj.n}</strong>{lib?" — "+lib.what:""}
-        </div>;})}
-      </div>}
-      <div style={{marginBottom:16}}>
-        <div style={{fontSize:13,fontWeight:600,color:C.purpD,marginBottom:8}}>Plan Details</div>
-        <div style={{fontSize:12,color:C.g700,lineHeight:1.8}}>
-          Frequency: {plan.freq} · Duration: {plan.dur}<br/>
-          {plan.goals&&plan.goals.length>0?<>Goals: {plan.goals.join("; ")}<br/></>:null}
-          {plan.prec&&plan.prec.length>0?<>Precautions: {plan.prec.join("; ")}<br/></>:null}
+        <div className="cp-rpt-section"><div className="cp-rpt-h">Clinical Scores</div>
+          <div className="cp-rpt-row"><span className="cp-rl">ICIQ-UI SF</span><span className="cp-rv">{iciq.total}/21 — {iciq.severity}, {iciq.subtype}</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">FLUTS</span><span className="cp-rv">F: {fluts?.F||0}/{fluts?.F!==undefined?16:"?"} · V: {fluts?.V||0}/{fluts?.V!==undefined?12:"?"} · I: {fluts?.I||0}/{fluts?.I!==undefined?20:"?"}</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">FLUTSsex</span><span className="cp-rv">{fsex?.total||0}/12</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">GUPI</span><span className="cp-rv">{gupi.total}/45 — {gupi.severity} (P: {gupi.pain}, U: {gupi.urinary}, Q: {gupi.qol})</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">Pain Composite</span><span className="cp-rv">{pain.composite}/10 — {pain.severity}</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">Program Tier</span><span className="cp-rv">{tier} — {tierWks} weeks</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">Cueing Style</span><span className="cp-rv">{cueLbl}</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">PHQ-2</span><span className="cp-rv">{phq2}/6 — {phq2>=3?"Positive":"Negative"}</span></div>
+          {avF.length>0&&<div className="cp-rpt-row"><span className="cp-rl">Activities Avoided</span><span className="cp-rv">{avF.join(", ")} ({avF.length} categories)</span></div>}
+          <div className="cp-rpt-row"><span className="cp-rl">Medication Modification</span><span className="cp-rv">{(ans.med_modify??0)===1?"Yes":"No"}</span></div>
         </div>
-      </div>
-      <div style={{borderTop:"1px solid #E2E8F0",paddingTop:12,fontSize:11,color:C.g400,lineHeight:1.6}}>
-        AI-supported plan reviewed and approved by a licensed physical therapist.<br/>
-        © {new Date().getFullYear()} Expect Health, Inc. · Utah OAIP Pilot · Plan ID: {plan.id}
+        <div className="cp-rpt-section"><div className="cp-rpt-h">Exercise Prescription</div>
+          {plan.ex.map((ex,i)=>{const lib=PATIENT_EX[ex.n];return<div key={i}className="cp-rpt-row"><span className="cp-rl">{lib?lib.name:ex.n}</span><span className="cp-rv">{ex.r} reps × {ex.s} sets, {ex.h} hold, {ex.f}</span></div>})}
+        </div>
+        <div className="cp-rpt-section"><div className="cp-rpt-h">Adjunct Recommendations</div>
+          {plan.adjuncts.map((adj,i)=>{const lib=PATIENT_ADJ[adj.n];return<div key={i}className="cp-rpt-row"><span className="cp-rl">{lib?lib.name:adj.n}</span><span className="cp-rv">{adj.rx||lib?.what||""}</span></div>})}
+        </div>
+        <div className="cp-rpt-section"><div className="cp-rpt-h">Plan Details</div>
+          <div className="cp-rpt-row"><span className="cp-rl">Frequency</span><span className="cp-rv">{plan.freq}</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">Duration</span><span className="cp-rv">{plan.dur}</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">Goal</span><span className="cp-rv">{ans.patient_goal||"—"}</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">Precautions</span><span className="cp-rv">{(plan.prec||[]).join(" · ")}</span></div>
+        </div>
+        <div className="cp-att"><div className="cp-att-h">PT Attestation</div>
+          <p>I have reviewed the AI-generated assessment, the patient's individual responses, and the treatment plan. This plan reflects my independent clinical judgment and is appropriate for this patient's presentation.</p>
+          <p style={{marginTop:8}}><strong>Signed:</strong> Nicole L. Dugan, PT, DPT, WCS — {dateStr}</p>
+          <p style={{marginTop:4,fontSize:11,opacity:.7}}>Plan status: Approved · Plan ID: {plan.id}</p>
+        </div>
       </div>
     </div>
-    <button style={{width:"100%",padding:12,background:C.purp,color:C.white,border:"none",borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer",marginTop:8}} onClick={()=>window.print()}>🖨 Print This Report</button>
-  </div>;};
+  </div>;
+
+  const tabs=[["scores","📊 My Scores"],["exercises","💪 Exercises"],["adjuncts","📋 Recommendations"],["strategies","🧠 Strategies"],["report","📄 Full Report"]];
+
   return<div className="fi">
-    <div style={{textAlign:"center",marginBottom:20}}>
-      <div style={{fontSize:28,fontWeight:700,color:C.purp}}>✦ My Care Plan</div>
-      {name&&<div style={{fontSize:14,color:C.g500,marginTop:4}}>Prepared for {name}</div>}
-      <div style={{fontSize:12,color:C.g400,marginTop:2}}>Your personalized pelvic floor therapy program</div>
+    <style>{cpCSS}</style>
+    <div className="cp-shell">
+      {/* Polished Header */}
+      <div className="cp-hdr">
+        <div className="cp-logo">E✕PECT</div>
+        <div className="cp-sub">AI-Augmented Pelvic Floor Physical Therapy</div>
+        <div className="cp-name">{fullName}</div>
+        <div className="cp-meta">DOB: {ans.dob||"—"} · Assessment Date: {dateStr} · Plan Approved: {dateStr}</div>
+        <div><span className="cp-badge">{iciq.severity} Severity</span><span className="cp-badge">{iciq.subtype}</span><span className="cp-badge">{tierWks}-Week Program</span></div>
+      </div>
+
+      {/* Tabs */}
+      <div className="cp-tabs">
+        {tabs.map(([id,l])=><div key={id}className={`cp-tab ${tab===id?"on":""}`}onClick={()=>setTab(id)}>{l}</div>)}
+      </div>
+
+      {tab==="scores"&&<ScoresTab/>}
+      {tab==="exercises"&&<ExTab/>}
+      {tab==="adjuncts"&&<AdjTab/>}
+      {tab==="strategies"&&<StrategiesTab/>}
+      {tab==="report"&&<ReportTab/>}
+
+      {/* Request Review */}
+      {(()=>{const[reviewType,setReviewType]=useState(null);const[reviewNote,setReviewNote]=useState("");const[reviewSent,setReviewSent]=useState(false);return<div style={{maxWidth:520,margin:"24px auto",padding:20,background:"#FAFAFA",borderRadius:12,border:"1px solid #E2E8F0",textAlign:"left"}}>
+        <div style={{fontSize:14,fontWeight:600,color:"#374151",marginBottom:4}}>Request Clinical Review</div>
+        <div style={{fontSize:12,color:"#6B7280",marginBottom:12,lineHeight:1.6}}>If you have a concern about your care plan, select a reason below and a Physical Therapist will follow up with you directly.</div>
+        {[["safety","I have pain during exercises","Safety"],["clarity","I don't understand the instructions","Clarity"],["optout","I want to opt out of AI-assisted care","Program Change"]].map(([val,label,tag])=><label key={val}style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:8,cursor:"pointer",fontSize:13,color:"#374151"}}><input type="radio"name="review_type"checked={reviewType===val}onChange={()=>setReviewType(val)}style={{marginTop:2}}/>{label} <span style={{fontSize:11,color:"#9CA3AF",fontStyle:"italic"}}>({tag})</span></label>)}
+        <textarea value={reviewNote}onChange={e=>setReviewNote(e.target.value)}placeholder="Add a note (optional)"style={{width:"100%",minHeight:60,border:"1px solid #E2E8F0",borderRadius:8,padding:8,fontSize:12,marginTop:8,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box"}}/>
+        <button disabled={!reviewType||reviewSent}onClick={()=>{setReviewSent(true);L("clinical_review_request",{type:reviewType,note:reviewNote})}}style={{width:"100%",padding:10,background:reviewSent?"#D1D5DB":"#7C3AED",color:"white",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:reviewType&&!reviewSent?"pointer":"default",marginTop:8,opacity:reviewType&&!reviewSent?1:.5}}>{reviewSent?"✓ Review Requested — A PT will contact you":"Submit Review Request"}</button>
+      </div>;})()}
+
+      <div className="cp-footer">
+        <p>This care plan was generated by Expect's AI-augmented platform and reviewed by a licensed Physical Therapist.</p>
+        <p>Expect is a participant in the <a href="#">Utah Office of AI Policy Regulatory Sandbox</a>.</p>
+        <p style={{marginTop:8}}>Questions about your plan? Contact your PT through the secure Expect portal.</p>
+        <p style={{marginTop:4,fontSize:10}}>© 2026 Expect Health. All rights reserved. <a href="#">Privacy Policy</a> · <a href="#">Terms of Service</a></p>
+      </div>
     </div>
-    <div style={{display:"flex",gap:0,marginBottom:20,borderBottom:`2px solid ${C.g200}`,overflow:"auto"}}>
-      {tabs.map(([id,l])=><div key={id}style={{padding:"10px 16px",fontSize:13,fontWeight:tab===id?600:400,color:tab===id?C.purp:C.g400,borderBottom:`3px solid ${tab===id?C.pink:"transparent"}`,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}onClick={()=>setTab(id)}>{l}</div>)}
-    </div>
-    {tab==="scores"&&<ScoresTab/>}
-    {tab==="exercises"&&<ExTab/>}
-    {tab==="adjuncts"&&<AdjTab/>}
-    {tab==="strategies"&&<StrategiesTab/>}
-    {tab==="report"&&<ReportTab/>}
-    <div style={{marginTop:24,padding:16,background:C.g50,borderRadius:12,textAlign:"center"}}>
-      <div style={{fontSize:12,color:C.g400,marginBottom:4}}>Plan status</div>
-      <div style={{fontSize:13,color:C.g700}}>{plan.status==="pending_review"?"⏳ Awaiting PT review — you'll be notified when approved":"✓ Reviewed by your PT"}</div>
-    </div>
-    {(()=>{const[reviewType,setReviewType]=useState(null);const[reviewNote,setReviewNote]=useState("");const[reviewSent,setReviewSent]=useState(false);return<div style={{marginTop:24,padding:20,background:"#FAFAFA",borderRadius:12,border:"1px solid #E2E8F0"}}>
-      <div style={{fontSize:14,fontWeight:600,color:C.g700,marginBottom:4}}>Request Clinical Review</div>
-      <div style={{fontSize:12,color:C.g500,marginBottom:12,lineHeight:1.6}}>If you have a concern about your care plan, select a reason below and a Physical Therapist will follow up with you directly.</div>
-      {[["safety","I have pain during exercises","Safety"],["clarity","I don't understand the instructions","Clarity"],["optout","I want to opt out of AI-assisted care","Program Change"]].map(([val,label,tag])=><label key={val} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:8,cursor:"pointer",fontSize:13,color:reviewType===val?C.purpD:C.g700}}>
-        <input type="radio" name="review_type" checked={reviewType===val} onChange={()=>setReviewType(val)} style={{marginTop:2}}/>
-        <span>{label} <span style={{fontSize:11,color:C.g400,fontStyle:"italic"}}>({tag})</span></span>
-      </label>)}
-      <textarea value={reviewNote} onChange={e=>setReviewNote(e.target.value)} placeholder="Add a note (optional)" style={{width:"100%",minHeight:60,border:"1px solid #E2E8F0",borderRadius:8,padding:8,fontSize:12,marginTop:8,resize:"vertical",fontFamily:"inherit"}}/>
-      <button disabled={!reviewType||reviewSent} onClick={()=>{setReviewSent(true);L("clinical_review_request",{type:reviewType,note:reviewNote})}} style={{width:"100%",padding:10,background:reviewSent?"#D1D5DB":C.purp,color:C.white,border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:reviewType&&!reviewSent?"pointer":"default",marginTop:8,opacity:reviewType&&!reviewSent?1:0.5}}>{reviewSent?"✓ Review Requested — A PT will contact you":"Submit Review Request"}</button>
-    </div>;})()}
   </div>;
 }
 // PT VIEW
