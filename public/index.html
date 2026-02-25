@@ -305,9 +305,9 @@ let sharedIntake = null;
 function Consent({onDone}){
   const[ck,setCk]=useState({});
   const items=[
-    {id:"ai",tx:"I understand this platform uses AI to assist in my care. A licensed Physical Therapist reviews and approves all treatment plans."},
-    {id:"pt",tx:"I understand a licensed Utah PT reviews every AI recommendation. The AI supports — but never replaces — clinical judgment."},
-    {id:"opt",tx:"I have the right to request human-only care at any time without losing access to physical therapy."},
+    {id:"ai",tx:"I understand this platform uses AI to assist in my care. A licensed Physical Therapist oversees all AI-generated treatment plans. The level of clinical review may vary based on clinical complexity and program phase."},
+    {id:"pt",tx:"I understand a licensed Utah PT maintains clinical oversight of AI recommendations. The AI supports — but never replaces — clinical judgment."},
+    {id:"opt",tx:"I understand that I can request a review by a human Physical Therapist at any time."},
     {id:"data",tx:"I consent to de-identified data sharing with: (1) Utah OAIP for oversight, (2) researchers under IRB protocols, (3) external auditors, (4) anonymized public dashboards."},
     {id:"pilot",tx:"I understand this is a pilot under a Regulatory Mitigation Agreement with the Utah Office of AI Policy."},
     {id:"rest",tx:"I understand that if I report a concern about AI-supported care, Expect Health will provide a no-cost clinical review and, if clinically appropriate, corrective pelvic floor PT follow-up (telehealth or in-person, as available), subject to program terms."},
@@ -594,6 +594,16 @@ function MyCareplan({data}){
       <div style={{fontSize:12,color:C.g400,marginBottom:4}}>Plan status</div>
       <div style={{fontSize:13,color:C.g700}}>{plan.status==="pending_review"?"⏳ Awaiting PT review — you'll be notified when approved":"✓ Reviewed by your PT"}</div>
     </div>
+    {(()=>{const[reviewType,setReviewType]=useState(null);const[reviewNote,setReviewNote]=useState("");const[reviewSent,setReviewSent]=useState(false);return<div style={{marginTop:24,padding:20,background:"#FAFAFA",borderRadius:12,border:"1px solid #E2E8F0"}}>
+      <div style={{fontSize:14,fontWeight:600,color:C.g700,marginBottom:4}}>Request Clinical Review</div>
+      <div style={{fontSize:12,color:C.g500,marginBottom:12,lineHeight:1.6}}>If you have a concern about your care plan, select a reason below and a Physical Therapist will follow up with you directly.</div>
+      {[["safety","I have pain during exercises","Safety"],["clarity","I don't understand the instructions","Clarity"],["optout","I want to opt out of AI-assisted care","Program Change"]].map(([val,label,tag])=><label key={val} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:8,cursor:"pointer",fontSize:13,color:reviewType===val?C.purpD:C.g700}}>
+        <input type="radio" name="review_type" checked={reviewType===val} onChange={()=>setReviewType(val)} style={{marginTop:2}}/>
+        <span>{label} <span style={{fontSize:11,color:C.g400,fontStyle:"italic"}}>({tag})</span></span>
+      </label>)}
+      <textarea value={reviewNote} onChange={e=>setReviewNote(e.target.value)} placeholder="Add a note (optional)" style={{width:"100%",minHeight:60,border:"1px solid #E2E8F0",borderRadius:8,padding:8,fontSize:12,marginTop:8,resize:"vertical",fontFamily:"inherit"}}/>
+      <button disabled={!reviewType||reviewSent} onClick={()=>{setReviewSent(true);L("clinical_review_request",{type:reviewType,note:reviewNote})}} style={{width:"100%",padding:10,background:reviewSent?"#D1D5DB":C.purp,color:C.white,border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:reviewType&&!reviewSent?"pointer":"default",marginTop:8,opacity:reviewType&&!reviewSent?1:0.5}}>{reviewSent?"✓ Review Requested — A PT will contact you":"Submit Review Request"}</button>
+    </div>;})()}
   </div>;
 }
 // PT VIEW
