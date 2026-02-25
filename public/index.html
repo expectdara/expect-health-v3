@@ -32,12 +32,8 @@ const ICIQ=[
 
 // FLUTS: reordered so fl10a/10b (leak frequency) comes right after fl9a/9b (leak before toilet)
 const FLUTS=[
-{id:"fl2a",text:"During the night, how many times do you have to get up to urinate, on average?",opts:[["None",0],["One",1],["Two",2],["Three",3],["Four or more",4]]},
-{id:"fl2b",text:"How much does getting up at night to urinate bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal"},
 {id:"fl3a",text:"Do you have a sudden need to rush to the toilet to urinate?",opts:[["Never",0],["Occasionally",1],["Sometimes",2],["Most of the time",3],["All of the time",4]]},
 {id:"fl3b",text:"How much does that sudden urgency bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal"},
-{id:"fl4a",text:"Do you have pain in your bladder?",opts:[["Never",0],["Occasionally",1],["Sometimes",2],["Most of the time",3],["All of the time",4]]},
-{id:"fl4b",text:"How much does the bladder pain bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal"},
 {id:"fl5a",text:"How often do you pass urine during the day?",opts:[["1 to 6 times",0],["7 to 8 times",1],["9 to 10 times",2],["11 to 12 times",3],["13 or more times",4]]},
 {id:"fl5b",text:"How much does your daytime urination frequency bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal"},
 {id:"fl6a",text:"Is there a delay before you can start to urinate?",opts:[["Never",0],["Occasionally",1],["Sometimes",2],["Most of the time",3],["All of the time",4]]},
@@ -54,6 +50,8 @@ const FLUTS=[
 {id:"fl11b",text:"How much does leaking during physical activity bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal"},
 {id:"fl12a",text:"Do you ever leak urine for no obvious reason and without feeling that you want to go?",opts:[["Never",0],["Occasionally",1],["Sometimes",2],["Most of the time",3],["All of the time",4]]},
 {id:"fl12b",text:"How much does unexplained leaking bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal"},
+{id:"fl2a",text:"During the night, how many times do you have to get up to urinate, on average?",opts:[["None",0],["One",1],["Two",2],["Three",3],["Four or more",4]]},
+{id:"fl2b",text:"How much does getting up at night to urinate bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal"},
 {id:"fl13a",text:"Do you leak urine when you are asleep?",opts:[["Never",0],["Occasionally",1],["Sometimes",2],["Most of the time",3],["All of the time",4]]},
 {id:"fl13b",text:"How much does leaking while asleep bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal"},
 ];
@@ -71,6 +69,8 @@ const FLUTSSEX=[
 
 // GUPI + Pain Assessment combined into one section ("Pain & Discomfort")
 const GUPI_PAIN=[
+{id:"fl4a",text:"Do you have pain in your bladder?",opts:[["Never",0],["Occasionally",1],["Sometimes",2],["Most of the time",3],["All of the time",4]]},
+{id:"fl4b",text:"How much does the bladder pain bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal"},
 {id:"gupi1a",text:"In the last week, have you experienced any pain or discomfort at the entrance to your vagina?",type:"yn"},
 {id:"gupi1b",text:"In the last week, have you experienced any pain or discomfort in your vagina?",type:"yn"},
 {id:"gupi1c",text:"In the last week, have you experienced any pain or discomfort in your urethra (the small opening where urine comes out)?",type:"yn"},
@@ -98,6 +98,8 @@ const CLINICAL_EXTRA=[
 {id:"caffeine_intake",text:"How many caffeinated drinks (coffee, tea, soda, energy drinks) do you have per day on average?",opts:[["None",0],["1 per day",1],["2-3 per day",2],["4 or more per day",3]]},
 {id:"alcohol_intake",text:"How many alcoholic drinks do you have per week on average?",opts:[["None",0],["1-3 per week",1],["4-7 per week",2],["8 or more per week",3]]},
 {id:"water_intake",text:"How many glasses of water (8 oz) do you drink per day on average?",opts:[["1-3 glasses",0],["4-5 glasses",1],["6-8 glasses",2],["More than 8 glasses",3]]},
+{id:"phq2_interest",text:"Over the past 2 weeks, how often have you been bothered by having little interest or pleasure in doing things?",opts:[["Not at all",0],["Several days",1],["More than half the days",2],["Nearly every day",3]]},
+{id:"phq2_mood",text:"Over the past 2 weeks, how often have you been bothered by feeling down, depressed, or hopeless?",opts:[["Not at all",0],["Several days",1],["More than half the days",2],["Nearly every day",3]]},
 {id:"symptom_triggers",text:"What activities tend to trigger your symptoms? Please select all that apply.",type:"multi",opts:[["Lifting or carrying","lifting"],["Running or jumping","running"],["Coughing or sneezing","coughing"],["Laughing","laughing"],["Getting up from sitting","standing"],["Climbing stairs","stairs"],["Sexual activity","sexual"],["None in particular","none"]]},
 {id:"avoid_activities",text:"Are you avoiding activities because of pelvic symptoms? Select all that apply.",type:"multi",opts:[["Exercise or sports","exercise"],["Social events","social"],["Travel","travel"],["Sexual activity","sexual"],["Lifting (children, groceries, etc.)","lifting"],["None — symptoms don't limit my activities","none"]]},
 {id:"medications",text:"Are you taking any medications that might affect your bladder? (e.g., diuretics, antihistamines, antidepressants)",type:"text",ph:"List medications or type 'None'"},
@@ -105,7 +107,6 @@ const CLINICAL_EXTRA=[
 {id:"prior_treatment",text:"Have you had any prior treatment for pelvic floor issues?",type:"multi",opts:[["None — this is my first time","none"],["Pelvic floor PT (in-person)","prior_pt"],["Kegel exercises on my own","self_kegel"],["Pessary","pessary"],["Biofeedback device","biofeedback"],["Medication","medication"],["Surgery","surgery"]]},
 {id:"cue_preference",text:"Which instruction style helps you best imagine \"lifting and closing\" your pelvic floor?",opts:[["Body function: \"Squeeze as if stopping the flow of urine\" (⚠ Never practice this during actual urination)","biologic"],["Imaginative: \"Imagine gently closing around and lifting a blueberry\"","imaginative"],["Breath-based: \"Breathe out and draw in and lift your pelvic floor\"","breathing"],["Not sure yet — surprise me","default"]]},
 {id:"patient_goal",text:"In your own words, what is the main thing you'd like to be able to do more comfortably?",type:"text",ph:"e.g., 'Exercise without leaking', 'Pick up my child without pain'"},
-{id:"video_breathing",text:"Optional: Would you like to upload a short video of your breathing pattern? This helps your PT assess your diaphragmatic breathing and core coordination. If yes, a separate email will be sent with upload instructions.",type:"yn"},
 ];
 
 const REDFLAGS=[
@@ -115,9 +116,18 @@ const REDFLAGS=[
 {id:"rf_head",text:"Do you have a severe headache along with any changes in your vision?",type:"yn",rf:true,act:"er",msg:"A severe headache with vision changes may indicate a serious neurological or vascular condition. In postpartum patients, this could signal preeclampsia or eclampsia. Please call 911 immediately."},
 {id:"rf_uti",text:"Are you experiencing burning during urination, blood in your urine, or frequent urination along with a fever?",type:"yn",rf:true,act:"physician",msg:"These may indicate a UTI. Please contact your physician before starting PT."},
 ];
+
+// Exclusion screening — conditions outside platform scope (Section 3.7 Safe Harbor)
+const EXCLUSIONS=[
+{id:"ex_neuro",text:"Have you been diagnosed with a neurological condition that affects your bladder or pelvic floor? (e.g., multiple sclerosis, spinal cord injury, Parkinson's disease, stroke)",type:"yn",rf:true,act:"physician",msg:"Neurogenic bladder conditions require specialized in-person evaluation. This platform is not designed for neurological pelvic floor conditions. Please consult your physician or a specialist PT."},
+{id:"ex_mesh",text:"Have you had pelvic mesh surgery or any other pelvic surgery that is still causing you problems?",type:"yn",rf:true,act:"physician",msg:"Post-surgical pelvic conditions — especially mesh complications — require in-person specialist evaluation. Please consult your physician or a pelvic floor surgeon."},
+{id:"ex_prolapse",text:"Have you been told by a doctor that you have a significant pelvic organ prolapse (Grade 3 or higher)?",type:"yn",rf:true,act:"physician",msg:"Advanced pelvic organ prolapse requires in-person evaluation and may need treatment beyond home-based PT. Please consult your physician."},
+{id:"ex_cancer",text:"Do you have a known or suspected cancer in your pelvic area (bladder, uterine, cervical, ovarian)?",type:"yn",rf:true,act:"physician",msg:"Suspected or confirmed pelvic malignancy requires physician-directed care. Please consult your oncology or gynecology team."},
+{id:"ex_infection",text:"Do you currently have an active pelvic infection, fistula, or abscess?",type:"yn",rf:true,act:"physician",msg:"Active pelvic infections require medical treatment before starting a PT program. Please consult your physician."},
+];
 // SCORING (unchanged references — GUPI items still named gupiXX, pain items still painXX)
 function sICIQ(a){const t=(a.iciq1??0)+(a.iciq2??0)+(a.iciq3??0);const sv=t===0?"None":t<=5?"Slight":t<=12?"Moderate":t<=18?"Severe":"Very Severe";const ty=a.iciq4||[];const u=ty.includes("urgency"),s=ty.includes("stress_cough")||ty.includes("stress_exercise");const sub=u&&s?"Mixed UI":u?"Urge UI":s?"Stress UI":ty.includes("continuous")?"Continuous UI":"Unclassified";return{total:t,severity:sv,subtype:sub}}
-function sFLUTS(a){const F=(a.fl2a??0)+(a.fl3a??0)+(a.fl4a??0)+(a.fl5a??0);const V=(a.fl6a??0)+(a.fl7a??0)+(a.fl8a??0);const I=(a.fl9a??0)+(a.fl10a??0)+(a.fl11a??0)+(a.fl12a??0)+(a.fl13a??0);return{F,V,I,total:F+V+I}}
+function sFLUTS(a){const F=(a.fl2a??0)+(a.fl3a??0)+(a.fl5a??0);const V=(a.fl6a??0)+(a.fl7a??0)+(a.fl8a??0);const I=(a.fl9a??0)+(a.fl10a??0)+(a.fl11a??0)+(a.fl12a??0)+(a.fl13a??0);return{F,V,I,total:F+V+I}}
 function sFSEX(a){return{total:(a.fs2a??0)+(a.fs3a??0)+Math.min(a.fs4a??0,3)+Math.min(a.fs5a??0,3)}}
 function sGUPI(a){const p=(a.gupi1a==="yes"?1:0)+(a.gupi1b==="yes"?1:0)+(a.gupi1c==="yes"?1:0)+(a.gupi1d==="yes"?1:0)+(a.gupi2a==="yes"?1:0)+(a.gupi2b==="yes"?1:0)+(a.gupi2c==="yes"?1:0)+(a.gupi2d==="yes"?1:0)+(a.gupi3??0)+(a.gupi4??0);const u=(a.gupi5??0)+(a.gupi6??0);const q=(a.gupi7??0)+(a.gupi8??0)+(a.gupi9??0);const t=p+u+q;return{total:t,pain:p,urinary:u,qol:q,severity:t<=14?"Mild":t<=29?"Moderate":"Severe"}}
 function sPain(a){const c=a.pain1??0,v=a.pain2??0,f=a.pain3??0;const cm=Math.round((c+v)/2*10)/10;return{current:c,average:v,composite:cm,functional:f,severity:cm===0?"None":cm<=3?"Mild":cm<=6?"Moderate":"Severe",locations:a.pain4||[]}}
@@ -337,6 +347,7 @@ function Intake({onDone,mainRef}){
   const steps=[
     {t:"Let's Get to Know You",s:"Some basic information to get started.",qs:demo},
     {t:"Safety Check",s:"We need to make sure you're safe to proceed.",qs:REDFLAGS},
+    {t:"Eligibility Screening",s:"A few questions to confirm this program is right for you.",qs:EXCLUSIONS},
     {t:"Bladder Leakage",s:"ICIQ-UI Short Form — thinking about the past 4 weeks.",qs:ICIQ},
     {t:"Urinary Symptoms",s:"ICIQ-FLUTS — how you've been over the past 4 weeks. Some questions may seem similar to what you just answered — that's normal. These are separate validated tools that measure different aspects of your symptoms.",qs:FLUTS},
     {t:"Sexual Health",s:"ICIQ-FLUTSsex — over the past 4 weeks. All answers are confidential.",qs:FLUTSSEX},
@@ -675,6 +686,8 @@ function PTNewIntakeReview({data,onBack}){
   const guardrails=[];
   if(tSec<120)guardrails.push({lvl:"warn",msg:`Review time is ${tSec}s — CMS may question reviews under 2 minutes. Continue reviewing before approving.`});
   if(REDFLAGS.some(r=>ans[r.id]==="yes"))guardrails.push({lvl:"alert",msg:"! Patient had positive red flag(s) in safety screening. Verify these were addressed."});
+  if(typeof EXCLUSIONS!=="undefined"&&EXCLUSIONS.some(r=>ans[r.id]==="yes"))guardrails.push({lvl:"alert",msg:"! Patient screened positive for EXCLUSIONARY condition (Section 3.7 Safe Harbor). This patient may not be eligible for AI-generated plans. Review carefully."});
+  const phq2=(ans.phq2_interest||0)+(ans.phq2_mood||0);if(phq2>=3)guardrails.push({lvl:"warn",msg:"PHQ-2 score "+phq2+"/6 — positive screen for depression. Verify capacity to consent and consider mental health resource referral."});
   if(iciq.severity==="Very Severe"&&editExs.length<4)guardrails.push({lvl:"warn",msg:"Very Severe ICIQ score but fewer than 4 exercises — consider whether prescription is sufficient."});
   if(notes.trim().length===0&&editExs.some((e,i)=>JSON.stringify(e)!==JSON.stringify(initPlan.ex[i])))guardrails.push({lvl:"warn",msg:"You modified exercises but haven't added clinical rationale in the notes. CMS and OAIP require documented reasoning."});
   if(!noteGenerated)guardrails.push({lvl:"info",msg:"Generate and review the encounter note before approving."});
@@ -730,17 +743,20 @@ function PTNewIntakeReview({data,onBack}){
         <AnsRow label="Symptom triggers" value={Array.isArray(ans.symptom_triggers)?ans.symptom_triggers.join(", "):ans.symptom_triggers}/>
         <AnsRow label="Avoided activities" value={Array.isArray(ans.avoid_activities)?((ans.avoid_activities.filter(x=>x!=="none").length>=3?"⚠️ HIGH IMPACT — ":"")+ans.avoid_activities.join(", ")):"None"}/>
         <AnsRow label="Cue preference" value={ans.cue_preference==="biologic"?"Body function (stop urine flow)":ans.cue_preference==="imaginative"?"Imaginative (lift a blueberry)":ans.cue_preference==="breathing"?"Breath-based (exhale and lift)":"Default"}/>
-        <AnsRow label="Video upload interest" value={ans.video_breathing==="yes"?"Yes — patient wants to submit":"No"}/>
       </Section>
       <Section title="Safety Screening" tag={REDFLAGS.some(r=>ans[r.id]==="yes")?"! FLAGS":"✓ Clear"} defaultOpen={REDFLAGS.some(r=>ans[r.id]==="yes")}>
         {REDFLAGS.map(r=><AnsRow key={r.id} label={r.text} value={ans[r.id]==="yes"?"YES":"No"} flag={ans[r.id]==="yes"}/>)}
       </Section>
+      <Section title="Eligibility Screening" tag={typeof EXCLUSIONS!=="undefined"&&EXCLUSIONS.some(r=>ans[r.id]==="yes")?"⚠ EXCLUSION":"✓ Eligible"} defaultOpen={typeof EXCLUSIONS!=="undefined"&&EXCLUSIONS.some(r=>ans[r.id]==="yes")}>
+        {typeof EXCLUSIONS!=="undefined"&&EXCLUSIONS.map(r=><AnsRow key={r.id} label={r.text.slice(0,90)+"..."} value={ans[r.id]==="yes"?"YES":"No"} flag={ans[r.id]==="yes"}/>)}
+      </Section>
+      {((ans.phq2_interest||0)+(ans.phq2_mood||0))>=3&&<div className="card" style={{background:"#FEF3C7",borderLeft:"4px solid #D97706",marginBottom:10}}><div style={{fontSize:12,fontWeight:700,color:"#92400E"}}>⚠ PHQ-2 Positive ({(ans.phq2_interest||0)+(ans.phq2_mood||0)}/6)</div><div style={{fontSize:11,color:"#78350F"}}>Patient screens positive for depression. Consider: capacity to consent, mental health resource referral, postpartum depression pathway if applicable.</div></div>}
       <Section title="ICIQ-UI Short Form" tag={`${iciq.total}/21 · ${iciq.severity}`}>
         {ICIQ.map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+(q.text.length>80?"...":"")} value={getOptLabel(ICIQ,q.id,ans[q.id])} score={q.type!=="multi"?getOptScore(ICIQ,q.id,ans[q.id]):undefined}/>)}
         <div style={{marginTop:6,fontSize:11,color:C.blue,fontWeight:600}}>→ {iciq.subtype}</div>
       </Section>
       <Section title="ICIQ-FLUTS — Filling" tag={`F: ${fluts.F}/16`}>
-        {FLUTS.filter(q=>["fl2a","fl2b","fl3a","fl3b","fl4a","fl4b","fl5a","fl5b"].includes(q.id)).map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+"..."} value={getOptLabel(FLUTS,q.id,ans[q.id])} score={q.id.endsWith("a")?getOptScore(FLUTS,q.id,ans[q.id]):undefined}/>)}
+        {FLUTS.filter(q=>["fl2a","fl2b","fl3a","fl3b","fl5a","fl5b"].includes(q.id)).map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+"..."} value={getOptLabel(FLUTS,q.id,ans[q.id])} score={q.id.endsWith("a")?getOptScore(FLUTS,q.id,ans[q.id]):undefined}/>)}
       </Section>
       <Section title="ICIQ-FLUTS — Voiding" tag={`V: ${fluts.V}/12`}>
         {FLUTS.filter(q=>["fl6a","fl6b","fl7a","fl7b","fl8a","fl8b"].includes(q.id)).map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+"..."} value={getOptLabel(FLUTS,q.id,ans[q.id])} score={q.id.endsWith("a")?getOptScore(FLUTS,q.id,ans[q.id]):undefined}/>)}
