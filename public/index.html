@@ -91,7 +91,8 @@ const GUPI_PAIN=[
 {id:"pain1",text:"What is your current pelvic pain level right now? (0 = no pain, 10 = worst pain imaginable)",type:"scale",min:0,max:10,lo:"No pain",hi:"Worst pain imaginable"},
 {id:"pain2",text:"What has your average pelvic pain been over the past week? (0 = no pain, 10 = worst pain imaginable)",type:"scale",min:0,max:10,lo:"No pain",hi:"Worst pain imaginable"},
 {id:"pain3",text:"How does your pain affect your daily activities?",opts:[["No effect",0],["Mild — I can do most activities",1],["Moderate — I avoid some activities",2],["Severe — I am significantly limited",3],["I cannot perform daily activities",4]]},
-{id:"pain4",text:"Where do you experience pain or discomfort? Please select all that apply.",type:"multi",opts:[["None — no pain","none"],["Lower abdomen","lower_abd"],["Perineum","perineum"],["Vaginal area","vaginal"],["Lower back","lower_back"],["Hip area","hip"],["During sexual activity","dyspareunia"],["During urination","dysuria"]]},
+{id:"symptoms_location",text:"Where do you experience pain or discomfort? Please select all that apply.",type:"multi",opts:[["None — no pain","none"],["Lower abdomen","lower_abd"],["Perineum","perineum"],["Vaginal area","vaginal"],["Lower back","lower_back"],["Hip area","hip"]]},
+{id:"symptoms_trigger",text:"When do you feel pain or discomfort? Select all that apply.",type:"multi",conditional:a=>!((a.symptoms_location||[]).includes("none")||(a.symptoms_location||[]).length===0),opts:[["During urination","dysuria"],["As my bladder fills (relieved by urinating)","bladder_fills"],["During sexual activity","dyspareunia"],["While inserting a tampon","tampon"],["During bowel movements","bowel_movements"],["While sitting for long periods","sitting_long"],["None of the above","none"]]},
 {id:"gupi5",text:"Over the last week, how often have you had a sensation of not completely emptying your bladder after you finished urinating?",opts:[["Not at all",0],["Less than 1 time in 5",1],["Less than half the time",2],["About half the time",3],["More than half the time",4],["Almost always",5]]},
 {id:"gupi6",text:"Over the last week, how often have you had to urinate again less than two hours after you finished urinating?",opts:[["Not at all",0],["Less than 1 time in 5",1],["Less than half the time",2],["About half the time",3],["More than half the time",4],["Almost always",5]]},
 {id:"bowel_constipation",text:"Over the past month, how often have you experienced constipation or straining during bowel movements?",opts:[["Never",0],["Rarely",1],["Sometimes",2],["Often",3],["Almost always",4]]},
@@ -117,8 +118,8 @@ const CLINICAL_EXTRA=[
 {id:"avoid_activities",text:"Are you avoiding activities because of pelvic symptoms? Select all that apply.",type:"multi",opts:[["Exercise or sports","exercise"],["Social events","social"],["Travel","travel"],["Sexual activity","sexual"],["Lifting (children, groceries, etc.)","lifting"],["None — symptoms don't limit my activities","none"]]},
 {id:"medications",text:"Are you taking any medications that might affect your bladder? (e.g., diuretics, antihistamines, antidepressants)",type:"text",ph:"List medications or type 'None'"},
 {id:"med_modify",text:"Are you changing how you take any prescribed medication because of urinary symptoms? (e.g., skipping doses, changing timing)",opts:[["No",0],["Yes",1],["Not sure",2]]},
-{id:"prior_treatment",text:"Have you had any prior treatment for pelvic floor issues?",type:"multi",opts:[["None — this is my first time","none"],["Pelvic floor PT (in-person)","prior_pt"],["Pelvic Floor PT (telehealth)","prior_pt_tele"],["Kegel exercises on my own","self_kegel"],["Pessary","pessary"],["Biofeedback device","biofeedback"],["Medication","medication"],["Surgery","surgery"]]},
-{id:"cue_preference",text:"Which instruction style helps you best imagine \"lifting and closing\" your pelvic floor?",opts:[["Body function: \"Squeeze as if stopping the flow of urine\" (⚠ Never practice this during actual urination)","biologic"],["Imaginative: \"Imagine gently closing around and lifting a blueberry\"","imaginative"],["Breath-based: \"Breathe out and draw in and lift your pelvic floor\"","breathing"],["Not sure yet — surprise me","default"]]},
+{id:"prior_treatment",text:"Have you had any prior treatment for pelvic floor issues?",type:"multi",opts:[["None — this is my first time","none"],["Pelvic floor PT (in-person)","prior_pt"],["Pelvic Floor PT (telehealth)","prior_pt_tele"],["Kegel exercises on my own","self_kegel"],["Other exercise","other_exercise"],["Pessary","pessary"],["Biofeedback device","biofeedback"],["Medication","medication"],["Surgery","surgery"]]},
+{id:"cue_preference",text:"Which instruction style helps you best imagine \"lifting and closing\" your pelvic floor?",opts:[["Body function: \"Squeeze as if stopping the flow of urine\" (⚠ Never practice this during actual urination)","biologic"],["Imaginative: \"Imagine gently closing around and lifting a blueberry\"","imaginative"],["Breath-based: \"Breathe out and draw in and lift your pelvic floor\"","breathing"],["Simple: \"Contract your pelvic floor muscles\"","simple_contract"],["Not sure yet — surprise me","default"]]},
 {id:"patient_goal",text:"In your own words, what is the main thing you'd like to be able to do more comfortably?",type:"textarea",ph:"e.g., 'Exercise without leaking', 'Pick up my child without pain'",checkSpelling:true},
 ];
 
@@ -143,7 +144,7 @@ function sICIQ(a){const t=(a.iciq1??0)+(a.iciq2??0)+(a.iciq3??0);const sv=t===0?
 function sFLUTS(a){const F=(a.fl2a??0)+(a.fl3a??0)+(a.fl5a??0);const V=(a.fl6a??0)+(a.fl7a??0)+(a.fl8a??0);const fl10a_derived=Math.min(a.iciq1??0,4);const I=(a.fl9a??0)+fl10a_derived+(a.fl11a??0)+(a.fl12a??0)+(a.fl13a??0);return{F,V,I,total:F+V+I}}
 function sFSEX(a){return{total:(a.fs2a??0)+(a.fs3a??0)+Math.min(a.fs4a??0,3)+Math.min(a.fs5a??0,3)}}
 function sGUPI(a){const p=(a.gupi1a==="yes"?1:0)+(a.gupi1b==="yes"?1:0)+(a.gupi1c==="yes"?1:0)+(a.gupi1d==="yes"?1:0)+(a.gupi2a==="yes"?1:0)+(a.gupi2b==="yes"?1:0)+(a.gupi2c==="yes"?1:0)+(a.gupi2d==="yes"?1:0)+(a.gupi3??0)+(a.gupi4??0);const u=(a.gupi5??0)+(a.gupi6??0);const q=(a.gupi7??0)+(a.gupi8??0)+(a.gupi9??0);const t=p+u+q;return{total:t,pain:p,urinary:u,qol:q,severity:t<=14?"Mild":t<=29?"Moderate":"Severe"}}
-function sPain(a){const c=a.pain1??0,v=a.pain2??0,f=a.pain3??0;const cm=Math.round((c+v)/2*10)/10;return{current:c,average:v,composite:cm,functional:f,severity:cm===0?"None":cm<=3?"Mild":cm<=6?"Moderate":"Severe",locations:a.pain4||[]}}
+function sPain(a){const c=a.pain1??0,v=a.pain2??0,f=a.pain3??0;const cm=Math.round((c+v)/2*10)/10;const locs=(a.symptoms_location||[]).filter(x=>x!=="none");const trigs=(a.symptoms_trigger||[]).filter(x=>x!=="none");return{current:c,average:v,composite:cm,functional:f,severity:cm===0?"None":cm<=3?"Mild":cm<=6?"Moderate":"Severe",locations:locs,triggers:trigs}}
 
 // Expansion Library — shorthand-to-patient-friendly mappings (per MyCareplan Feature Spec §1.4)
 const EXPANSION_LIB={
@@ -194,9 +195,13 @@ function genPlan(iciq,pain,gupi,intake){
   else if(iciq.subtype.includes("Urge"))p.dx.push({c:"N39.41",d:"Urge incontinence"});
   else if(iciq.subtype.includes("Mixed"))p.dx.push({c:"N39.46",d:"Mixed incontinence"});
   if(pain.composite>=1)p.dx.push({c:"N94.89",d:"Pelvic pain condition"});
-  if(pain.locations.includes("dyspareunia"))p.dx.push({c:"N94.10",d:"Dyspareunia"});
+  if(pain.triggers.includes("dyspareunia"))p.dx.push({c:"N94.10",d:"Dyspareunia"});
   if(gupi?.total>=10)p.dx.push({c:"N81.9",d:"Pelvic floor dysfunction"});
   if((intake.bowel_constipation??0)>=2)p.dx.push({c:"K59.00",d:"Constipation, unspecified"});
+  // Pudendal neuralgia flag: sitting_long trigger + pain > 6/10
+  const triggers=pain.triggers||[];
+  const pudendalFlag=triggers.includes("sitting_long")&&pain.composite>6;
+  if(pudendalFlag){p.risk="yellow";p.dx.push({c:"G57.91",d:"Pudendal neuralgia (suspected) — PT review required"})}
   // Avoidance scoring
   const avoid=intake.avoid_activities||[];
   const avoidCount=avoid.filter(x=>x!=="none").length;
@@ -224,14 +229,17 @@ function genPlan(iciq,pain,gupi,intake){
   if(iciq.subtype.includes("Stress")&&iciq.total>=10)p.adjuncts.push({type:"device",n:"PF Biofeedback Device",d:"Surface EMG home biofeedback (e.g., Pericoach, Elvie) for real-time PF contraction feedback.",rx:"Consider if patient does not progress with HEP alone by week 4."});
   if(iciq.subtype.includes("Stress")&&gupi?.total>=15)p.adjuncts.push({type:"device",n:"Pessary Evaluation",d:"Referral for pessary fitting (ring or Gellhorn) for mechanical support.",rx:"Refer to urogynecology if symptoms persist at week 8."});
   if(iciq.subtype.includes("Urge")||iciq.subtype.includes("Mixed"))p.adjuncts.push({type:"behavioral",n:"Bladder Training Program",d:"Timed voiding schedule with progressive interval increases. Start with current voiding interval, increase by 15 min every 1-2 weeks. Include urge suppression techniques.",rx:"Begin immediately alongside exercise program."});
-  if(pain.composite>=5||pain.locations.includes("dyspareunia"))p.adjuncts.push({type:"device",n:"Vaginal Dilator Therapy",d:"Graduated silicone dilator set for desensitization and tissue mobility.",rx:"Consider if dyspareunia present. Start smallest size, progress per tolerance."});
+  if(pain.composite>=5||pain.triggers.includes("dyspareunia"))p.adjuncts.push({type:"device",n:"Vaginal Dilator Therapy",d:"Graduated silicone dilator set for desensitization and tissue mobility.",rx:"Consider if dyspareunia present. Start smallest size, progress per tolerance."});
   if((intake.bowel_constipation??0)>=2)p.adjuncts.push({type:"behavioral",n:"Bowel Management Program",d:"Toileting posture (squatty potty), fiber/fluid optimization, defecation dynamics training.",rx:"Address constipation — straining worsens PF dysfunction."});
   // Medication modification trigger
   if((intake.med_modify??0)===1)p.adjuncts.push({type:"behavioral",n:"Medication Review Referral",d:"Patient reports modifying prescribed medication due to urinary symptoms. Refer back to prescribing provider for medication review before altering dosing. DIAPPERS framework — drugs are a reversible cause of UI.",rx:"Urgent: contact prescribing provider."});
   p.adjuncts.push({type:"behavioral",n:"Lifestyle Modifications",d:"Caffeine reduction, fluid management (1.5-2L/day), lifting mechanics education, weight management if applicable.",rx:"Standard behavioral component of PF PT."});
   if(tier==="beginner")p.adjuncts.push({type:"referral",n:"In-Person PT Evaluation",d:"If telehealth-only progress stalls, refer for in-person manual therapy assessment including internal PF exam.",rx:"Reassess at week 4. Refer if ICIQ improvement <3 pts."});
   if(pain.composite>=6)p.adjuncts.push({type:"device",n:"TENS Unit for Pain",d:"Transcutaneous electrical nerve stimulation for pelvic/perineal pain management.",rx:"Home TENS unit if pain persists above 4/10 at week 2."});
+  // Bladder retraining prioritization when "bladder fills" trigger selected
+  if(triggers.includes("bladder_fills")&&!p.adjuncts.some(a=>a.n==="Bladder Training Program"))p.adjuncts.push({type:"behavioral",n:"Bladder Training Program",d:"Timed voiding schedule with progressive interval increases. Start with current voiding interval, increase by 15 min every 1-2 weeks. Include urge suppression techniques.",rx:"Begin immediately alongside exercise program."});
   p.prec=["Stop if pain >3/10","Report bleeding/fever/UTI immediately","No lifting >15 lbs first 4 wks"];
+  if(pudendalFlag)p.prec.push("Suspected pudendal neuralgia — avoid prolonged sitting exercises; evaluate nerve involvement before progressing");
   if(intake.pregnancy_status==="pp_early")p.prec.push("Postpartum <6wk: gentle PF only");
   p.prog=["ICIQ ↓≥2 → increase hold +2s","Pain ≤2 × 2wk → add standing PF","Adherence ≥80% × 2wk → add functional progressions"];
   p.cpt=[{c:"97161",d:"PT Eval — Low Complexity",u:1}];
@@ -483,7 +491,7 @@ function getInconsistencies(ans){
   // Says "none" for leak amount but reports high interference
   if(ans.iciq2===0&&ans.iciq3>=5)flags.push({field:"iciq3",msg:"You said no urine leaks, but rated high interference with daily life. Please confirm."});
   // Reports no pain anywhere but high pain score
-  if(Array.isArray(ans.pain4)&&ans.pain4.includes("none")&&(ans.pain1>=3||ans.pain2>=3))flags.push({field:"pain4",msg:"You selected 'no pain locations' but reported moderate-to-high pain scores. Please review."});
+  if(Array.isArray(ans.symptoms_location)&&ans.symptoms_location.includes("none")&&(ans.pain1>=3||ans.pain2>=3))flags.push({field:"symptoms_location",msg:"You selected 'no pain locations' but reported moderate-to-high pain scores. Please review."});
   // Reports high pain but says no effect on activities
   if((ans.pain1>=5||ans.pain2>=5)&&ans.pain3===0)flags.push({field:"pain3",msg:"You reported significant pain but said it has no effect on daily activities. Please confirm."});
   // Says never has urgency but reports urgency-type leaking
@@ -741,9 +749,13 @@ function Intake({onDone,mainRef}){
   const set=(k,v)=>setAns(p=>({...p,[k]:v}));
   const togM=(k,v)=>setAns(p=>{
     const cur=p[k]||[];
-    if(cur.includes(v))return{...p,[k]:cur.filter(x=>x!==v)};
+    if(cur.includes(v)){const next=cur.filter(x=>x!==v);
+      if(k==="symptoms_location"&&next.filter(x=>x!=="none").length===0)return{...p,[k]:next,symptoms_trigger:[]};
+      return{...p,[k]:next};}
     // Mutual exclusivity: "never"/"none" vs everything else
-    if(v==="never"||v==="none")return{...p,[k]:[v]};
+    if(v==="never"||v==="none"){
+      if(k==="symptoms_location")return{...p,[k]:[v],symptoms_trigger:[]};
+      return{...p,[k]:[v]};}
     return{...p,[k]:[...cur.filter(x=>x!=="never"&&x!=="none"),v]};
   });
   const goStep=(s)=>{setStep(s);if(mainRef?.current)mainRef.current.scrollTop=0};
@@ -1193,6 +1205,7 @@ function PTNewIntakeReview({data,onBack}){
   if(ans._safety_answer_changed)guardrails.push({lvl:"alert",msg:`! SAFETY ANSWER CHANGED: Patient initially indicated a safety concern but later changed their answer. Questions changed: ${(ans._safety_changes||[]).map(c=>c.id).join(", ")}. Verify this was appropriate.`});
   if(typeof EXCLUSIONS!=="undefined"&&EXCLUSIONS.some(r=>ans[r.id]==="yes"))guardrails.push({lvl:"alert",msg:"! Patient screened positive for EXCLUSIONARY condition (Section 3.7 Safe Harbor). This patient may not be eligible for AI-generated plans. Review carefully."});
   const phq2=(ans.phq2_interest||0)+(ans.phq2_mood||0);if(phq2>=3)guardrails.push({lvl:"warn",msg:"PHQ-2 score "+phq2+"/6 — positive screen for depression. Verify capacity to consent and consider mental health resource referral."});
+  if((ans.symptoms_trigger||[]).includes("sitting_long")&&pain.composite>6)guardrails.push({lvl:"alert",msg:"⚠ POTENTIAL PUDENDAL NEURALGIA: Patient reports pain while sitting for long periods with composite pain >6/10. Evaluate for pudendal nerve involvement."});
   if(iciq.severity==="Very Severe"&&editExs.length<4)guardrails.push({lvl:"warn",msg:"Very Severe ICIQ score but fewer than 4 exercises — consider whether prescription is sufficient."});
   if(notes.trim().length===0&&editExs.some((e,i)=>JSON.stringify(e)!==JSON.stringify(initPlan.ex[i])))guardrails.push({lvl:"warn",msg:"You modified exercises but haven't added clinical rationale in the notes. CMS and OAIP require documented reasoning."});
   if(!noteGenerated)guardrails.push({lvl:"info",msg:"Generate and review the encounter note before approving."});
@@ -1558,6 +1571,8 @@ function OAIPView(){
     if(sharedIntake.depressionFlag?.positive)redFlags.push({type:"DEPRESSION_RISK",severity:sharedIntake.depressionFlag.oaip_report?.severity||"MODERATE",desc:`PHQ-2 positive (score: ${sharedIntake.depressionFlag.score}/6)`,action:"PHQ-9 full screening recommended. Assess capacity to consent.",patient:sharedIntake.name||"Current Patient",ts:sharedIntake.depressionFlag.oaip_report?.timestamp||new Date().toISOString()});
     // Medication modification
     if((a.med_modify??0)===1)redFlags.push({type:"MEDICATION_ALERT",severity:"MODERATE",desc:"Patient modifying prescribed medication due to urinary symptoms",action:"Refer to prescribing provider for medication review",patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()});
+    // Pudendal neuralgia flag
+    if((a.symptoms_trigger||[]).includes("sitting_long")&&(sharedIntake.pain?.composite||0)>6)redFlags.push({type:"PUDENDAL_NEURALGIA",severity:"HIGH",desc:"Potential pudendal neuralgia: sitting pain + composite pain >6/10",action:"Evaluate for pudendal nerve involvement. Avoid prolonged sitting exercises.",patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()});
   }
   // From audit log - adverse events
   log.filter(e=>e.type==="adverse_event_report").forEach(e=>redFlags.push({type:"ADVERSE_EVENT",severity:"CRITICAL",desc:`Adverse event reported: ${e.category||"unknown"} — ${e.detail?.slice(0,80)||"See log"}`,action:"Immediate clinical team notification. Consider program pause.",patient:e.patient||"—",ts:new Date(e.ts).toISOString()}));
