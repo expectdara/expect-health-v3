@@ -324,7 +324,8 @@ function NPILookup({q,ans,set}){
     if(!npiFirst.trim()||!npiLast.trim()){setNpiErr("Enter first and last name.");return}
     setNpiLoading(true);setNpiErr(null);setNpiResults(null);
     try{
-      const apiUrl=`https://npiregistry.cms.hhs.gov/api/?version=2.1&first_name=${encodeURIComponent(npiFirst)}&last_name=${encodeURIComponent(npiLast)}&state=${npiState}&enumeration_type=NPI-1&limit=10`;
+      const qs=`version=2.1&first_name=${encodeURIComponent(npiFirst)}&last_name=${encodeURIComponent(npiLast)}&state=${npiState}&enumeration_type=NPI-1&limit=10`;
+      const apiUrl=location.protocol==="file:"?`https://npiregistry.cms.hhs.gov/api/?${qs}`:`/api/npi?${qs}`;
       let data;
       const res=await fetch(apiUrl);if(!res.ok)throw new Error("NPI lookup failed");data=await res.json();
       if(data.result_count>0){
@@ -583,10 +584,9 @@ function ConciergeSearch({ans,set}){
       if(searchFirst.trim())params.set("first_name",searchFirst.trim());
       if(searchCity.trim())params.set("city",searchCity.trim());
       params.set("state","UT");
-      const apiUrl=`https://npiregistry.cms.hhs.gov/api/?${params}`;
+      const apiUrl=location.protocol==="file:"?`https://npiregistry.cms.hhs.gov/api/?${params}`:`/api/npi?${params}`;
       let data;
-      try{const res=await fetch(apiUrl);if(!res.ok)throw new Error("direct failed");data=await res.json();}
-      catch(e1){const proxyUrl=`https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`;const res2=await fetch(proxyUrl);if(!res2.ok)throw new Error("proxy failed");data=await res2.json();}
+      const res=await fetch(apiUrl);if(!res.ok)throw new Error("NPI lookup failed");data=await res.json();
       if(data.result_count>0){const mapped=data.results.map(r=>{
           const b=r.basic||{};const addr=(r.addresses||[]).find(a=>a.address_purpose==="LOCATION")||(r.addresses||[])[0]||{};
           const tax=(r.taxonomies||[]).find(t=>t.primary)||{};
