@@ -347,7 +347,7 @@ function NPILookup({q,ans,set}){
     }catch(e){setNpiErr("NPI lookup unavailable. Please enter provider info manually below.")}
     setNpiLoading(false);
   };
-  const selectProvider=(p)=>{set("physician_name",p.name+(p.credential?`, ${p.credential}`:""));set("physician_fax",p.fax?.replace(/[^\d]/g,"")||"");set("physician_npi_id",p.npi);set("physician_npi_selected",p)};
+  const selectProvider=(p)=>{set("physician_name",p.name+(p.credential?`, ${p.credential}`:""));const demoFax=DEMO_NPI_FAXES[p.npi];set("physician_fax",demoFax||p.fax?.replace(/[^\d]/g,"")||"");set("physician_npi_id",p.npi);set("physician_npi_selected",p)};
   return<div className="qc fi"><div className="qt">{q.text}</div>
     <div style={{fontSize:12,color:C.g500,marginBottom:10}}>Search the CMS NPI Registry to find your physician. This ensures accurate provider information for your care team.</div>
     {!selected?<>
@@ -544,6 +544,8 @@ function SpellCheck({value,onAccept}){
 
 // Mock provider database for Concierge Search
 // DEMO DATA — mock providers for sandbox pilot demonstration only
+// Demo-only NPI-specific fax overrides (pre-populated for demo walkthrough)
+const DEMO_NPI_FAXES={"1932669694":"8015855146"};
 const MOCK_PROVIDERS=[
   {id:"P100",first:"Kristen",last:"Miller",specialty:"OB/GYN",practice:"Women's Health Associates",city:"Salt Lake City",state:"UT",npi:"1234567890",fax:"8015550100",demo:true},
   {id:"P101",first:"Sarah",last:"Johnson",specialty:"Urogynecology",practice:"Utah Pelvic Health Center",city:"Provo",state:"UT",npi:"1234567891",fax:"8015550101",demo:true},
@@ -605,7 +607,12 @@ function ConciergeSearch({ans,set}){
     L("CONCIERGE_SEARCH",{first:searchFirst,last:searchLast,city:searchCity,practice:searchPractice,mockCount:found.length,npiCount});
   };
   const fmtName=(p)=>{const md=["OB/GYN","Urogynecology","Urology","Family Medicine"].includes(p.specialty);return md?`Dr. ${p.first} ${p.last}`:`${p.first} ${p.last}`};
-  const selectProvider=(p)=>{set("concierge_provider",p);set("physician_name",fmtName(p));set("physician_npi_id",p.npi);set("physician_fax",p.fax||"");set("physician_fax_verified",!p.demo&&!!p.fax);L("CONCIERGE_PROVIDER_SELECTED",{provider:`${p.first} ${p.last}`,npi:p.npi})};
+  const selectProvider=(p)=>{set("concierge_provider",p);set("physician_name",fmtName(p));set("physician_npi_id",p.npi);
+    const demoFax=DEMO_NPI_FAXES[p.npi];
+    if(demoFax){set("physician_fax",demoFax);set("physician_fax_verified",false);set("physician_fax_default","Demo pre-populated")}
+    else if(!p.demo&&p.fax){set("physician_fax",p.fax);set("physician_fax_verified",true);set("physician_fax_default",false)}
+    else{set("physician_fax",p.fax||"");set("physician_fax_verified",false)}
+    L("CONCIERGE_PROVIDER_SELECTED",{provider:`${p.first} ${p.last}`,npi:p.npi})};
   const submitConcierge=()=>{
     if(!conciergeName.trim()||!conciergeCity.trim())return;
     setConciergeSubmitted(true);
