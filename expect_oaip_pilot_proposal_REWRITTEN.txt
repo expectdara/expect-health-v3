@@ -1,0 +1,922 @@
+EXPECT
+AI-Augmented Pelvic Floor Physical Therapy Platform
+
+------
+
+Pilot Proposal to the Utah Office of Artificial Intelligence Policy
+Regulatory Mitigation Agreement Application
+Under the Utah Artificial Intelligence Policy Act (UAIPA)
+
+February 2026
+CONFIDENTIAL -- Contains Business Confidential Information
+
+Executive Summary
+
+Problem Statement: Pelvic floor symptoms are widespread, costly, and treatable with low-risk first-line training--but delivering correct, consistent coaching does not scale with current clinician capacity. AI is built to scale that supervision.
+
+Prevalence: Urinary incontinence affects ~47%--63% of U.S. women. In Utah, a high-volume maternity state, ~1 in 3 women experience incontinence after childbirth. (Milsom et al., 2019; Lee et al., 2021; Patel et al., 2022; Che et al., 2025; Thom & Rortveit, 2010)
+
+Clinician Scarcity: Utah has only 7 board-certified women's health/pelvic floor physical therapists for approximately 1.6 million adult female residents. (American Board of Physical Therapy Specialties; U.S. Census)
+
+Harms of Inaction: Incontinence is directly linked to social isolation, reduced quality of life, reduced physical activity, and a higher risk of postpartum depression. (Milsom et al., 2019; Gallego-Gomez et al., 2024)
+
+Low-Risk Intervention: Pelvic floor physical therapy is conservative but effective, with bounded adverse events--unlike pharmaceutical interventions.
+
+Proposed Solution: Expect uses AI to extend PT-grade pelvic floor care to underserved populations.
+
+
+1. About You
+
+1.1 What Is Your Product?
+
+Expect is an AI-augmented pelvic floor physical therapy (PF-PT) platform that delivers clinically validated assessment, AI-generated treatment planning, and ongoing care management to women experiencing pelvic floor dysfunction--primarily urinary incontinence, pelvic pain, and related postpartum conditions.
+
+The platform uses deterministic scoring algorithms and rule-based plan generation to analyze patient responses across five validated clinical instruments (ICIQ-UI SF, ICIQ-FLUTS, ICIQ-FLUTSsex, GUPI-Female, and a standardized Pain Assessment). It computes severity scores and diagnostic classifications, then generates an individualized treatment plan including ICD-10 diagnoses, exercise prescriptions, adjunct device/behavioral recommendations, precautions, and progression criteria.
+
+Expect follows a graduated autonomy model, consistent with the approved Doctronic pilot. During the initial calibration phase, 100% of AI-augmented plans are reviewed, edited, and approved by a licensed Physical Therapist before any treatment recommendation reaches the patient. As the AI demonstrates statistical reliability across 250+ cases per diagnosis subtype, low-risk plans may be auto-approved with ongoing 10% human audit. High-risk, complex, and first-time patients always receive full PT review. The PT retains full authority to modify, reject, or augment any AI output at any phase. This "earned autonomy" model ensures AI augments the clinician, never replaces them--consistent with the Utah legislature's "doctor, not device" principle.
+
+Expect has active partnerships across government levels: a Cooperative Research and Development Agreement (CRADA) with the Veterans Health Administration (VHA), an IRB-approved study with the University of Alabama, and a contract with the Boston Public Health Commission. Expect is also a member of the Advanced Medical Technology Association (AdvaMed).
+
+1.2 Who Does Your Product Serve?
+
+The primary population served is women in Utah experiencing:
+- Postpartum pelvic floor dysfunction (stress incontinence, urgency, pelvic organ prolapse symptoms)
+- Chronic pelvic pain (vulvodynia, dyspareunia, interstitial cystitis symptoms)
+- Urinary incontinence (Stress, urge, or mixed--affecting an estimated 47%-63% of women in the United States).
+- Pelvic floor dysfunction related to aging (menopausal changes, deconditioning)
+
+The platform specifically targets underserved populations:
+- Utah Medicaid beneficiaries with limited access to specialist pelvic floor PT (PF-PT)
+- Rural Utah residents more than 60 minutes from the nearest PF-PT provider
+- Postpartum women within the first year after delivery, when PF symptoms are most treatable
+- Women who avoid in-person PF-PT due to stigma, childcare barriers, or cost
+
+1.3 Benefits to Utahns
+
+Access expansion: Utah has 7 PF-PT specialists for 1.6 million residents. The platform enables any Utah-licensed PT to deliver evidence-based PF care with AI-augmented clinical decision support, expanding the pool of providers who can treat these conditions. (American Board of Physical Therapy Specialties; U.S. Census)
+
+Addresses silent epidemic: Urinary incontinence affects over half of U.S. women, yet most go untreated due to stigma and access barriers.
+
+Maternal health outcomes: Utah has among the highest birth rates in the nation. Approximately one-third of women experience urinary incontinence in the first year postpartum, and the prevalence after vaginal birth is about twice that after cesarean delivery, as shown in a systematic review published in the British Journal of Obstetrics and Gynaecology. Early intervention with PF-PT reduces long-term incontinence, pain, and surgical intervention rates.
+
+Cost reduction: Asynchronous delivery eliminates barriers of in-person visits (travel, childcare, time off work) and the scheduling constraints of synchronous telehealth. It allows women with irregular schedules or limited privacy to engage in care. AI-assisted intake is projected to reduce PT administrative burden by approximately 60% based on preliminary internal time-motion analysis (formal validation planned during Phase 1), enabling service to rural populations where provider ratios are unfavorable.
+
+Medicaid efficiency: Conservative treatment of PF dysfunction via PT ($2,000-4,000 per course) costs a fraction of surgical intervention ($15,000-40,000). AI augmentation further reduces per-patient cost.
+
+Healthcare access fairness: Rural Utah residents and Medicaid beneficiaries gain access to specialist-level PF-PT that was previously available only in urban centers.
+
+Regulatory innovation data: The pilot generates real-world evidence on AI safety, efficacy, and patient experience in a controlled healthcare setting, informing future Utah AI policy across all healthcare domains.
+
+Federal partnership leverage: The VHA CRADA (see Section 1.1) may extend validated pilot findings to the VA's 9 million enrolled veterans.
+
+1.4 End-to-End Customer Experience
+
+Patient Journey
+
+AI Disclosure at Every Touchpoint
+
+Consistent with the Utah AI Policy Act and OAIP expectations, disclosure of AI utilization begins at the very first touchpoint (recruitment ad, landing page, intake page), not just in the consent form. Every patient-facing touchpoint includes: "This service utilizes AI to assist licensed professionals in care planning. All treatment decisions are finalized by a human clinician."
+
+Patient Journey Overview
+
+The patient journey proceeds through eight steps, with clear handoffs between patient, AI, and clinician:
+
+Step 1: Email Collection (Landing Page)
+Patient provides email address only. Low friction. Enables abandonment recovery (non-PHI reminder emails if they drop off mid-assessment). AI disclosure is visible on this page.
+
+Step 2: Identity Verification, Informed Consent & Safety/Eligibility Screening
+The patient completes selfie-and-photo-ID verification to confirm identity and Utah residency (consistent with the Doctronic pilot standard). The patient then receives a clear, plain-language informed consent form (10 required checkboxes). The form discloses that AI is used in their care, that a licensed PT reviews all recommendations (during Phase 1), that they may opt out of AI-assisted care at any time without losing access to PT services, and that Expect will provide corrective care if an AI-supported workflow issue causes harm.
+
+Upon consent, the patient completes:
+- Safety screening (5 red-flag questions): Fever, bleeding, chest pain, headache with vision changes, UTI symptoms. Positive screens redirect to 911 or physician immediately--no exercise plan is generated. Any attempt to subsequently change a positive safety answer triggers a confirmation modal, and the change is logged as a SAFETY_ANSWER_CHANGED event for PT review and OAIP oversight.
+- Eligibility screening (6 exclusion questions, plus 1 conditional for high-risk pregnancy): Positive screens redirect to physician/specialist; the AI does not generate plans for excluded conditions. See Section 3.7 for the full exclusionary diagnosis list and prenatal protocol.
+- Depression screening (PHQ-2): Two-question validated screen for depression. Positive scores (>=3 out of 6) trigger an inline clinical consistency warning and flag the case for the reviewing PT to verify capacity to consent. The depression flag is logged as a depression_screen_positive audit event with severity classification (MODERATE for scores 3-4, HIGH for scores 5-6) and surfaced in the OAIP Red Flags dashboard.
+
+Step 3: Clinical Intake Assessment
+The patient completes a guided assessment across 9 intake steps comprising demographics (including pregnancy status--if "Currently pregnant" is selected, a PRENATAL_FLAG is set and a gentle inline note appears: "We'll tailor your care plan with prenatal-safe modifications so you can safely support your pelvic floor throughout your pregnancy"), provider selection via NPI Registry lookup (verified against the CMS National Provider Identifier database with typo-tolerant matching), and five validated clinical instruments:
+- ICIQ-UI SF (4 questions): Bladder leakage severity and subtyping
+- ICIQ-FLUTS Leak Detail + Urinary Symptoms (12 + 10 questions): Filling, voiding, and incontinence subscales with bother scores
+- ICIQ-FLUTSsex (8 questions): Sexual health impact
+- GUPI-Female + Pain Assessment (24 questions): Pain locations, frequency, severity, functional impact, quality-of-life subscales, symptom triggers, and bladder pain questions
+
+The patient also answers questions about caffeine/alcohol/water intake, bowel function, symptom triggers, activity avoidance, current medications, prior treatment history, cueing preference, and personal goals. Throughout the intake, a real-time consistency checker (9 cross-instrument rules) detects contradictory answers and displays inline warnings. Input validation includes DOB age guardrails (18--120) and auto-formatted phone numbers.
+
+Provider selection uses three pathways: (1) NPI Registry lookup (auto-verified), (2) demo/sandbox providers (for testing), and (3) concierge verification for providers not in the NPI Registry. Concierge-submitted providers are held in "Pending Verification"--no fax is sent until verified. See Step 7.
+
+Step 4: Account Creation (Pre-Submission)
+After the last question and before submission, the patient must: confirm their email, create a password, and check a consent box: "I consent to receive electronic notifications about my care plan. I understand these notifications will link to a secure portal and will not contain sensitive health details directly."
+
+This ensures HIPAA-compliant electronic communication and prevents accidental PHI-adjacent notifications to wrong recipients via email verification.
+
+Step 5: AI Processing
+The AI processes the intake in six steps:
+1. Computes validated scores (ICIQ 0--21, FLUTS F/V/I subscales, GUPI 0--45, pain composite 0--10)
+2. Classifies incontinence subtype (stress/urge/mixed/continuous) and assigns a severity tier (Beginner/Moderate/Advanced per Klovning severity bands)
+3. Generates ICD-10 diagnoses, including pudendal neuralgia detection when sitting-related pain triggers are present with composite pain >6/10
+4. Risk-stratifies the patient (green/yellow)
+5. Produces a draft treatment plan with personalized exercises (cueing per Crane & Dugan 2025), adjuncts, precautions, and progression criteria
+6. If the patient has an active PRENATAL_FLAG, applies prenatal exercise substitutions (see Section 3.7, Prenatal Pelvic Floor Protocol).
+
+The AI functions as a clinical drafting tool. It does not make autonomous clinical decisions.
+
+Step 6: PT Review (Phase 1: 100% of Plans)
+A Utah-licensed PT receives the complete intake in their provider dashboard, including all raw patient responses (expandable by section with scoring verification), computed scores, AI-generated diagnoses, eligibility screening results, PHQ-2 score, and the full treatment plan. The PT can edit every element: goals, exercises (name/sets/reps/hold/frequency), adjunct recommendations, precautions, and progression criteria.
+
+Pre-approval guardrails warn the PT if: review time is under 2 minutes, safety or eligibility flags were positive, a safety answer was changed during intake, PHQ-2 is positive, pudendal neuralgia indicators are present, the plan seems inconsistent with scores, modifications lack documented rationale, or the patient has an active prenatal protocol. The PT generates an editable encounter note (CMS-compliant SOAP format) with AI-assisted shorthand expansion (e.g., "PFM" auto-expands to "pelvic floor muscle"), reviews/edits it, and approves the plan.
+
+The PT review interface also displays the provider routing destination with fax verification status: VERIFIED (auto-populated from NPI Registry), DEFAULT (pre-populated from organization/specialty matching rules when NPI Registry has no fax on file), or MANUAL ENTRY (entered by the PT). Default fax usage is logged as a DEFAULT_FAX_APPLIED audit event and surfaced as a yellow flag in the OAIP Red Flags dashboard.
+
+In Phase 2+, low-complexity cases may receive expedited review or auto-approval with audit. High-complexity cases always receive full PT review. See Section 3.1 for phase details.
+
+Step 7: Notification & Distribution
+Upon approval, the encounter note is transmitted to the referring physician via HIPAA-compliant fax. The fax workflow supports three verification states:
+
+1. NPI-Verified fax: Auto-populated from the CMS NPI Registry. Displayed with a green "VERIFIED" badge.
+2. Default fax: When the NPI Registry has no fax number on file, the system pre-populates a default fax number based on the provider's organization and specialty using predefined rules for major Utah health systems (University of Utah and Intermountain Health, by OB/GYN and PCP/IM/FM specialty). Displayed with an amber "DEFAULT" badge and a "Default -- verify before sending" warning. A DEFAULT_FAX_APPLIED audit event is logged with the provider, NPI, fax number used, and matching rule.
+3. Manual entry: The PT may manually enter or edit any fax number. Displayed with an amber "MANUAL ENTRY" warning.
+
+If the provider was submitted through the concierge verification flow and verification is still pending, fax transmission is held: the PT sees a "HOLD -- Pending Destination Verification" banner, and the Send Fax button is not available until the provider is verified.
+
+The patient receives a HIPAA-compliant notification email: "You have a new document available in your secure Expect portal." No PHI appears in the email. The patient logs into the portal to view their full care plan.
+
+Step 8: Care Plan Delivery & Ongoing Care
+The patient views their personalized care plan in the secure portal across five tabs: Scores (assessment results with severity explanations), Exercises (detailed instructions with personalized cueing, common mistakes, stop conditions), Recommendations (adjunct devices and behavioral programs), Strategies (bladder retraining, The Knack, daily habits, timeline expectations), and Full Report (printable clinical summary with PT attestation).
+
+The patient can export their care plan for sharing with their primary care provider through a dedicated "Export for MyChart / EHR" button. This opens a modal titled "Share with your Doctor" with step-by-step instructions: (1) download a secure PDF, (2) log in to their health system's patient portal (e.g., Intermountain MyChart), and (3) attach the file via Messages or Document Sharing. The PDF is generated entirely client-side--no PHI is transmitted externally. A CARE_PLAN_DOWNLOADED audit event is logged with context PATIENT_DIRECTED_EHR_SHARING.
+
+The patient follows the home exercise program, reports symptoms via mid-treatment check-ins, and communicates with their PT through secure messaging. The PT monitors adherence, adjusts the plan as needed, and documents outcomes. The platform tracks ICIQ and pain score trends over time.
+
+Patients may report concerns at any time through a persistent "Report a Problem" button embedded in their care plan portal, which provides six reporting pathways:
+
+1. Pain during exercises: Severity slider (0-10). Logged as EXERCISE_PAIN_REPORT.
+2. Worsening symptoms: Severity slider (0-10), new symptom vs. getting worse toggle, free-text description. Logged as CLINICAL_REGRESSION_FLAG with severity-based triage (CRITICAL for severity >=7, HIGH for >=4, MODERATE for <4).
+3. Adverse event: Categorized by type (new symptom, bleeding, adverse reaction, other) with detailed description. Logged as adverse_event_report.
+4. Instruction clarity: Free-text question about care plan instructions. Logged as clinical_review_request.
+5. AI opt-out: Request to opt out of AI-assisted care with optional context. Logged as clinical_review_request with category "optout."
+6. Technical issue: Description of platform problem. Logged as TECHNICAL_ISSUE_REPORT.
+
+All reports are logged in the immutable audit trail and surfaced in the OAIP Red Flags dashboard.
+
+PT Provider Experience
+PTs access a dedicated provider view with three sub-tabs: (1) a Dashboard showing enrolled patients, average adherence, ICIQ/pain score trends, and pending reviews; (2) a Patients tab for reviewing individual cases, accessing full intake data, and managing care plans; and (3) an Audit Log with a de-identification toggle for PHI-safe review. A review timer is prominently displayed at the top of each case for CMS documentation. An immutable audit log records every action for regulatory compliance.
+
+OAIP Oversight Experience
+The OAIP has a dedicated compliance dashboard with four views:
+1. Compliance: Phase status, enrollment, adherence, red flag count, and four-category compliance checklist.
+2. Red Flags & Alerts: All clinical safety signals (11 flag types) sorted by severity with actionable detail.
+3. Live Audit Stream: Full event log with Auditor Mode de-identification toggle (see Section 4.3).
+4. Interoperability / HIE: FHIR R4 resource preview supporting future integration with UHIN CHIE and Intermountain Health's Care Everywhere network.
+
+Details of each view are described in Appendix A.
+
+The OAIP can access de-identified datasets, monthly/quarterly reports, and the full audit log at any time.
+
+Right to Opt Out
+Patients may opt out of AI-assisted care at any time without losing access to PT services. Opt-out is available through the consent form (at enrollment), the "Report a Problem" button in the secure portal (at any time during the program, via the "I want to opt out of AI-assisted care" pathway), or by contacting Expect's designated privacy contact. Upon opt-out, the patient's existing care plan remains available; no new AI-generated recommendations are delivered. The PT may continue to provide non-AI-assisted telehealth care if clinically appropriate. Opt-out rates are tracked and reported to the OAIP as part of the monthly Patient Feedback Report. Opt-out requests are logged as clinical_review_request audit events with category "optout" and surfaced as HIGH-severity flags in the OAIP Red Flags dashboard.
+
+
+2. Regulatory Relief Request
+
+2.1 Statutes Causing Friction
+
+(See Table 1 below)
+
+2.2 Requested Relief
+
+Expect requests the following regulatory mitigation under the UAIPA:
+1. Clear interpretation that AI-generated clinical decision support, when subject to mandatory review (Phase 1) or statistical validation and audit (Phase 2), does not constitute the unlicensed practice of physical therapy.
+2. Cure period (30 days) if the platform is found to inadvertently cross any regulatory boundary during the pilot, allowing Expect to modify the platform before enforcement action.
+3. Regulatory mitigation providing that the AI's output constitutes a recommendation to a licensed professional (or a validated protocol execution), not "direct patient care."
+- Scope limitation: Regulatory relief applies only to the AI's role in generating clinical recommendations. All licensed PT activities (review, approval, patient communication, billing) remain fully subject to existing regulation.
+
+
+3. Pilot Design
+
+3.1 Duration and Timeline
+
+Requested pilot duration: 12 months, with option for a single 12-month extension per UAIPA.
+
+Enrollment Projections: Expect targets 250+ enrolled patients across diagnosis subtypes during Phase 1 (est. Months 1-4), 500 during Phase 2 (Months 5-8), and 500 during Phase 3 (Months 9-12), totaling approximately 1,250 patients over the 12-month pilot. Enrollment channels include OB/GYN and PCP referral networks, Utah Medicaid MCO partnerships, and direct-to-consumer outreach. Phase progression is gated by volume (250 consecutive AI-PT matches per subtype), not calendar, so if enrollment is slower than projected, Expect will request the 12-month extension permitted under UAIPA.
+
+(See Table 2 below for phase details)
+
+3.2 Product Sharing for OAIP Review
+
+Expect will provide the OAIP with:
+- Full platform access (OAIP-specific dashboard view with all compliance metrics, audit log, and de-identified patient data)
+- Source code access for the AI scoring and plan generation algorithms upon request
+- Monthly video walkthrough of platform changes and new features
+- Real-time access to the immutable audit log recording every system action
+- A working demo environment with synthetic patient data for OAIP testing at any time
+
+3.3 Benchmark Requirements for Phase Progression
+
+(See Table 3 below)
+
+The following metrics must be met for 30 consecutive days before advancing to the next phase.
+
+3.4 Failed Benchmark Plan / Phase Rollback
+
+If any critical metric fails (adverse event, PHI breach, or AI-PT agreement <90%), or if any single adverse event is attributed to AI recommendation (the "One Strike" rule, consistent with the Doctronic corrective action model):
+- Immediate pause: All AI auto-approvals suspended. Platform reverts to 100% PT review (Phase 1 mode) within 4 hours. A minimum of 50 consecutive successful cases must be completed under 100% review before any return to prior phase autonomy.
+- Root cause analysis: Expect delivers a written incident report to OAIP within 48 hours.
+- Corrective action: Platform modifications implemented and tested before resuming the prior phase.
+- OAIP approval required: Phase re-advancement requires written OAIP sign-off after the corrective action is verified.
+- Termination triggers: Any of the following triggers immediate pilot termination with 48-hour wind-down: (a) Serious patient injury attributable to AI error, (b) confirmed PHI breach affecting >10 patients, (c) PT license revocation, (d) OAIP request for any reason.
+
+3.5 Data and Outcome Sharing
+
+Researchers: De-identified datasets (per HIPAA Safe Harbor) available to IRB-approved researchers via data use agreement. Dataset includes: anonymized demographics, validated instrument scores at intake and follow-up, treatment plan parameters, adherence metrics, and outcomes. No raw text responses or identifiable information. Expected availability: quarterly, beginning Month 6.
+
+External Auditors: OAIP-approved external auditors receive full audit log access with PHI redacted via Auditor Mode (see Section 4.3). Auditors may review AI scoring logic, plan generation algorithms, PT review records, and consent documentation. Access provided within 5 business days of request.
+
+FDA: Expect concludes the platform qualifies for the Clinical Decision Support (CDS) exemption under 21st Century Cures Act Section 3060(a), because: (1) it is not intended to acquire, process, or analyze medical images or signals; (2) it is intended for the purpose of supporting clinical decision-making; (3) it provides the basis for the recommendation (validated instrument scores); and (4) the licensed PT makes the final treatment decision independently. Expect will share this analysis with the FDA upon request and will cooperate with any FDA inquiry during the pilot. The VHA CRADA (see Section 1.1) provides an additional channel for FDA engagement.
+
+OAIP: The OAIP receives the most comprehensive data access:
+- Real-time compliance dashboard (accessible 24/7; see Section 1.4, OAIP Oversight Experience)
+- Monthly written reports covering: enrollment, outcomes, adverse events, complaints, AI-PT agreement, system uptime, and consent rates
+- Quarterly in-person briefings with Expect leadership and clinical team
+- Immediate notification (within 4 hours) of any adverse event, PHI breach, or termination trigger
+- Full audit log with complete event metadata
+
+Public: Expect will publish:
+- A public-facing anonymized outcomes dashboard (updated monthly) showing aggregate enrollment, average symptom improvement, adherence rates, and safety metrics
+- A plain-language summary of pilot findings at Months 6 and 12
+- Peer-reviewed publication of pilot outcomes (targeted for Month 12-15)
+- Consumer-facing FAQ addressing common questions about AI in healthcare
+
+Proposed Reporting Process
+
+(See Table 4 below)
+
+3.6 Alignment with Approved Utah Sandbox Precedents
+
+Expect's pilot design mirrors the Doctronic pilot--the first AI healthcare application approved under the Utah AI Regulatory Sandbox--across four dimensions:
+- Volume-Based Gating: 250 supervised cases per diagnosis category (Stress UI, Urge UI, Mixed UI) prior to any AI autonomy, ensuring statistically significant validation rather than calendar-based phase advancement.
+- Liability Parity: Malpractice insurance covers the AI algorithm as a distinct provider, holding the AI to the same liability standard as a licensed clinician.
+- 10% Post-Calibration Audit Rate: After the 250-case calibration period, 10% human audit rate for low-risk cases.
+- Identity Verification: Selfie-and-photo-ID verification at intake to confirm Utah residency and prevent fraud.
+
+Lower Risk Profile Than Approved Precedent: Doctronic's approved pilot authorizes AI to dispense medications--which carry risks of drug interactions, overdose, and allergic reactions. Expect prescribes pelvic floor exercises. The worst-case outcome is temporary muscle soreness, not a life-threatening adverse event.
+
+Like Doctronic's medication refills, Expect's AI applies a deterministic protocol to validated scores--not open-ended clinical judgment. Severity bands determine exercise tier; ICD-10 codes map to score thresholds. Suspected pudendal neuralgia is flagged for mandatory PT review, never acted on autonomously.
+
+3.7 Exclusionary Diagnosis List ("Safe Harbor" Scope)
+
+To define a strict "Safe Harbor" of low-risk conditions--consistent with Doctronic's exclusionary formulary approach--Expect explicitly excludes the following from AI-generated treatment plans. Any positive screen on an unconditional exclusion question triggers immediate referral to a physician or specialist:
+1. Neurogenic bladder or known neurological conditions affecting pelvic floor function (MS, spinal cord injury, Parkinson's, stroke)
+2. Post-surgical mesh complications or any post-surgical pelvic condition
+3. Grade 3 or higher pelvic organ prolapse
+4. Known or suspected pelvic malignancy (bladder, uterine, cervical, ovarian)
+5. Active pelvic infection, fistula, or abscess
+6. Interstitial cystitis with confirmed Hunner lesions (requires specialized urological management)
+7. High-risk pregnancy or medical advice to avoid exercise (conditional; appears only for patients who indicate active pregnancy on the demographics screen). A "yes" blocks plan generation with: "Please consult your prenatal care team before starting any pelvic floor program. We're here when you get the green light."
+- Patients under 18 years of age (screened via DOB validation at consent)
+
+Active pregnancy is not an exclusion. Pelvic floor PT during pregnancy is evidence-based and recommended by ACOG and the International Continence Society. Patients with normal pregnancies receive a prenatal-adapted care plan (see Prenatal Pelvic Floor Protocol below).
+
+This "negative scope" approach clarifies what the AI will never attempt, limiting the risk surface to well-defined, exercise-responsive conditions with established standards of care.
+
+Prenatal Pelvic Floor Protocol
+
+Patients who indicate "Currently pregnant" on the demographics screen are not excluded from the platform. Instead, the system applies a prenatal-adapted care pathway:
+
+- PRENATAL_FLAG is set on the patient's record. A gentle inline note appears: "We'll tailor your care plan with prenatal-safe modifications so you can safely support your pelvic floor throughout your pregnancy." This is not a blocker.
+- A conditional high-risk screening question is shown during eligibility screening: "Have you been told by your OB/GYN or midwife that you have a high-risk pregnancy or been advised to avoid exercise?" A "yes" blocks plan generation. A "no" allows the patient to proceed.
+- The AI plan generator automatically substitutes supine (lying-flat) exercises with incline or side-lying variants to avoid vena cava compression:
+  - Supine PF Activation becomes Incline PF Activation (30-45 degree incline with pillows)
+  - Bridge + PF becomes Incline Bridge + PF (incline with hip towel roll)
+  - Diaphragmatic Breathing + PF becomes Diaphragmatic Breathing + PF (Prenatal) (incline or seated)
+  - Diaphragmatic Breathing becomes Diaphragmatic Breathing + PF (Prenatal)
+- Kegels (Quick-Flick and Endurance) and Pain De-Sensitization Breathing are position-neutral and remain unchanged.
+- Each modified exercise displays a "Prenatal-adapted" badge and an inline explanation: "Modified for pregnancy -- lying flat on your back after the first trimester can compress a major blood vessel. This exercise has been adjusted to a supported incline or side-lying position."
+- A precaution block is added: "Your exercises have been adapted for pregnancy. Avoid lying flat on your back -- use a wedge pillow or rolled towel under your right hip for any floor exercises. Stop any exercise that causes discomfort and contact your OB/GYN or midwife."
+- The care plan is labeled "Prenatal Pelvic Floor Protocol."
+- The reviewing PT receives a clinical alert: "Patient is currently pregnant. Exercise modifications for supine positioning have been automatically applied. Please review for trimester appropriateness."
+- A PRENATAL_PROTOCOL_APPLIED flag is surfaced in the OAIP Red Flags dashboard at MODERATE (amber) severity. This is a clinical routing note, not a safety concern.
+- Patients route to their selected provider as normal (OB/GYN if selected, PCP otherwise). There is no forced rerouting.
+
+How Exclusions Are Screened
+
+Six plain-language questions are always presented during the eligibility screening step of the clinical intake (Step 2 of the patient journey, Section 1.4), screening for the unconditional exclusions listed above (items 1-6). A seventh question--about high-risk pregnancy--is conditionally shown only to patients who indicate active pregnancy on the demographics screen.
+
+A "yes" to any unconditional exclusion question halts the intake flow and displays a condition-specific message directing the patient to their physician or specialist. No AI-generated plan is created. For the conditional high-risk pregnancy question, a "yes" similarly halts the intake with the message: "Please consult your prenatal care team before starting any pelvic floor program. We're here when you get the green light." A "no" allows the patient to proceed with the prenatal-adapted care plan. Positive exclusion screens are prominently flagged in the PT review dashboard.
+
+These screening questions use patient self-report. As with any clinical screening, false negatives are possible. The PT review layer provides a secondary safety net.
+
+
+4. Risk Management
+
+4.1 Foreseeable Risks and Mitigations
+
+(See Table 5 below)
+
+4.2 Vulnerable Populations
+
+(See Table 6 below)
+
+The following vulnerable populations may use the platform, with specific protections.
+
+4.3 Data Privacy
+
+Data Collected and Stored
+- Demographics: first name, last name, date of birth, pregnancy status, delivery history
+- Clinical responses: all validated instrument answers, red-flag screening, symptom triggers, bowel function, pain locations, prior treatment history, medications, patient goals
+- Computed scores: ICIQ total/severity/subtype, FLUTS F/V/I, FLUTSsex, GUPI P/U/Q, pain composite/functional
+- Treatment plans: AI-generated and PT-modified versions, including exercises, adjuncts, diagnoses, CPT codes
+- Communication: secure messages between patient and PT
+- Behavioral data: exercise adherence, login frequency, symptom reports
+- Administrative: physician name/fax, insurance type/ID, referral source, consent records
+- Audit trail: timestamped log of every system action with actor identification (24 distinct event types tracked)
+
+Data Usage
+- Primary: Deliver and manage individualized PF-PT care
+- Secondary: Generate aggregate outcomes data for OAIP reporting and quality improvement
+- Tertiary: De-identified datasets for IRB-approved research and public outcomes dashboard
+- Prohibited: Data is never sold, used for advertising, shared with employers or insurers for coverage decisions, or used for any purpose not disclosed in the consent
+
+EHR Interface
+The platform generates FHIR R4-compliant data structures (Patient, Practitioner, and Observation resources with US Core profiles), viewable in the OAIP Interoperability / HIE tab as a preview. This data model supports future integration with UHIN's Clinical Health Information Exchange (CHIE) and Intermountain Health's Care Everywhere network.
+
+Current interoperability is implemented through two channels:
+1. HIPAA-compliant fax: The primary method for transmitting encounter notes and care plans to referring physicians. Fax numbers are verified against the CMS NPI Registry, with organization/specialty-based default fax rules for major Utah health systems as a fallback, and manual entry as a last resort (see Step 7).
+2. Patient-directed EHR sharing: Patients can download their care plan as a secure PDF via the "Export for MyChart / EHR" feature and upload it to their patient portal (e.g., Intermountain MyChart). This is entirely client-side--no PHI is transmitted externally. Downloads are logged as CARE_PLAN_DOWNLOADED audit events.
+
+Full bidirectional EHR connectivity is planned for Phase 3 or the extension period, pending partnership with UHIN.
+
+HIPAA Compliance
+Expect is designed to achieve full HIPAA compliance before production deployment. During the sandbox/testing phase, the following safeguards are in place, with additional safeguards planned for production:
+- Technical safeguards (implemented): TLS 1.3 in transit (HTTPS), audit logging (24 event types), Auditor Mode de-identification, role-based view separation (Patient, PT Provider, and OAIP views)
+- Technical safeguards (roadmap -- pre-production): AES-256 encryption at rest, authentication and authorization enforcement, automatic session timeout. The consent form transparently discloses: "Persistent storage with encryption at rest will be implemented before production launch."
+- Administrative safeguards: HIPAA training for all personnel, incident response plan, designated Privacy Officer and Security Officer
+- Physical Safeguards: Convex HIPAA-compliant cloud infrastructure (Enterprise Plan, SOC 2 Type II audited) with BAA executed
+- Business Associate Agreements executed with any partners
+- Annual HIPAA risk assessment and penetration testing
+- PHI in audit logs: The audit log captures PHI (patient names, provider names, fax numbers, clinical details) as part of the treatment record. In the OAIP Auditor Mode, 17 PHI-sensitive field types are automatically masked with hashed identifiers using a display-level de-identification function. This provides visual de-identification for regulatory review but is not claimed as HIPAA Safe Harbor de-identification. Full Safe Harbor de-identification is applied only to datasets exported for research or public reporting (see Appendix C).
+
+4.4 Healthcare Fairness
+
+Expect is specifically designed to address healthcare access fairness in Utah:
+- Medicaid-first pricing: Platform is designed for Medicaid reimbursement rates, not premium pricing
+- Rural access: Asynchronous platform delivery eliminates the geographic barrier that concentrates specialists in Salt Lake City and Provo. It also eliminates privacy issues associated with video-based telehealth for patients living in crowded housing.
+- Cultural sensitivity: Questions use plain, non-clinical language with layperson definitions for anatomical terms
+- Stigma reduction: Home-based assessment reduces embarrassment associated with in-person pelvic exams
+- Spanish-language support: Planned for Phase 2 to serve Utah's 14% Hispanic/Latino population
+- Outcome tracking by demographics: De-identified fairness analysis in monthly reports to detect disparate outcomes
+
+
+5. Feasibility
+
+5.1 Organizational Resources
+
+Leadership Team
+- Chief Executive Officer: [Name, brief background]
+- Chief Technology Officer: [Name, brief background]
+- Clinical Director: Nicole L. Dugan, PT, DPT, WCS -- Board-Certified Women's Health Clinical Specialist with 25+ years of pelvic floor PT experience; faculty, Herman & Wallace Pelvic Rehabilitation Institute; co-author, Crane & Dugan (2025) cueing framework
+- Privacy Officer: [Name]
+- Security Officer: [Name]
+
+Expertise
+- Clinical: Pelvic floor physical therapists with specialized certification (PRPC, WCS or equivalent)
+- Technical: Software engineering team with healthcare AI experience
+- Regulatory: Familiarity with Utah OAIPA, HIPAA, FDA CDS exemption framework, and state PT practice acts. AdvaMed membership provides ongoing access to regulatory intelligence and industry best practices
+- Research partnerships: Collaborations with academic institutions for outcomes analysis and peer-reviewed publication
+- Federal collaboration: VHA CRADA (see Section 1.1)
+
+Funding
+Expect has a viable financial model based on:
+- Revenue: PT evaluation billing (CPT 97161-97163) and telehealth follow-up codes under Utah Medicaid and commercial insurance
+- Operational efficiency: AI augmentation is projected to reduce PT time per patient by approximately 60% (preliminary internal analysis; formal validation during Phase 1)
+- Pilot funding: Sufficient runway to operate the 12-month pilot
+
+Liability Insurance
+Expect maintains a comprehensive insurance framework.
+- Commercial General Liability ($2M occurrence / $2M aggregate)
+- Medical Malpractice & Professional Liability ($1M claim / $3M aggregate)
+- Cyber & Data Liability ($1M minimum).
+- Technology Errors & Omissions (Tech E&O) ($1M claim / $2M aggregate)
+
+Stakeholder Networks
+- Federal partner: VHA CRADA (see Section 1.1)
+- Referring physicians: OB/GYN and primary care networks in Utah for patient referral
+- Medicaid MCOs: Engagement with Utah Medicaid managed care organizations for covered benefit inclusion
+- Academic partners: Research collaborations for outcomes analysis and peer-reviewed publication
+- Patient advocacy: Partnerships with maternal health organizations for community outreach
+- Industry association: AdvaMed member (medtech trade association; Code of Ethics compliance)
+- Regulatory: Direct engagement with OAIP and Utah Division of Occupational and Professional Licensing (DOPL)
+
+5.2 Evidence the Product Will Work
+
+Academic Literature
+- Pelvic floor muscle training (PFMT) is the first-line treatment for stress urinary incontinence (Cochrane Review, 2018; NICE guidelines CG171)
+- Telehealth-delivered PF-PT shows equivalent outcomes to in-person care for urinary incontinence (Sjostrom et al., 2021; Bernard et al., 2022)
+- AI clinical decision support improves diagnostic accuracy and reduces clinical variability in physical therapy (Knott et al., 2023)
+- The ICIQ-UI SF, ICIQ-FLUTS, ICIQ-FLUTSsex, and GUPI-Female are validated, widely-used instruments with established psychometric properties and published scoring manuals
+- Patient-reported outcome measures (PROMs) are the standard of care for PF dysfunction assessment (ICS/IUGA joint report, 2022)
+
+Pre-Deployment Testing
+- Internal testing with synthetic patient data across >200 clinical scenarios
+- Scoring validation against published instrument scoring manuals (100% concordance)
+- Plan generation review by board certified PF-PT specialist and urogynecologists across severity levels
+- Usability testing with prospective patients for intake flow, language clarity, and completion time
+- Security assessment including HIPAA compliance review and vulnerability scanning
+- Direct-to-consumer wellness platform is operational for technology validation only--serving as an infrastructure proof-of-concept without clinical outputs.
+
+Related Service/Product
+- Expect Fitness: Existing consumer health and fitness platform demonstrating team's ability to build, deploy, and maintain healthcare-adjacent technology at scale
+- Platform architecture and user experience patterns validated through Expect Fitness user base
+
+Federal Research Partnership
+The VHA CRADA (see Section 1.1) provides a clinical validation pathway. The specific AI workflows in this pilot are distinct from current VA deployments.
+
+5.3 Path to Reimbursement
+
+Billing Strategy: Expect uses existing CPT codes rather than waiting for new "Digital Therapeutic" CPT codes. Because a licensed Physical Therapist reviews and approves 100% of plans in Phase 1 (and retains supervisory authority in subsequent phases), the platform's output qualifies as a standard physical therapy evaluation and plan of care under existing regulations.
+
+Codes Utilized: CPT 97161--97163 (PT Evaluation) and standard telehealth follow-up codes. Commercial and government payers can reimburse using existing fee-for-service contracts without new legislation.
+
+Payer Strategy: The pilot gathers data to demonstrate that AI-augmented patients achieve ICIQ-UI SF score reductions (>=3 points) equivalent to in-person therapy, at lower total cost of care through reduced administrative burden and telehealth delivery.
+
+HSA/FSA Eligibility: As a clinically validated intervention for a diagnosed medical condition, Expect's fees are eligible for Health Savings Account (HSA) and Flexible Spending Account (FSA) reimbursement, enabling access for patients with high-deductible plans.
+
+
+6. Public Relations
+
+6.1 Building Trust with Stakeholders and the Public
+
+Expect addresses trust through five transparency commitments:
+- Transparency with patients: Plain-language informed consent; clear AI disclosure at every interaction; right to opt out without penalty; access to their own data; direct communication channel with their PT; ability to download care plan PDF for sharing with other providers
+- Transparency with providers: PTs see every AI output alongside raw patient responses and can verify scoring independently. During calibration, the AI is a tool in the PT's hands. In later phases, PTs maintain oversight through 10% audit and retain authority to intervene on any case
+- Transparency with OAIP: Real-time compliance dashboard (see Section 1.4), full audit log access with Auditor Mode (see Section 4.3), immediate adverse event notification, quarterly in-person briefings, and cooperation with external auditors
+- Transparency with the public: Monthly anonymized outcomes dashboard; plain-language pilot summaries at Months 6 and 12; peer-reviewed publication; consumer FAQ; media engagement explaining the "doctor, not device" model
+- Transparency with the medical community: Encounter notes faxed to referring physicians; adherence to CMS documentation standards; ICD-10 and CPT coding that integrates with existing billing workflows; presentation of findings at Utah PT association meetings
+- Federal credibility: The VHA CRADA (see Section 1.1) signals acceptance for collaborative research by the nation's largest integrated healthcare system
+- Industry standards: AdvaMed member company, operating under the AdvaMed Code of Ethics for ethical interactions with healthcare professionals
+- Clinical reviewer credibility: All AI-generated treatment plans are reviewed by Nicole L. Dugan, PT, DPT, WCS--a board-certified Women's Health Clinical Specialist with 25+ years of pelvic floor PT experience. Dr. Dugan is faculty at the Herman & Wallace Pelvic Rehabilitation Institute, developed the APTA Women's Health Residency Program at Penn Medicine, and co-authored the cueing framework used in this platform (Crane & Dugan, 2025). Full CV available on request. The platform is designed for referral by board-certified urogynecologists, the primary referral pathway into pelvic floor PT
+
+Expect will proactively address potential public concerns by emphasizing:
+- The AI earns autonomy through demonstrated safety--250 supervised cases per subtype before any auto-approval, with ongoing 10% audit and immediate rollback if any adverse event occurs
+- The platform expands access to care that most Utah women currently cannot get
+- Patient data is never sold or used for advertising
+- If the AI causes harm, Expect pays for remedial care
+
+
+7. Confidentiality Claims
+
+Expect requests that the following categories of information disclosed in this proposal and during the pilot be designated as "protected" under GRAMA (Utah Code 63G-2-305(1)-(2) and 63G-2-309(1)):
+
+Trade Secrets
+- AI plan generation algorithms: The specific logic, weighting, and decision trees used to translate validated instrument scores into individualized treatment plans, adjunct recommendations, and risk stratification
+- Scoring-to-diagnosis mapping: The proprietary thresholds and combinatorial rules used to generate ICD-10 diagnostic codes from multi-instrument score profiles
+- PT review guardrail logic: The specific consistency checks (9 cross-instrument contradiction rules), minimum review time thresholds, safety answer change detection, clinical shorthand expansion mappings, and clinical warning algorithms
+
+Commercial Information
+- Financial projections, unit economics, and gross margin calculations
+- Specific partnership terms with Medicaid MCOs, referring physician networks, and academic institutions
+- User acquisition costs, enrollment projections, and pricing strategy details
+
+Reasons Supporting Confidentiality
+(1) The AI plan generation algorithms represent substantial investment in clinical research, software development, and expert consultation. Disclosure would enable competitors to replicate the platform's clinical logic without comparable investment. (2) Financial and partnership information, if disclosed, would disadvantage Expect in ongoing and future negotiations with payers, providers, and investors. (3) Confidentiality is consistent with the treatment of analogous information in prior OAIP regulatory mitigation agreements (e.g., Doctronic, ElizaChat, Dentacor).
+
+Expect acknowledges that aggregate outcomes data, safety metrics, and compliance reporting shared with the OAIP and the public are not subject to confidentiality claims and will be disclosed as described in Section 3.5.
+
+
+APPENDIX A: Platform Technical Architecture
+
+The Expect platform comprises the following components. The patient-facing application and OAIP dashboard are described in detail in Section 1.4. This appendix provides the technical reference.
+
+- Patient-Facing Web Application: React-based responsive application. 9-step guided intake (97+ questions), informed consent (10 checkboxes), 5-tab care plan viewer, MyChart/EHR export (client-side PDF), 6-pathway symptom reporting, secure messaging. See Section 1.4 for full walkthrough.
+- PT Provider Dashboard: Three-tab interface (Dashboard, Patients, Audit Log). 9 pre-approval guardrail checks, CMS-compliant encounter note with shorthand expansion (12 abbreviations), review timer. See Section 1.4, PT Provider Experience.
+- OAIP Compliance Dashboard: Four-tab interface (Compliance, Red Flags & Alerts, Live Audit Stream, Interoperability / HIE). 11 clinical signal types. Auditor Mode (see Section 4.3). See Section 1.4, OAIP Oversight Experience.
+- AI Scoring Engine: Deterministic algorithms for ICIQ-UI SF (0-21), FLUTS (F/V/I), FLUTSsex (0-12), GUPI-Female (P/U/Q, 0-45), pain composite (0-10). Incontinence subtype classification. PHQ-2 depression screening (threshold >=3/6).
+- AI Plan Generator: Rule-based plan generation: ICD-10 mapping (up to 8 codes including pudendal neuralgia), 3-tier exercise prescription (Beginner/Moderate/Advanced), adjunct engine (9 recommendation types), risk stratification (green/yellow), precautions, progression criteria, and prenatal exercise substitution (see Section 3.7).
+- Audit Log: 24 event types, ISO 8601 timestamps. Auditor Mode de-identification (see Section 4.3). In-memory storage during sandbox phase.
+- Fax Integration: Three-tier verification (NPI-verified, default, manual entry). Transmission hold for unverified concierge providers. See Section 1.4, Step 7.
+- Provider Verification: CMS NPI Registry API (NPI-1, Utah filter). Typo-tolerant matching. Concierge verification flow with transmission hold.
+- Default Fax Pre-Population: Org/specialty matching for 4 Utah health system patterns. Applied only when NPI has no fax on file. Demo providers excluded.
+- Patient-Directed EHR Sharing: Client-side PDF generation. See Section 1.4, Step 8.
+- FHIR R4 Preview: FHIR R4 Bundle with US Core profiles. See Section 4.3, EHR Interface.
+
+
+APPENDIX B: Patient Safety, Clinical Oversight, and Remediation Framework
+
+Expect -- Utah OAIP Pilot
+February 2026
+
+0. Intervention Risk Profile
+
+Pelvic floor physical therapy is among the lowest-risk interventions in clinical medicine. The Expect pilot delivers exercise recommendations (bodyweight pelvic floor contractions, breathing coordination exercises, bridges) and behavioral guidance (bladder retraining, bowel management, fluid/caffeine management). The intervention:
+- Involves no pharmaceuticals. No drugs are prescribed, dispensed, or recommended. No dosing risk, drug interaction risk, or adverse pharmacological reaction risk.
+- Involves no implanted or invasive devices. Unlike intravaginal biofeedback devices, Expect's program is instruction-only. No device malfunction or infection risk.
+- Involves no surgical or procedural risk. No anesthesia, incisions, ionizing radiation, or contrast agents.
+- Produces predictable, bounded adverse events. The realistic worst-case outcome from an incorrectly prescribed pelvic floor exercise program is that it does not improve symptoms, or the participant experiences mild and self-limiting muscle soreness. This is categorically different from AI systems recommending medication dosages or surgical approaches where errors can produce irreversible harm.
+
+The exercises prescribed -- Kegel contractions, diaphragmatic breathing, bridges, lifestyle modifications -- are widely recommended as self-care by ACOG, the International Continence Society, and the Academy of Pelvic Health Physical Therapy. The AI-supported workflow adds clinical structure, personalization, and oversight to exercises that millions of women already perform unsupervised.
+
+1. Prevention-First Safety Architecture
+
+The pilot is structured to reduce risk before remediation is needed:
+- 100% clinician review of care plans before delivery. A licensed physical therapist reviews and approves every participant-facing plan using a standardized checklist. The reviewing clinician may modify any element. Average review time: 3--5 minutes per plan.
+- Upfront clinical governance. A Board-Certified Women's Health Clinical Specialist (WCS) authored or reviewed the scoring algorithms, exercise library, escalation logic, and plan generation rules based on published evidence.
+- Red-flag screening with immediate routing. Reported symptoms indicating urgent or emergent conditions are routed out of the platform to emergency or in-person medical care. No exercise plan is generated. Additionally, a safety gate mechanism tracks any subsequent attempt to change a positive safety answer, requiring explicit patient confirmation and logging the change as a SAFETY_ANSWER_CHANGED event for PT review and OAIP oversight.
+- Standardized clinician review checklist. Documented separately (see Appendix D).
+- Tiered escalation logic. Standard pathway, enhanced monitoring (ICIQ >=13, high avoidance, medication modification), and clinical referral (ICIQ >=19, complex presentation) based on validated severity scores and behavioral indicators.
+- Pudendal neuralgia detection. The system flags suspected pudendal neuralgia when a patient reports sitting-related pain triggers combined with composite pain >6/10. This triggers ICD-10 code G57.91, a precaution against prolonged sitting exercises, and a mandatory PT review guardrail alert. The PT evaluates nerve involvement before progressing the exercise program.
+- Prenatal exercise safety protocol. Pregnant patients receive prenatal-adapted care (see Section 3.7, Prenatal Pelvic Floor Protocol).
+- Full audit logging. AI-generated draft outputs, clinician review actions (approve/modify/reject), timestamps, and participant-facing final plans are logged and available for regulatory review.
+
+This prevention-first design materially lowers the expected corrective care frequency.
+
+2. Incident Reporting and Expedited Clinical Review
+
+If a participant reports a concern related to AI-supported care:
+
+Step 1: Expedited Clinical Review (No Cost)
+- Review of AI-generated draft output (pre-clinician review)
+- Review of clinician-approved plan (post-review)
+- Review of participant-reported symptoms, timeline, and adherence
+- Review of relevant clinical notes and communications
+- Root-cause classification
+
+Participants report concerns through the six reporting pathways described in Section 1.4, Step 8. All reports are logged in the immutable audit trail and surfaced in the OAIP Red Flags dashboard.
+
+Participants may also report concerns through a dedicated support channel or by contacting Expect directly. Expect will acknowledge receipt within 24 hours and triage based on clinical urgency. Emergent concerns are triaged immediately.
+
+3. Root-Cause Classification
+
+Reported concerns will be classified using a defined framework that adapts to the pilot phase:
+- Phase 1 (Calibration -- clinician-reviewed): Every plan is reviewed by a licensed clinician before delivery. Review considers the AI-generated draft, the clinician's edits/approvals, and participant context.
+- Phase 2/3 (Graduated autonomy): For auto-approved plans, analysis distinguishes between Protocol Adherence (the system applied the validated rules as designed, but the outcome was suboptimal) and Algorithmic Deviation (the system did not execute the rules/exclusions as designed). For clinician-reviewed plans, the Phase 1 framework applies.
+
+Classification categories:
+- AI/System Deviation: The platform failed to apply validated scoring logic, exclusions, or routing correctly (e.g., missed a red-flag criterion, selected an exercise outside the severity tier).
+- Clinical Review Miss: A clinician-reviewed plan contained an issue that was not identified or corrected during review (Phase 1 clinician-reviewed plans only).
+- Protocol Limitation (Needs Refinement): The system followed the validated protocol, but pilot learnings indicate the protocol needs adjustment for certain presentations.
+- Participant Execution/Adherence: Non-adherence, misunderstanding, or deviation from instructions contributed to the issue.
+- Indeterminate/Multifactorial: No single cause can be identified.
+
+This classification supports safety review, quality improvement, and pilot reporting -- not assignment of legal liability.
+
+4. Corrective Care Commitment
+
+Step 3: Scope-Defined Corrective Care
+
+If Expect's clinical review determines that corrective care is clinically appropriate and the issue was likely attributable (in whole or in part) to the AI-supported workflow and/or its clinical oversight process, Expect will provide:
+- 1 expedited clinical review
+- 1 clinician care-plan revision
+- Up to 1 corrective telehealth PT session
+- Up to 2 brief follow-up monitoring touchpoints
+- Referral support for in-person pelvic floor PT evaluation, where clinically indicated and reasonably available
+
+Corrective care is defined by scope of services, not participant-facing dollar caps.
+
+Given the low-risk intervention profile (Section 0), the most likely corrective action is plan revision and additional clinician monitoring -- not emergency intervention or specialist referral.
+
+5. Pilot Program Terms (Defined and Bounded)
+- Reporting window: Concerns must be reported within 30 days of completing the assigned protocol or discontinuing pilot participation, whichever occurs first, unless delayed reporting is clinically justified.
+- Clinical review timeline: Acknowledgment within 24 hours. Expedited clinical review initiated within 72 hours for non-emergent concerns.
+- Scope of corrective care: Limited to clinically appropriate pelvic floor corrective services and follow-up support within the pilot model. Does not extend to unrelated conditions, pre-existing conditions unrelated to the pilot intervention, or care outside the scope of pelvic floor PT.
+- Service availability: In-person referral support is subject to provider availability and geographic access. Telehealth follow-up is the default corrective modality.
+- Documentation: Expect documents all reviews, classifications, corrective actions, and outcomes for audit and regulatory reporting.
+
+6. Reporting and Continuous Improvement
+
+Expect will maintain an incident and corrective action log and provide periodic reporting to Utah program administrators as required, including:
+- Number and type of reported concerns (across all 6 reporting pathways)
+- Triage outcomes and response times
+- Root-cause classifications
+- Corrective care actions provided
+- Workflow, algorithm, or process changes implemented in response
+
+This reporting supports the OAIP's oversight requirements and Expect's internal quality improvement process.
+
+
+APPENDIX C: Data Governance, De-Identification, and Research Framework
+
+Expect -- Utah OAIP Pilot -- February 2026
+
+1. Overview
+This appendix describes how Expect collects, stores, de-identifies, and shares data generated through the Utah OAIP pilot. It addresses the four data-sharing commitments in the participant consent form: (1) Utah OAIP oversight, (2) IRB-approved research, (3) external auditors, and (4) anonymized public dashboards.
+
+2. Data Collected
+The platform collects the following categories of data during the pilot:
+- Clinical intake data: Responses to validated instruments (ICIQ-UI SF, FLUTS, GUPI, NRS pain scales), symptom history, medication history, activity avoidance, cue preference, pregnancy status, bowel function, and patient goals. All self-reported.
+- Demographic data: Name, date of birth, contact information (for clinical communication only), referring provider.
+- Treatment plan data: AI-generated draft plans, clinician-reviewed final plans, exercise prescriptions, adjunct recommendations, diagnostic codes, CPT codes.
+- Clinical governance data: Clinician review timestamps, review duration, modifications made, approval/rejection decisions, clinical notes.
+- Outcome data: Follow-up instrument scores (ICIQ, pain), patient-reported outcomes, adherence metrics, satisfaction surveys.
+- Audit data: Complete log of system interactions, AI outputs, clinician actions, and participant-facing deliverables.
+
+3. Data Storage and Security
+- HIPAA compliance: During the sandbox phase, all data is stored in-memory (volatile -- destroyed on session end). The consent form transparently discloses: "Persistent storage with encryption at rest will be implemented before production launch." For production deployment, all individually identifiable health information (IIHI) will be stored in HIPAA-compliant infrastructure with encryption at rest (AES-256) and in transit (TLS 1.2+).
+- Access controls: The platform implements role-based view separation with three distinct views (Patient, PT Provider, OAIP). Production deployment will add authentication enforcement and session management. Auditor Mode de-identification is available for regulatory review (see Section 4.3).
+- Retention: Clinical records retained per Utah and federal healthcare record retention requirements (minimum 7 years). Pilot-specific data retained for the duration of the OAIP agreement plus 3 years for regulatory reporting.
+- Cyber liability coverage: $1,000,000 minimum (see Appendix B, Section 7).
+
+4. De-Identification Standard
+All data shared outside the clinical treatment relationship is de-identified using the HIPAA Safe Harbor method (45 CFR 164.514(b)(2)), which requires removal of 18 specified identifiers:
+Names, geographic data smaller than state, dates (except year) for individuals over 89, phone/fax numbers, email addresses, SSN, medical record numbers, health plan beneficiary numbers, account numbers, certificate/license numbers, vehicle identifiers, device identifiers, web URLs, IP addresses, biometric identifiers, full-face photographs, and any other unique identifying number or code.
+
+De-identification is performed programmatically before any data export. The de-identification process is documented and auditable.
+
+Note: Auditor Mode (see Section 4.3) provides display-level de-identification for real-time regulatory review, distinct from the full HIPAA Safe Harbor de-identification applied to research datasets and public reporting exports.
+
+5. Data Sharing: Utah OAIP Oversight
+
+Expect will provide the following to the Utah OAIP on a defined reporting schedule:
+
+5a. Periodic Reporting (Quarterly or as Required)
+- Total participant enrollment and demographics (de-identified, aggregated)
+- Clinical outcome metrics: mean ICIQ score change, pain score change, adherence rates
+- Safety metrics: incident reports filed, root-cause classifications, corrective actions taken
+- AI performance metrics: clinician modification rate (% of plans modified during review), types of modifications
+- Consumer satisfaction: aggregated satisfaction scores and qualitative themes
+- Operational metrics: average review time, escalation rates, referral rates
+
+5b. On-Demand Access
+OAIP may request access to:
+- Complete audit trail for any specific interaction (with participant consent or under regulatory authority)
+- AI model/algorithm documentation (scoring logic, exercise selection rules, escalation thresholds)
+- Incident investigation records
+- Clinician review records (de-identified)
+
+6. Data Sharing: IRB-Approved Research
+
+Existing IRB-Approved Study: Expect has an active IRB-approved study at the University of Alabama at Birmingham (UAB). This study involves anonymized pelvic floor outcome data and has been reviewed and approved by the UAB Institutional Review Board.
+
+For the Utah pilot, de-identified data may be shared with researchers under the following conditions:
+- IRB approval required: Any research use of pilot data requires an active IRB approval from the researcher's institution, covering the specific use case.
+- Data Use Agreement (DUA): A formal DUA must be executed between Expect and the receiving institution before any data transfer.
+- De-identification: Only HIPAA Safe Harbor de-identified data is shared. No re-identification is permitted under the DUA.
+- Purpose limitation: Data may only be used for the specific research purpose described in the IRB protocol and DUA.
+- No commercial resale: Research data may not be sold, licensed, or transferred to third parties.
+- Publication: Research findings may be published in peer-reviewed journals. Expect receives advance notice of publications using pilot data.
+
+The UAB IRB study demonstrates Expect's existing institutional commitment to responsible research data practices. Extending this framework to the Utah pilot data follows the same governance model.
+
+7. Data Sharing: External Auditors
+
+External auditors may access pilot data under the following conditions:
+- Scope: Audit access is limited to verifying compliance with OAIP requirements, HIPAA obligations, clinical governance protocols, and financial controls.
+- Authorization: Audit access requires either (a) participant consent as described in the informed consent, (b) OAIP regulatory authority, or (c) legal process.
+- Data format: Auditors receive the minimum necessary data for the audit scope. Auditor Mode (see Section 4.3) allows auditors to review complete audit streams without exposure to raw patient identifiers. Individual-level clinical data is provided only when the audit requires it and only under appropriate confidentiality and data protection agreements.
+- Audit trail: All audit access is logged with date, auditor identity, scope, and data accessed.
+
+8. Data Sharing: Anonymized Public Dashboards
+
+Expect will maintain a public-facing dashboard displaying anonymized, aggregated pilot metrics. This supports the OAIP's transparency objectives and Expect's commitment to public accountability.
+
+8a. Dashboard Metrics (Examples)
+- Total participants enrolled (count only)
+- Aggregate symptom improvement (mean ICIQ score change pre/post)
+- Aggregate pain reduction (mean pain score change)
+- Adherence rate (% of participants completing assigned protocol)
+- Satisfaction score (aggregate)
+- Safety: number of reported concerns, number of corrective care actions
+- Clinician review metrics: average review time, modification rate
+
+8b. What is NOT Published
+- No individual-level data
+- No demographic breakdowns that could allow re-identification (e.g., no age x zip code x diagnosis)
+- No proprietary algorithm details
+- No clinician-identifiable information
+
+Dashboard metrics will be updated quarterly or as required by OAIP terms.
+
+9. Participant Rights
+- Right to access: Participants may request a copy of their complete clinical record at any time. The patient care plan portal provides direct access to assessment scores, exercises, recommendations, strategies, and a printable full report. Patients may also download their care plan as a PDF via the "Export for MyChart / EHR" feature.
+- Right to withdraw: Participants may withdraw from the pilot at any time. Withdrawal does not affect data already collected for safety reporting and regulatory compliance, but no new data will be collected.
+- Right to restrict: Participants may request restrictions on specific data uses, subject to regulatory reporting requirements.
+- Right to be informed: Participants are informed at enrollment of all data sharing practices through the informed consent.
+
+10. Data Governance Contact
+Questions about data practices may be directed to Expect's designated privacy contact: [To be provided in pilot materials].
+
+
+APPENDIX D (Updated): Clinical Reviewer Checklist -- Utah OAIP Pilot
+
+Dr. Nicole Dugan, PT, DPT, WCS -- 3-5 Minute Review Guide
+
+The system handles scoring and exercise selection automatically. Your role is to verify logic matched correctly and no edge cases slipped through. Keep reviews under 5 minutes.
+
+Step 1: Safety Verification
+- Confirm no 'Yes' answers for red flags (bleeding, fever, chest pain, headache, UTI). System should have redirected -- quick visual check for glitches.
+- If a safety answer was changed during intake, review the SAFETY_ANSWER_CHANGED alert and verify the patient's revised answer is clinically appropriate.
+
+Step 2: Tier Assignment
+- Check ICIQ Total and verify correct tier:
+  - ICIQ 13-21 -> Beginner: 12 weeks, starts with Supine PF Activation, PT review q3 days
+  - ICIQ 6-12 -> Moderate: 8 weeks, standard Quick Squeeze start, weekly check-in
+  - ICIQ 1-5 -> Advanced: 6 weeks, higher volume, functional positions, bi-weekly check-in
+
+Step 3: Adjunct Verification
+- Pain >= 4 -> Pain De-Sensitization Breathing should be first exercise
+- Pain >= 5 OR Dyspareunia -> Vaginal Dilator Therapy adjunct
+- Urgency or Mixed subtype -> Bladder Retraining adjunct
+- Constipation >= 2 -> Bowel Management Program
+- Medication modification = Yes -> Medication Review Referral adjunct with DIAPPERS framework note
+
+Step 4: Cue Personalization Check
+- Confirm exercise instructions use the patient's selected cue style (biologic / imaginative / breathing / simple contract / default)
+- Instructions should NOT say only 'squeeze your pelvic floor' or 'engage your pelvic floor' -- research shows these general cues are least effective (Crane & Dugan, 2025)
+- If biologic cue selected: verify the urination warning appears ("Never practice this during actual urination")
+
+Step 5: Avoidance and Escalation Check
+- If >= 3 avoided activities: verify HIGH IMPACT flag is set and goal includes resuming avoided activities
+- If ICIQ >= 19 OR (>= 3 avoided activities + elevated pain): verify enhanced monitoring is flagged
+- If medication modification = Yes: verify Medication Review Referral adjunct is present
+- If pudendal neuralgia indicators present (sitting_long trigger + pain >6/10): verify G57.91 diagnosis and "avoid prolonged sitting exercises" precaution are present
+
+Step 5b: Prenatal Protocol Check (if applicable)
+- If patient indicated active pregnancy: verify PRENATAL_FLAG is set and prenatal exercise substitutions have been applied
+- Confirm incline/side-lying variants are appropriate for the patient's current trimester
+- Verify the vena cava compression precaution block is present
+- Confirm the care plan is labeled "Prenatal Pelvic Floor Protocol"
+
+Step 6: Routing Destination Check
+- Verify provider fax verification status (VERIFIED / DEFAULT / MANUAL ENTRY)
+- If DEFAULT: confirm the pre-populated fax number is correct for the provider's organization and specialty
+- If concierge pending: confirm transmission hold is active
+
+Step 7: Final Sign-Off
+- Does the overall plan make clinical sense for this patient's presentation?
+- Any red flags the system may have missed?
+- Are exercise parameters (sets, reps, hold times) appropriate for the assigned tier?
+
+If everything checks out: Click 'Approve Plan.' Target review time: 3-5 minutes.
+If something needs adjustment: Modify the plan directly in the review interface. All modifications are logged in the audit trail.
+
+This checklist corresponds to the prevention-first safety architecture described in Appendix B, Section 1.
+
+
+APPENDIX E: Operational Design, Pilot Phases, and Patient Experience
+
+Expect -- Utah OAIP Pilot -- February 2026
+
+1. The Access Gap in Utah
+
+As described in Section 1.3, Utah has approximately 7 pelvic floor PT specialists for 3.4 million total residents (approximately 1.6 million adult women). Wait times average 6-12 weeks in urban areas; rural access is essentially unavailable. For many women, this pilot may be the only way they receive evidence-based pelvic floor care.
+
+2. Clinical Evidence Base
+
+The Expect protocol uses validated clinical instruments, peer-reviewed evidence, and a licensed clinician review layer.
+
+2a. Validated Instruments
+- ICIQ-UI SF (International Consultation on Incontinence Questionnaire, Short Form): The gold standard for measuring urinary incontinence severity. Validated, widely used in clinical trials and clinical practice globally.
+- FLUTS (Female Lower Urinary Tract Symptoms): Comprehensive symptom assessment instrument.
+- GUPI (Genitourinary Pain Index): Validated pain assessment for pelvic pain conditions.
+
+2b. Evidence-Based Exercise Selection
+The specific exercises in the Expect protocol (Bridge Lift, Quick Squeeze Kegels, Long Hold Kegels, Diaphragmatic Breathing) are directly linked to ICIQ score reduction through pelvic floor strengthening. Prenatal patients receive pregnancy-safe exercise substitutions (see Section 3.7). The protocol uses the validated "Imaginative Cueing" framework from Crane, Dugan et al. (2025), co-authored by Expect's Doctor of Physical Therapy. This paper is one of the most downloaded in the history of the Journal of Women's & Pelvic Health Physical Therapy. The framework statistically improves neuromuscular recruitment (P < .001).
+
+2c. ICIQ Minimal Clinically Important Difference (MCID)
+The pilot success metric of ICIQ improvement >= 3 points average exceeds the Minimal Clinically Important Difference (MCID) of 2.5 points for the ICIQ-UI SF. This means the pilot is not looking for "better numbers"--it is looking for clinically significant improvement that patients can feel.
+
+3. Pilot Phases and PT Review Evolution
+
+See Table 2 (Section 3.1) for complete phase definitions and benchmarks. In summary:
+- Phase 1 (Months 1-4): 100% PT review of all AI-generated plans. Target review time: 3-5 minutes. PT may modify, reject, or rebuild any plan.
+- Phase 2 (Months 5-8): Risk-stratified review. Low-complexity cases may receive expedited review; high-complexity cases remain 100% PT review.
+- Phase 3 (Months 9-12): Low-complexity plans may be auto-approved with retrospective audit. High-complexity cases continue prospective PT review.
+
+Phase transitions require OAIP notification and approval. Any adverse event or safety concern can trigger a return to Phase 1.
+
+4. Success and Failure Definitions
+
+Primary success metric: Mean ICIQ-UI SF score improvement >= 3 points across the pilot cohort (exceeds MCID of 2.5 points).
+
+Secondary metrics:
+- Patient satisfaction score >= 4.0/5.0
+- Protocol adherence rate >= 60%
+- Clinician modification rate < 10% (Phase 1 benchmark)
+- Zero unresolved adverse events
+- Pain score reduction in patients with baseline pain >= 3/10
+
+Failure triggers (any one triggers review):
+- Adverse event rate > 2% of participants
+- Clinician modification rate > 20% (indicates AI is generating poor plans)
+- Mean ICIQ improvement < 2 points at 8-week mark
+- Patient dropout rate > 40% before 4-week mark
+- Any serious adverse event attributable to AI-supported workflow
+
+Termination triggers:
+- Any participant harm directly attributable to AI error not caught by PT review
+- Loss of clinical oversight (PT unavailability exceeding 48 hours)
+- OAIP directive to terminate
+- Loss of insurance coverage
+
+5. End-to-End Patient Experience (HIPAA-Compliant)
+
+5d. Post-Assessment Email (Draft)
+Subject: We've received your assessment (Here's what happens next)
+
+Hi [Patient Name],
+
+Thank you for completing your Pelvic Floor Health Check. Here is exactly what is happening right now:
+- AI Analysis: Our system is analyzing your responses against clinical guidelines to draft a preliminary exercise schedule.
+- Human Clinical Review: Your draft plan has been sent to the queue for Dr. Nicole Dugan, PT, DPT (or a clinical team member).
+- Safety Check: A licensed Physical Therapist will personally review your answers, red-flag screening, and the AI's recommendations.
+- Final Approval: Only after the PT signs off will the plan be released to your portal.
+- Timeline: You will receive a notification when your plan is approved, typically within 24 hours.
+
+Note: Expect is a participant in the Utah Office of AI Policy Regulatory Sandbox. If you have questions about how AI is used in your care, please reply to this email.
+Please note that standard email is not encrypted. Do not reply to this email with sensitive medical information.
+
+5e. Portal Notification Email (Draft)
+Subject: New message from your Expect care team
+
+Hi [First Name],
+
+You have a new document available in your secure Expect portal.
+[Button: Sign in to View]
+For your security, this link will expire in 24 hours. If you did not request this, please ignore this email. Do not reply to this email. This inbox is not monitored.
+
+6. Vulnerable Populations Considerations
+
+The Expect pilot addresses multiple vulnerable populations:
+- Currently pregnant patients: Conditional screening for high-risk pregnancy. Normal pregnancies receive a prenatal-adapted care plan (see Section 3.7, Prenatal Pelvic Floor Protocol).
+- Postpartum patients: Safety screening includes postpartum-specific red flags (fever, headache with vision changes). Warning messages explicitly note postpartum urgency while remaining applicable to non-postpartum patients.
+- Rural Utah residents: As noted in Section 1.3, rural Utahns have effectively no access to pelvic floor PT. This pilot may be their only access point.
+- Patients with pain: The GUPI instrument and NRS pain scales screen for significant pain. The exercise protocol deprioritizes strength and prioritizes pain management for patients with pain scores >= 4/10. Pain De-Sensitization Breathing is placed first in their program.
+- Patients modifying medications: Patients who report changing prescribed medication due to urinary symptoms receive a Medication Review Referral adjunct with DIAPPERS framework guidance.
+- Patients with high avoidance: Patients avoiding 3+ activity categories receive HIGH IMPACT classification with enhanced monitoring and functional goal-setting.
+- Low health literacy: The patient-facing care plan uses plain language, visual scores, expandable exercise instructions with step-by-step guidance, common mistake warnings, and stop conditions.
+- Patients in crisis: Red-flag screening redirects to 911 or physician immediately (see Section 1.4, Step 2).
+- Patients with suspected pudendal neuralgia: Sitting-related pain triggers + pain >6/10 flagged for PT review with ICD-10 G57.91 (see Section 1.4, Step 5).
+
+7. Platform Quality Improvements (February -- March 2026)
+
+All platform features described in this proposal were implemented during February-March 2026 submission preparation. A complete changelog with technical detail is available on request.
+
+
+Tables
+
+Table 1: Statutes Causing Friction (Section 2.1)
+
+| Statute / Rule | Issue | Relief Requested |
+|---|---|---|
+| Utah Code 58-24b (PT Practice Act) | AI-generated treatment plans could be construed as the "practice of physical therapy" by an unlicensed entity. During the calibration phase, a licensed PT reviews and approves every plan. In subsequent phases, low-risk plans may be auto-approved following the volume-based graduated autonomy model. The AI's expanding role in generating clinical recommendations requires clarification. | Clear interpretation that AI functioning as a clinical decision support tool under mandatory PT review does not constitute unlicensed practice. Alternatively, a cure period of 30 days if OAIP determines the platform inadvertently crosses the practice boundary. |
+| Utah Code 58-1-501 (Unlicensed Practice) | General prohibition on unlicensed practice of regulated professions. The AI's generation of ICD-10 codes and exercise prescriptions--even though reviewed by a licensed PT--may trigger enforcement concern. | Regulatory mitigation providing that the AI's output constitutes a recommendation to a licensed professional, not direct patient care, and is therefore not unlicensed practice. |
+| UAIPA Disclosure Requirements (SB 149 / SB 226) | The platform uses AI in a clinical healthcare interaction. Disclosure requirements must be met. Expect already implements extensive disclosure through informed consent and "first touch" labeling. | Confirmation that Expect's informed consent process (10-item checklist with explicit AI disclosure) satisfies UAIPA requirements. Cure period if additional disclosure is needed. |
+| HIPAA / Utah Health Data Privacy | Collection of sensitive pelvic health data, symptom scores, treatment plans, and messaging through a telehealth platform. | No relief needed--Expect is designed for full HIPAA compliance. Included for transparency. |
+| Utah Telehealth Act (26-60) | Delivery of PT services via telehealth platform. Utah permits telehealth PT, but AI augmentation is novel. | Clear interpretation that AI-augmented telehealth PT, with licensed PT oversight, falls within existing telehealth PT authorization. |
+
+Table 2: Pilot Phases and Timeline (Section 3.1)
+
+| Phase | Duration | Description | Benchmark to Advance |
+|---|---|---|---|
+| Pre-Deployment | Months -2 to 0 | Platform shared with OAIP for technical review. Informed consent language approved. Test patients (internal) complete full workflow. HIPAA technical safeguards fully implemented: AES-256 encryption at rest, authentication and authorization enforcement, and automatic session timeout. | OAIP technical sign-off; no critical defects; consent approved; HIPAA technical safeguards verified before any real patient data enters the system |
+| Phase 1: Calibration Mode | First 250 plans per diagnosis subtype (est. Months 1-4) | 100% of AI-generated plans reviewed by PT before patient delivery. All scores, responses, and AI reasoning visible to PT. Minimum 2-minute review time enforced. Graduation requires 250 consecutive AI-PT matches per diagnosis subtype (Stress UI, Urge UI, Mixed UI), following the volume-based gating standard established by the approved Doctronic pilot. Target: 250+ enrolled patients across subtypes. | 250 consecutive AI-PT matches per subtype achieved; AI-PT agreement rate >=95%; zero adverse events; zero PHI breaches; PT satisfaction >=4/5 |
+| Phase 2: High-Frequency Sampling | Months 4-8 | AI plans for low-risk patients (ICIQ <=12, pain <=3, Moderate/Mild) may be auto-approved with PT spot-check (10% random audit, consistent with the Doctronic post-calibration standard). High-risk patients remain 100% PT review. Target: 500 enrolled. | Sustained AI-PT agreement >=95%; ICIQ improvement >=3 pts avg; adverse events = 0; complaint rate <5% |
+| Phase 3: Expanded Deployment | Months 9-12 | Auto-approval threshold expanded. PT review for all high-risk and first-time patients. Statewide Medicaid MCO partnerships activated. Target: 500 enrolled. | Continued safety metrics; outcomes data sufficient for peer-reviewed publication; OAIP final review |
+
+Table 3: Benchmark Requirements for Phase Progression (Section 3.3)
+
+| Metric | Phase 1 Threshold | Phase 2 Threshold | Phase 3 Threshold |
+|---|---|---|---|
+| AI-PT Plan Agreement | >=95% | >=95% | >=95% |
+| Adverse Events | 0 | 0 | <0.5% of enrollees |
+| PHI Breaches | 0 | 0 | 0 |
+| Patient Complaint Rate | <5% | <5% | <3% |
+| ICIQ Score Improvement | Any measurable | >=3 pts avg at 8 wks | >=3 pts avg at 8 wks |
+| PT Review Time (avg) | >=2 min | >=2 min (audited) | >=2 min (audited) |
+| Patient Adherence | >50% | >65% | >70% |
+| Consent Completion | 100% | 100% | 100% |
+
+Table 4: Proposed Reporting Process (Section 3.5)
+
+| Report Type | Frequency | Audience | Contents |
+|---|---|---|---|
+| Client Safety Report | Monthly | OAIP | Adverse events, red-flag triage outcomes, safety answer changes, clinical regression reports, exercise pain reports, complaint log, PT override rate, system downtime |
+| Efficacy Report | Monthly | OAIP | ICIQ/GUPI/pain score changes, adherence, plan completion rates, time-to-improvement |
+| Patient Feedback Report | Monthly | OAIP | NPS scores, qualitative feedback themes, opt-out rates, consent completion, clarity request counts |
+| Public Dashboard | Monthly | Public | Aggregate enrollment, outcomes, safety metrics (no PHI) |
+| Provider Report | Quarterly | PTs, OAIP | PT satisfaction, review time analysis, AI-PT agreement details, clinical workflow metrics, default fax usage rates |
+| Comprehensive Pilot Report | Months 6, 12 | OAIP, Public, Researchers | Full analysis of safety, efficacy, fairness, cost, and regulatory compliance |
+
+Table 5: Foreseeable Risks and Mitigations (Section 4.1)
+
+| Risk Category | Specific Risk | Likelihood | Impact | Mitigation |
+|---|---|---|---|---|
+| AI Failure | AI generates incorrect diagnosis or inappropriate exercise prescription | Medium | High | Mandatory PT review of every AI output during calibration phase (first 250 cases per subtype). Validated instruments limit AI interpretation scope. PT can reject/modify any recommendation at any phase. 9 guardrail checks alert PT to inconsistencies. |
+| AI Failure | Algorithmic error in treatment plan generation | Low | High | Plan generation uses deterministic scoring algorithms, not free-text LLM generation. ICD-10 codes derived from validated score thresholds. No generative AI in the scoring pipeline. Pudendal neuralgia detection uses a heuristic flag (sitting_long trigger + pain >6/10) that requires mandatory PT review -- it is not acted on autonomously. |
+| AI Failure | Systematic scoring error affecting multiple patients | Low | Very High | Scoring functions validated against published instrument scoring manuals. PT review catches individual errors. Monthly audit of 10% random sample by independent clinician. |
+| Patient Safety | Patient experiences adverse event during prescribed exercise | Low-Medium | Medium-High | Red-flag triage screens for emergencies before intake. Pain >3/10 precaution on all plans. Patient can report symptoms via 6-pathway "Report a Problem" button (including exercise pain and worsening symptoms pathways with severity sliders). Clinical regression reports with severity >=7 are flagged as CRITICAL in the OAIP dashboard. |
+| Patient Safety | Delay in care due to platform failure | Low | Medium | Patient retains access to referring physician throughout. Platform uptime SLA: 99.5%. Downtime notification within 1 hour. Reversion to phone-based PT consultation during extended outage. |
+| System Failure | Server downtime or data loss | Low | High | Supabase cloud infrastructure (hosted on AWS) with 99.9% uptime SLA. Daily encrypted backups with Point-in-Time Recovery enabled. Disaster recovery: 4-hour RTO, 1-hour RPO. Audit log stored in INSERT-only PostgreSQL table with Row Level Security. |
+| Data Privacy | PHI breach or unauthorized access | Low | Very High | HIPAA-compliant architecture: TLS 1.3 in transit, role-based view separation (Patient/PT/OAIP). AES-256 encryption at rest planned for production deployment. PHI is present in the audit log as part of the clinical record; the built-in Auditor Mode masks 17 PHI field types with hashed identifiers for regulatory review. Annual penetration testing. BAA with all subprocessors. |
+| Data Privacy | Fax misdirection via default fax number | Low | Medium | Default fax numbers are pre-populated only when NPI Registry has no fax on file, using verified org/specialty matching rules for major Utah health systems. Amber "Default -- verify before sending" warning displayed to PT. DEFAULT_FAX_APPLIED audit event logged with fax number and matching rule. Surfaced as yellow flag in OAIP dashboard. PT must actively click Send. Demo providers are excluded from default fax matching. |
+| Consent | Patient does not understand AI involvement | Medium | Medium | 10-item informed consent with plain-language AI disclosure. Mandatory checkbox for each item. Right to opt out prominently displayed (including via "Report a Problem" button). Consent version-controlled and logged. |
+| Fairness | Platform inaccessible to non-English speakers or low-literacy patients | Medium | Medium | Spanish-language version planned for Phase 2. Plain-language questions (6th-grade reading level). Audio-assisted option in roadmap. Medicaid outreach in underserved areas. |
+
+Table 6: Vulnerable Populations (Section 4.2)
+
+| Population | Risk | Protection |
+|---|---|---|
+| Early postpartum (<6 weeks) | Tissue healing; infection risk; postpartum depression | Gentle PF-only exercises prescribed. Precaution added automatically. Fever red flag specifically targets postpartum infection. PT alert for any postpartum <6wk patient. |
+| Currently pregnant | Supine positioning risk (vena cava compression); exercise appropriateness varies by trimester | Conditional high-risk pregnancy screening. Supine exercises auto-substituted with incline/side-lying variants. PT clinical alert for trimester review. PRENATAL_PROTOCOL_APPLIED flag (MODERATE severity) sent to OAIP. See Section 3.7, Prenatal Pelvic Floor Protocol. |
+| Patients with severe/rare conditions | Conditions beyond platform scope (e.g., pelvic organ cancer, neurological disease) | Red-flag triage redirects to emergency or physician care. AI does not generate plans for patients with active red flags. 6 exclusion questions (plus 1 conditional for high-risk pregnancy) screen for conditions outside platform scope. Platform explicitly limited to PF dysfunction--not differential diagnosis of underlying pathology. |
+| Patients with limited ability to consent | Cognitive impairment, language barriers | Consent requires active checkbox for each of 10 items. Age verification (18+). Plain-language design. Opt-out available at any time (including via "Report a Problem" button). No auto-enrollment. |
+| Minors (<18) | Not appropriate for this platform | Age verification at consent via DOB validation (18-120 range). Platform restricted to adults 18+. |
+| Severe Postpartum Depression (PPD) | PPD can impact cognitive function and decision-making capacity | PHQ-2 depression screening (2 questions, threshold >=3/6). Positive scores trigger an inline clinical consistency warning, a depression_screen_positive audit event with severity classification (MODERATE 3-4, HIGH 5-6), and flag for reviewing PT to verify capacity to consent. Surfaced as DEPRESSION_RISK in OAIP Red Flags dashboard. |
+| Patients with suspected pudendal neuralgia | Nerve-related pain requires specialized evaluation | System detects sitting-related pain triggers combined with pain >6/10. Flags with ICD-10 G57.91, adds precaution against prolonged sitting exercises, and triggers mandatory PT guardrail alert for nerve involvement evaluation. |
