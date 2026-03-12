@@ -373,7 +373,7 @@ Full bidirectional EHR connectivity is planned for Phase 3 or the extension peri
 HIPAA Compliance
 Expect is designed to achieve full HIPAA compliance before production deployment. During the sandbox/testing phase, the following safeguards are in place, with additional safeguards planned for production:
 - Technical safeguards (implemented): TLS 1.3 in transit (HTTPS), audit logging (24 event types), Auditor Mode de-identification, role-based view separation (Patient, PT Provider, and OAIP views)
-- Technical safeguards (roadmap -- pre-production): Authentication and authorization enforcement, automatic session timeout. Convex provides automatic encryption at rest and in transit as a platform feature (SOC 2 Type II audited). The consent form transparently discloses the current data storage approach and production deployment timeline.
+- Technical safeguards (roadmap -- pre-production): Authentication and authorization enforcement, automatic session timeout. Convex provides automatic encryption at rest and in transit as a platform feature (SOC 2 Type II audited). All persistent data storage, authentication, and encryption will be fully operational before any real patient data enters the system in Phase 1 (see Table 2, Pre-Deployment requirements). The consent form transparently discloses the current data storage approach and production deployment timeline.
 - Administrative safeguards: HIPAA training for all personnel, incident response plan, designated Privacy Officer and Security Officer
 - Physical Safeguards: Convex HIPAA-compliant cloud infrastructure (Enterprise Plan, SOC 2 Type II audited) with BAA executed
 - Business Associate Agreements executed with any partners
@@ -414,7 +414,7 @@ Expect has a viable financial model and demonstrated ability to secure and execu
 - Revenue model: PT evaluation billing (CPT 97161-97163) and telehealth follow-up codes under Utah Medicaid and commercial insurance. Expect is already reimbursed by Harvard Pilgrim and Tufts Health Plans (2.2M+ covered lives), establishing payer acceptance for the platform model.
 - Government contracts: Active paid contract with the Boston Public Health Commission (funded by the U.S. Department of Health and Human Services), demonstrating Expect's ability to deliver healthcare services under government oversight and reporting requirements analogous to the OAIP pilot.
 - Operational efficiency: AI augmentation is projected to reduce PT time per patient by approximately 60% (preliminary internal analysis; formal validation during Phase 1), resulting in a low per-patient marginal cost. The platform's asynchronous delivery model requires minimal infrastructure compared to synchronous telehealth or in-person care.
-- Low burn rate: The platform is a single-file web application deployed on Convex (serverless infrastructure), with no physical office or equipment costs for the Utah pilot. Clinical costs are limited to PT review time (3--5 minutes per plan).
+- Low burn rate: The platform is a single-file web application deployed on Vercel (serverless web hosting) with Convex as the HIPAA-compliant backend database, with no physical office or equipment costs for the Utah pilot. Clinical costs are limited to PT review time (3--5 minutes per plan).
 - Pilot funding: Expect has sufficient capitalization to operate the 12-month pilot without external funding dependency. Prior grant awards from Tiger Global Accelerate(HER) Fund, Harvard Business School Black Alumni Venture Competition, Wharton Scaling Your Entrepreneurial Venture, NYU Catalyst NYC / Empire State Development, and MedTech Color demonstrate investor and institutional confidence in the business model.
 
 Liability Insurance
@@ -506,7 +506,7 @@ Commercial Information
 Reasons Supporting Confidentiality
 (1) The AI plan generation algorithms represent substantial investment in clinical research, software development, and expert consultation. Disclosure would enable competitors to replicate the platform's clinical logic without comparable investment. (2) Financial and partnership information, if disclosed, would disadvantage Expect in ongoing and future negotiations with payers, providers, and investors. (3) Confidentiality is consistent with the treatment of analogous information in prior OAIP regulatory mitigation agreements (e.g., Doctronic, ElizaChat, Dentacor).
 
-Expect acknowledges that aggregate outcomes data, safety metrics, and compliance reporting shared with the OAIP and the public are not subject to confidentiality claims and will be disclosed as described in Section 3.5.
+Expect acknowledges that aggregate outcomes data, safety metrics, and compliance reporting shared with the OAIP and the public are not subject to confidentiality claims and will be disclosed as described in Section 3.6.
 
 
 APPENDIX A: Platform Technical Architecture
@@ -735,7 +735,7 @@ Dashboard metrics will be updated quarterly or as required by OAIP terms.
 - Right to be informed: Participants are informed at enrollment of all data sharing practices through the informed consent.
 
 10. Data Governance Contact
-Questions about data practices may be directed to Expect's designated privacy contact: [To be provided in pilot materials].
+Questions about data practices may be directed to Expect's designated Privacy Officer: Joseph Pacheco, CPTO (privacy@expecthealth.com).
 
 
 APPENDIX D (Updated): Clinical Reviewer Checklist -- Utah OAIP Pilot
@@ -928,7 +928,7 @@ Table 3: Benchmark Requirements for Phase Progression (Section 3.3)
 | Patient Adherence | >50% | >65% | >70% |
 | Consent Completion | 100% | 100% | 100% |
 
-Table 4: Proposed Reporting Process (Section 3.5)
+Table 4: Proposed Reporting Process (Section 3.6)
 
 | Report Type | Frequency | Audience | Contents |
 |---|---|---|---|
