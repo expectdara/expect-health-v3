@@ -5,7 +5,8 @@ export default async function handler(req, res) {
   try {
     const response = await fetch(url);
     const data = await response.json();
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    const allowed = process.env.CORS_ORIGIN || "https://expecthealth.com";
+    res.setHeader("Access-Control-Allow-Origin", allowed);
     res.status(200).json(data);
   } catch (e) {
     res.status(502).json({ error: "NPI Registry unreachable" });
