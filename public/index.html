@@ -23,7 +23,7 @@ const C={
 };
 const log=[];let _lid=0;function L(t,d){log.unshift({id:`A${++_lid}`,ts:new Date().toISOString(),type:t,...d})}
 // Shared audit event color map (used by PT AuditLog and OAIP audit stream)
-const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",SPELL_CHECK:C.blue,CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or,daily_adherence_entry:C.gn,checkin_week8_complete:C.blue,PT_ALERT_NO_ICIQ_PROGRESS:"#EA580C",BOWEL_REGRESSION:C.or,flutsex_improvement:C.gn,flutsex_regression:C.rd,RTM_setup_complete:C.purpL,phq2_resource_card_shown:C.or,FOLLOWUP_NONRESPONSE:"#DC2626",CLINICAL_ESCALATION:"#DC2626",surgical_avoidance_confirmed:C.gn,psi_referral:C.or,psi_referral_approved:C.gn,phq2_followup_email_queued:C.or,expansion_match:C.blueL,month12_checkin_complete:C.blue};
+const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",SPELL_CHECK:C.blue,CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or,daily_adherence_entry:C.gn,checkin_week8_complete:C.blue,PT_ALERT_NO_ICIQ_PROGRESS:"#EA580C",BOWEL_REGRESSION:C.or,flutsex_improvement:C.gn,flutsex_regression:C.rd,RTM_setup_complete:C.purpL,phq2_resource_card_shown:C.or,FOLLOWUP_NONRESPONSE:"#DC2626",CLINICAL_ESCALATION:"#DC2626",surgical_avoidance_confirmed:C.gn,psi_referral:C.or,psi_referral_approved:C.gn,phq2_followup_email_queued:C.or,expansion_match:C.blueL,month12_checkin_complete:C.blue,CARE_PLAN_DOWNLOADED:C.blue};
 // PHI-sensitive audit keys that must be masked in auditor mode
 const PHI_KEYS=["patient","name","detail","description","original","corrected","text","note","email"];
 
@@ -1107,6 +1107,9 @@ function MyCareplan({data}){
   const[adhStatus,setAdhStatus]=useState(null);
   const[adhNote,setAdhNote]=useState("");
   const[showCheckin,setShowCheckin]=useState(false);
+  const[showExport,setShowExport]=useState(false);
+  const[exportDone,setExportDone]=useState(false);
+  const cpRef=useRef(null);
   const[week8Results,setWeek8Results]=useState(data.week8||null);
   const logAdherence=()=>{
     const entry={date:new Date().toISOString().split("T")[0],status:adhStatus,note:adhNote||undefined};
@@ -1416,7 +1419,7 @@ function MyCareplan({data}){
 
   return<div className="fi">
     <style>{cpCSS}</style>
-    <div className="cp-shell">
+    <div className="cp-shell" ref={cpRef}>
       {/* Polished Header */}
       <div className="cp-hdr">
         <div className="cp-logo"><img src="Expect_Logo_WhiteTM.png" alt="EXPECT" style={{height:28,marginBottom:4}}/></div>
@@ -1446,6 +1449,58 @@ function MyCareplan({data}){
       {tab==="strategies"&&<StrategiesTab/>}
       {tab==="report"&&<ReportTab/>}
       {tab==="week8results"&&<Week8Tab/>}
+
+      {/* MyChart / EHR Export */}
+      <div style={{textAlign:"center",margin:"20px 0"}}>
+        <button onClick={()=>setShowExport(true)} style={{display:"inline-flex",alignItems:"center",gap:8,padding:"10px 22px",background:"#fff",border:`1.5px solid ${C.purp}`,borderRadius:10,color:C.purp,fontSize:13,fontWeight:600,cursor:"pointer",transition:".2s"}}
+          onMouseEnter={e=>Object.assign(e.currentTarget.style,{background:C.purp,color:"#fff"})}
+          onMouseLeave={e=>Object.assign(e.currentTarget.style,{background:"#fff",color:C.purp})}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export for MyChart / EHR
+        </button>
+      </div>
+
+      {/* Export Modal */}
+      {showExport&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999}} onClick={()=>setShowExport(false)}>
+        <div style={{background:"#fff",borderRadius:16,padding:"28px 32px",maxWidth:440,width:"90%",boxShadow:"0 20px 60px rgba(0,0,0,.2)",position:"relative"}} onClick={e=>e.stopPropagation()}>
+          <button onClick={()=>setShowExport(false)} style={{position:"absolute",top:12,right:14,background:"none",border:"none",fontSize:18,color:C.g400,cursor:"pointer"}}>✕</button>
+          <div style={{fontSize:18,fontWeight:700,color:C.purp,marginBottom:4}}>Share with your Doctor</div>
+          <div style={{fontSize:13,color:C.g600,lineHeight:1.6,marginBottom:16}}>You can upload your Expect Care Plan directly to your Intermountain MyChart or other patient portals.</div>
+          <div style={{background:C.g50,borderRadius:10,padding:"14px 16px",marginBottom:18}}>
+            <div style={{fontSize:12,fontWeight:600,color:C.g700,marginBottom:8}}>How to share:</div>
+            <ol style={{margin:0,paddingLeft:18,fontSize:12,color:C.g600,lineHeight:1.8}}>
+              <li>Download your secure PDF below.</li>
+              <li>Log in to your health system's app (e.g., MyChart).</li>
+              <li>Go to <b>Messages</b> or <b>Document Sharing</b> and attach this file for your provider.</li>
+            </ol>
+          </div>
+          <button onClick={()=>{
+            L("CARE_PLAN_DOWNLOADED",{patient:fullName,context:"PATIENT_DIRECTED_EHR_SHARING"});
+            const el=cpRef.current;if(el){
+              const w=window.open("","_blank","width=820,height=1100");
+              if(w){
+                const styles=document.querySelectorAll("style");
+                let css="";styles.forEach(s=>{css+=s.innerHTML});
+                w.document.write("<!DOCTYPE html><html><head><title>Expect Care Plan — "+fullName+"</title>");
+                w.document.write("<style>"+css+"</style>");
+                w.document.write("<style>body{margin:20px;font-family:'DM Sans',sans-serif}@media print{body{margin:0}.cp-sample{display:none}button{display:none !important}}</style>");
+                w.document.write("</head><body>");
+                w.document.write(el.innerHTML);
+                w.document.write("</body></html>");
+                w.document.close();
+                setTimeout(()=>{w.print()},400);
+              }
+            }
+            setShowExport(false);setExportDone(true);
+          }} style={{width:"100%",padding:"12px 0",background:`linear-gradient(135deg,${C.purp},${C.pink})`,color:"#fff",border:"none",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download Secure PDF
+          </button>
+          <div style={{fontSize:10,color:C.g400,textAlign:"center",marginTop:10}}>Your data stays on your device. Expect does not transmit PHI through this download.</div>
+        </div>
+      </div>}
+
+      {exportDone&&<div style={{textAlign:"center",marginBottom:16}}><div style={{display:"inline-block",padding:"8px 16px",borderRadius:8,background:`${C.gn}10`,color:C.gn,fontSize:12,fontWeight:600}}>✓ Care plan downloaded · Logged to audit stream</div></div>}
 
       <div className="cp-footer">
         <p>This care plan was generated by Expect's AI-augmented platform and reviewed by a licensed Physical Therapist.</p>
