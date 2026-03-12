@@ -1110,6 +1110,8 @@ function MyCareplan({data}){
   const[showExport,setShowExport]=useState(false);
   const[exportDone,setExportDone]=useState(false);
   const cpRef=useRef(null);
+  useEffect(()=>{document.body.style.overflow=showExport?"hidden":"";return()=>{document.body.style.overflow=""}},[showExport]);
+  useEffect(()=>{if(exportDone){const t=setTimeout(()=>setExportDone(false),8000);return()=>clearTimeout(t)}},[exportDone]);
   const[week8Results,setWeek8Results]=useState(data.week8||null);
   const logAdherence=()=>{
     const entry={date:new Date().toISOString().split("T")[0],status:adhStatus,note:adhNote||undefined};
@@ -1190,6 +1192,8 @@ function MyCareplan({data}){
   .cp-prn:hover{border-color:#6D28D9;color:#6D28D9}
   .cp-footer{text-align:center;padding:20px 0;font-size:11px;color:#9CA3AF}
   .cp-footer a{color:#6D28D9;text-decoration:none}
+  .cp-export-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 22px;background:#fff;border:1.5px solid #6D28D9;border-radius:10px;color:#6D28D9;font-size:13px;font-weight:600;cursor:pointer;transition:.2s;font-family:inherit}
+  .cp-export-btn:hover{background:#6D28D9;color:#fff}
   `;
   // If showing checkin, render that instead
   if(showCheckin)return<div className="fi"><style>{cpCSS}</style><div className="cp-shell"><Week8CheckIn baseline={baseline} onComplete={onCheckinComplete}/></div></div>;
@@ -1452,9 +1456,7 @@ function MyCareplan({data}){
 
       {/* MyChart / EHR Export */}
       <div style={{textAlign:"center",margin:"20px 0"}}>
-        <button onClick={()=>setShowExport(true)} style={{display:"inline-flex",alignItems:"center",gap:8,padding:"10px 22px",background:"#fff",border:`1.5px solid ${C.purp}`,borderRadius:10,color:C.purp,fontSize:13,fontWeight:600,cursor:"pointer",transition:".2s"}}
-          onMouseEnter={e=>Object.assign(e.currentTarget.style,{background:C.purp,color:"#fff"})}
-          onMouseLeave={e=>Object.assign(e.currentTarget.style,{background:"#fff",color:C.purp})}>
+        <button className="cp-export-btn" onClick={()=>{if(tab!=="report"){if(window.confirm("Switch to the Full Report tab for a complete export?")){setTab("report")}return}setShowExport(true)}}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Export for MyChart / EHR
         </button>
@@ -1463,7 +1465,7 @@ function MyCareplan({data}){
       {/* Export Modal */}
       {showExport&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999}} onClick={()=>setShowExport(false)}>
         <div style={{background:"#fff",borderRadius:16,padding:"28px 32px",maxWidth:440,width:"90%",boxShadow:"0 20px 60px rgba(0,0,0,.2)",position:"relative"}} onClick={e=>e.stopPropagation()}>
-          <button onClick={()=>setShowExport(false)} style={{position:"absolute",top:12,right:14,background:"none",border:"none",fontSize:18,color:C.g400,cursor:"pointer"}}>✕</button>
+          <button onClick={()=>setShowExport(false)} style={{position:"absolute",top:12,right:14,background:"none",border:"none",color:C.g400,cursor:"pointer"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
           <div style={{fontSize:18,fontWeight:700,color:C.purp,marginBottom:4}}>Share with your Doctor</div>
           <div style={{fontSize:13,color:C.g600,lineHeight:1.6,marginBottom:16}}>You can upload your Expect Care Plan directly to your Intermountain MyChart or other patient portals.</div>
           <div style={{background:C.g50,borderRadius:10,padding:"14px 16px",marginBottom:18}}>
@@ -1481,13 +1483,15 @@ function MyCareplan({data}){
             const styles=document.querySelectorAll("style");
             let css="";styles.forEach(s=>{css+=s.innerHTML});
             w.document.write("<!DOCTYPE html><html><head><title>Expect Care Plan — "+fullName+"</title>");
+            w.document.write("<base href=\""+window.location.origin+"/\">");
             w.document.write("<style>"+css+"</style>");
             w.document.write("<style>body{margin:20px;font-family:'DM Sans',sans-serif}@media print{body{margin:0}.cp-sample{display:none}button{display:none !important}.cp-tabs,.adh-widget,.checkin-banner{display:none !important}}</style>");
             w.document.write("</head><body>");
             w.document.write(el.innerHTML);
             w.document.write("</body></html>");
             w.document.close();
-            setTimeout(()=>{w.print()},400);
+            const doPrint=()=>w.print();
+            if(w.document.fonts&&w.document.fonts.ready){w.document.fonts.ready.then(doPrint).catch(doPrint)}else{setTimeout(doPrint,1500)}
             L("CARE_PLAN_DOWNLOADED",{patient:fullName,context:"PATIENT_DIRECTED_EHR_SHARING"});
             setShowExport(false);setExportDone(true);
           }} style={{width:"100%",padding:"12px 0",background:`linear-gradient(135deg,${C.purp},${C.pink})`,color:"#fff",border:"none",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
@@ -1498,7 +1502,7 @@ function MyCareplan({data}){
         </div>
       </div>}
 
-      {exportDone&&<div style={{textAlign:"center",marginBottom:16}}><div style={{display:"inline-block",padding:"8px 16px",borderRadius:8,background:"rgba(34,197,94,0.06)",color:C.gn,fontSize:12,fontWeight:600}}>✓ Care plan downloaded · Logged to audit stream</div></div>}
+      {exportDone&&<div style={{textAlign:"center",marginBottom:16}}><div style={{display:"inline-flex",alignItems:"center",gap:8,padding:"8px 16px",borderRadius:8,background:"rgba(34,197,94,0.06)",color:C.gn,fontSize:12,fontWeight:600}}>✓ Care plan downloaded · Logged to audit stream<button onClick={()=>setExportDone(false)} style={{background:"none",border:"none",color:C.gn,cursor:"pointer",padding:0,lineHeight:1}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div></div>}
 
       <div className="cp-footer">
         <p>This care plan was generated by Expect's AI-augmented platform and reviewed by a licensed Physical Therapist.</p>
