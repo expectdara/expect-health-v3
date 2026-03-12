@@ -103,3 +103,11 @@ Two user types: **patients** (intake flow) and **physical therapists** (review p
 - PT portal top nav: public/index.html line 1892
   - .topnav-logo class
 - Do NOT change logo implementation without asking — PT-facing branding, OAIP pilot materials reference this visual identity
+
+## Document Editing Rules
+- The canonical proposal file is: `expect_oaip_pilot_proposal_FINAL.docx`
+- ALWAYS edit this file directly using unpack → edit XML → repack
+- NEVER create a new document from scratch
+- NEVER use python-docx to rewrite the document - it strips images and formatting
+- Preserve all screenshots, images, and formatting in every edit
+- Only change the specific paragraphs requested - touch nothing else
