@@ -23,7 +23,7 @@ const C={
 };
 const log=[];let _lid=0;function L(t,d){log.unshift({id:`A${++_lid}`,ts:new Date().toISOString(),type:t,...d})}
 // Shared audit event color map (used by PT AuditLog and OAIP audit stream)
-const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",SPELL_CHECK:C.blue,CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or,daily_adherence_entry:C.gn,checkin_week8_complete:C.blue,PT_ALERT_NO_ICIQ_PROGRESS:"#EA580C",BOWEL_REGRESSION:C.or,flutsex_improvement:C.gn,flutsex_regression:C.rd,RTM_setup_complete:C.purpL,phq2_resource_card_shown:C.or,FOLLOWUP_NONRESPONSE:"#DC2626",CLINICAL_ESCALATION:"#DC2626",surgical_avoidance_confirmed:C.gn,psi_referral:C.or,psi_referral_approved:C.gn,phq2_followup_email_queued:C.or,expansion_match:C.blueL,month12_checkin_complete:C.blue,CARE_PLAN_DOWNLOADED:C.blue,PRENATAL_PROTOCOL_APPLIED:C.gn};
+const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or,daily_adherence_entry:C.gn,checkin_week8_complete:C.blue,PT_ALERT_NO_ICIQ_PROGRESS:"#EA580C",BOWEL_REGRESSION:C.or,flutsex_improvement:C.gn,flutsex_regression:C.rd,RTM_setup_complete:C.purpL,phq2_resource_card_shown:C.or,FOLLOWUP_NONRESPONSE:"#DC2626",CLINICAL_ESCALATION:"#DC2626",surgical_avoidance_confirmed:C.gn,psi_referral:C.or,psi_referral_approved:C.gn,phq2_followup_email_queued:C.or,expansion_match:C.blueL,month12_checkin_complete:C.blue,CARE_PLAN_DOWNLOADED:C.blue,PRENATAL_PROTOCOL_APPLIED:C.gn};
 // PHI-sensitive audit keys that must be masked in auditor mode
 const PHI_KEYS=["patient","name","detail","description","original","corrected","text","note","email"];
 
@@ -122,7 +122,7 @@ const CLINICAL_EXTRA=[
 {id:"med_modify",text:"Are you changing how you take any prescribed medication because of urinary symptoms? (e.g., skipping doses, changing timing)",opts:[["No",0],["Yes",1],["Not sure",2]]},
 {id:"prior_treatment",text:"Have you had any prior treatment for pelvic floor issues?",type:"multi",opts:[["None — this is my first time","none"],["Pelvic floor PT (in-person)","prior_pt"],["Pelvic Floor PT (telehealth)","prior_pt_tele"],["Kegel exercises on my own","self_kegel"],["Other exercise","other_exercise"],["Pessary","pessary"],["Biofeedback device","biofeedback"],["Medication","medication"],["Surgery","surgery"]]},
 {id:"cue_preference",text:"Which instruction style helps you find and activate your pelvic floor muscles?",opts:[["Body function: \"Squeeze as if stopping yourself from peeing\" (⚠ Do not perform while urinating) or \"Squeeze as if stopping yourself from passing gas\" (don't squeeze your buttock muscles)","biologic"],["Imaginative: \"Imagine gently closing around and lifting a blueberry\"","imaginative"],["Breath-based: \"While you breathe out, draw in and lift your pelvic floor\"","breathing"],["Simple: \"Contract your pelvic floor muscles\"","simple_contract"],["Not sure yet — surprise me","default"]]},
-{id:"patient_goal",text:"In your own words, what is the main thing you'd like to be able to do more comfortably?",type:"textarea",ph:"e.g., 'Exercise without leaking', 'Pick up my child without pain'",checkSpelling:true},
+{id:"patient_goal",text:"In your own words, what is the main thing you'd like to be able to do more comfortably?",type:"textarea",ph:"e.g., 'Exercise without leaking', 'Pick up my child without pain'"},
 ];
 
 const REDFLAGS=[
@@ -489,8 +489,8 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
   if(q.type==="npi_lookup")return<NPILookup q={q} ans={ans} set={set}/>;
   if(q.type==="concierge_search")return<ConciergeSearch ans={ans} set={set}/>;
   if(q.type==="email"){const raw=ans[q.id+"_raw"]||ans[q.id]||"";const valid=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw);const err=raw&&!valid?"Please enter a valid email address":null;return<div className="qc fi"><div className="qt">{q.text}</div><input className="inp"type="email"value={raw}onChange={e=>{set(q.id+"_raw",e.target.value);set(q.id,/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value)?e.target.value:"")}}placeholder={q.ph||""}/>{err&&<div style={{color:C.rd,fontSize:11,marginTop:4}}>{err}</div>}</div>}
-  if(q.type==="text")return<div className="qc fi"><div className="qt">{q.text}</div><input className="inp"spellCheck={true}value={ans[q.id]||""}onChange={e=>set(q.id,e.target.value)}placeholder={q.ph||""}/>{q.checkSpelling&&<SpellCheck value={ans[q.id]}onAccept={v=>set(q.id,v)}/>}</div>;
-  if(q.type==="textarea")return<div className="qc fi"><div className="qt">{q.text}</div><textarea className="inp"spellCheck={true}value={ans[q.id]||""}onChange={e=>set(q.id,e.target.value)}placeholder={q.ph||""}/>{q.checkSpelling&&<SpellCheck value={ans[q.id]}onAccept={v=>set(q.id,v)}/>}</div>;
+  if(q.type==="text")return<div className="qc fi"><div className="qt">{q.text}</div><input className="inp"spellCheck={true}value={ans[q.id]||""}onChange={e=>set(q.id,e.target.value)}placeholder={q.ph||""}/></div>;
+  if(q.type==="textarea")return<div className="qc fi"><div className="qt">{q.text}</div><textarea className="inp"spellCheck={true}value={ans[q.id]||""}onChange={e=>set(q.id,e.target.value)}placeholder={q.ph||""}/></div>;
   if(q.type==="twotext")return<div className="qc fi"><div className="qt">{q.text}</div><div style={{display:"flex",gap:10}}><div style={{flex:1}}><div className="il">First name</div><input className="inp"value={ans[q.id+"_first"]||""}onChange={e=>set(q.id+"_first",e.target.value)}/></div><div style={{flex:1}}><div className="il">Last name</div><input className="inp"value={ans[q.id+"_last"]||""}onChange={e=>set(q.id+"_last",e.target.value)}/></div></div></div>;
   if(q.type==="yn")return<div className="qc fi"><div className="qt">{q.text}</div><div style={{display:"flex",gap:8}}>{["No","Yes"].map(o=><button key={o}className={`ob ${ans[q.id]===o.toLowerCase()?"s":""}`}style={{flex:1,textAlign:"center"}}onClick={()=>{
     if(q.rf&&o==="No"&&safetyTriggered[q.id]){setShowSafetyModal(q.id);return}
@@ -543,39 +543,6 @@ function ConsistencyAlerts({ans,currentQIds}){
   return<div>{relevant.map((f,i)=><div key={i}style={{background:f.severity==="info"?"#EFF6FF":"#FFF7ED",borderLeft:`4px solid ${f.severity==="info"?"#3B82F6":"#F59E0B"}`,borderRadius:10,padding:"10px 14px",margin:"8px 0",fontSize:12,color:f.severity==="info"?"#1E40AF":"#92400E",lineHeight:1.5,display:"flex",gap:8,alignItems:"flex-start"}}><span style={{fontSize:16,flexShrink:0}}>{f.severity==="info"?"ℹ️":"⚠️"}</span><span>{f.msg}</span></div>)}</div>;
 }
 
-
-// Mock Spell-Check for free-text fields (no external API)
-const SPELL_MAP={"leakin":"leaking","excersize":"exercise","excercise":"exercise","exercize":"exercise","symtoms":"symptoms","symtpoms":"symptoms","painfull":"painful","occurence":"occurrence","occurance":"occurrence","incontinance":"incontinence","urinery":"urinary","urinay":"urinary","pelvick":"pelvic","pregnent":"pregnant","pregant":"pregnant","comfortble":"comfortable","comfotable":"comfortable","strenght":"strength","strengh":"strength","kegal":"kegel","kegals":"kegels","medicaton":"medication","medicaiton":"medication","exersice":"exercise","leaknig":"leaking","leking":"leaking","snezing":"sneezing","coughin":"coughing"};
-function mockSpellCheck(text){
-  if(!text)return null;
-  let changed=false;
-  const words=text.split(/(\s+)/);
-  const corrected=words.map(w=>{const punct=w.match(/[.,!?]+$/)?.[0]||"";const bare=punct?w.slice(0,-punct.length):w;const lower=bare.toLowerCase();const fix=SPELL_MAP[lower];if(fix&&fix!==lower){changed=true;const cased=bare[0]===bare[0].toUpperCase()?fix[0].toUpperCase()+fix.slice(1):fix;return cased+punct}return w}).join("");
-  return changed?corrected:null;
-}
-
-// Toast component
-function Toast({message,onDone}){
-  React.useEffect(()=>{const t=setTimeout(onDone,2500);return()=>clearTimeout(t)},[]);
-  return<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:"#166534",color:"white",padding:"10px 20px",borderRadius:10,fontSize:13,fontWeight:600,zIndex:9999,boxShadow:"0 4px 16px rgba(0,0,0,.2)",animation:"fi .3s ease-out"}}>{message}</div>;
-}
-
-function SpellCheck({value,onAccept}){
-  const[toast,setToast]=React.useState(null);
-  const[dismissed,setDismissed]=React.useState(false);
-  const doCheck=()=>{
-    if(!value||value.trim().length<3)return;
-    const corrected=mockSpellCheck(value);
-    if(corrected){onAccept(corrected);setDismissed(true);setToast("Spelling corrected.");L("SPELL_CHECK",{original:value,corrected})}
-    else{setDismissed(true);setToast("No spelling errors found.")}
-  };
-  React.useEffect(()=>{setDismissed(false)},[value]);
-  if(!value||value.trim().length<3)return null;
-  return<div style={{marginTop:6}}>
-    {!dismissed&&<button onClick={doCheck}style={{background:"none",border:`1px solid ${C.g300}`,borderRadius:6,padding:"4px 10px",fontSize:11,color:C.g500,cursor:"pointer"}}>Check Spelling</button>}
-    {toast&&<Toast message={toast}onDone={()=>setToast(null)}/>}
-  </div>;
-}
 
 // Mock provider database for Concierge Search
 // DEMO DATA — mock providers for sandbox pilot demonstration only
