@@ -35,7 +35,7 @@ Two user types: **patients** (intake flow) and **physical therapists** (review p
 ### Clinical Instruments
 - **ICIQ-UI Short Form** (0-21) — incontinence severity + subtype classification
 - **ICIQ-FLUTS** (0-44) — filling, voiding, incontinence subscales
-- **ICIQ-FLUTSsex** (0-13) — sexual symptom burden
+- **ICIQ-FLUTSsex** (0-12) — sexual symptom burden
 - **GUPI-F** (0-45) — genitourinary pain index (pain + urinary + QOL)
 - **PHQ-2** (0-6) — depression screening (validated wording, do NOT modify)
 - **Bristol Stool Scale** (types 1-7) — bowel form assessment
