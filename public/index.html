@@ -23,9 +23,9 @@ const C={
 };
 const log=[];let _lid=0;function L(t,d){log.unshift({id:`A${++_lid}`,ts:new Date().toISOString(),type:t,...d})}
 // Shared audit event color map (used by PT AuditLog and OAIP audit stream)
-const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",SPELL_CHECK:C.blue,CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or};
+const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",SPELL_CHECK:C.blue,CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or,daily_adherence_entry:C.gn,checkin_week8_complete:C.blue,PT_ALERT_NO_ICIQ_PROGRESS:"#EA580C",BOWEL_REGRESSION:C.or,flutsex_improvement:C.gn,flutsex_regression:C.rd,RTM_setup_complete:C.purpL,phq2_resource_card_shown:C.or,FOLLOWUP_NONRESPONSE:"#DC2626",CLINICAL_ESCALATION:"#DC2626",surgical_avoidance_confirmed:C.gn,psi_referral:C.or,psi_referral_approved:C.gn,phq2_followup_email_queued:C.or,expansion_match:C.blueL,month12_checkin_complete:C.blue};
 // PHI-sensitive audit keys that must be masked in auditor mode
-const PHI_KEYS=["patient","name","detail","description","original","corrected","text","note"];
+const PHI_KEYS=["patient","name","detail","description","original","corrected","text","note","email"];
 
 const ICIQ=[
 {id:"iciq1",text:"How often do you leak urine?",opts:[["Never",0],["About once a week or less often",1],["Two or three times a week",2],["About once a day",3],["Several times a day",4],["All the time",5]]},
@@ -69,9 +69,9 @@ const FLUTSSEX=[
 {id:"fs3a",text:"To what extent do you feel that your sex life has been affected by your urinary symptoms?",opts:[["Not at all",0],["A little",1],["Somewhat",2],["A lot",3]]},
 {id:"fs3b",text:"How much does the impact on your sex life bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal",conditional:a=>a.fs3a!==undefined&&a.fs3a!==0},
 {id:"fs4a",text:"Do you have pain during sexual activity?",opts:[["Not at all",0],["A little",1],["Somewhat",2],["A lot",3],["I don't have sexual activity",4]]},
-{id:"fs4b",text:"How much does pain during sexual activity bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal",conditional:a=>a.fs4a!==undefined&&a.fs4a!==0},
+{id:"fs4b",text:"How much does pain during sexual activity bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal",conditional:a=>a.fs4a!==undefined&&a.fs4a!==0&&a.fs4a!==4},
 {id:"fs5a",text:"Do you leak urine during sexual activity?",opts:[["Not at all",0],["A little",1],["Somewhat",2],["A lot",3],["I don't have sexual activity",4]]},
-{id:"fs5b",text:"How much does leaking during sexual activity bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal",conditional:a=>a.fs5a!==undefined&&a.fs5a!==0},
+{id:"fs5b",text:"How much does leaking during sexual activity bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal",conditional:a=>a.fs5a!==undefined&&a.fs5a!==0&&a.fs5a!==4},
 ];
 
 // GUPI + Pain Assessment combined into one section ("Pain & Discomfort")
@@ -191,6 +191,21 @@ const SCORE_EXP={
 iciq:{"None":"Your bladder leakage score is 0 — you're not currently experiencing leaking.","Slight":"Your score is in the mild range. Many patients see significant improvement within 4-6 weeks.","Moderate":"Your score is in the moderate range. Patients respond well to exercises, bladder training, and lifestyle changes.","Severe":"Your score is in the severe range. This IS treatable. Your program will be more intensive with frequent check-ins.","Very Severe":"Your score is in the very severe range. Your program will be comprehensive with close monitoring."},
 pain:{"None":"No current pain reported.","Mild":"Mild pain — typically improves well with breathing and relaxation exercises.","Moderate":"Moderate pain. Your program includes pain management. Don't push through pain above 3/10.","Severe":"Significant pain level. Pain reduction will be a primary focus."}};
 
+const PSI_RESOURCES={
+crisis:[
+{name:"988 Suicide & Crisis Lifeline",phone:"988",desc:"Call or text 988, or go to your nearest emergency room."},
+{name:"Huntsman Mental Health Institute",phone:"(801) 587-3000",desc:"Mobile crisis team that can come to you — available 24/7."}
+],
+support:[
+{name:"PSI HelpLine",phone:"(800) 944-4773",desc:"Call or text. PSI volunteers are trained moms who've dealt with anxiety or depression. Support, resources, and information are free and confidential. Messages returned within 24 hours."},
+{name:"PSI Online Peer Support",url:"https://www.postpartum.net/get-help/psi-online-support-meetings/",desc:"Free virtual support meetings — no registration required."},
+{name:"Utah Maternal Mental Health Referral Network",url:"https://maternalmentalhealth.dhhs.utah.gov",desc:"Find providers across Utah trained specifically in postpartum mental health."},
+{name:"PSI Utah",url:"https://www.psiutah.org",desc:"Browse all Utah local resources — support groups, providers, and community programs."}
+],
+disclaimer:"All resources above come directly from PSI Utah and PSI National. No data is shared — this is a passive display of links only.",
+followUpMsg:"Were you able to connect with any of the Postpartum Support International resources we shared? We're here for you."
+};
+
 function genPlan(iciq,pain,gupi,intake){
   const p={id:`TP-${Date.now()}`,at:new Date().toISOString(),status:"pending_review",risk:"green",dx:[],goals:[],ex:[],adjuncts:[],freq:"",dur:"",prec:[],prog:[],cpt:[]};
   if(iciq.subtype.includes("Stress"))p.dx.push({c:"N39.3",d:"Stress incontinence"});
@@ -251,10 +266,12 @@ function genPlan(iciq,pain,gupi,intake){
 }
 
 const DPTS=[
-  {id:"P001",nm:"Sarah M.",age:32,ref:"OB/GYN",iciq:[{d:"01/15",s:14},{d:"01/29",s:11},{d:"02/12",s:8}],pain:[{d:"01/15",s:5},{d:"01/29",s:3.5},{d:"02/12",s:2}],adh:87,ps:"approved",nra:"02/26",msgs:[{fr:"pt",tx:"Great progress! ICIQ dropped 3 pts.",t:"2/12 10:30am"}]},
+  {id:"P001",nm:"Sarah M.",age:32,ref:"OB/GYN",iciq:[{d:"01/15",s:14},{d:"01/29",s:11},{d:"02/12",s:8}],pain:[{d:"01/15",s:5},{d:"01/29",s:3.5},{d:"02/12",s:2}],adh:87,ps:"approved",nra:"02/26",msgs:[{fr:"pt",tx:"Great progress! ICIQ dropped 3 pts.",t:"2/12 10:30am"}],planApprovedDate:"2026-01-15",intake:{iciq:14,pain:6,phq2:2,fsex:3,constipation:true,avoid:["exercise","lifting","sexual"]},week8:{iciq:8,pain:3,phq2:1,fsex:1,bowel:"better",avoid_resumed:["exercise","lifting"],nps:9,date:"03/12",submitted:true}},
   {id:"P002",nm:"Maria L.",age:28,ref:"Self",iciq:[{d:"01/22",s:9},{d:"02/05",s:7}],pain:[{d:"01/22",s:2},{d:"02/05",s:1}],adh:93,ps:"approved",nra:"02/19",msgs:[]},
   {id:"P003",nm:"Jennifer K.",age:35,ref:"Medicaid",iciq:[{d:"02/10",s:18}],pain:[{d:"02/10",s:6}],adh:0,ps:"pending_review",nra:"02/24",msgs:[]},
 ];
+const DEMO_ADHERENCE_LOG=[{date:"2026-02-10",status:"yes"},{date:"2026-02-11",status:"yes"},{date:"2026-02-12",status:"yes"},{date:"2026-02-13",status:"partial",note:"hip pain after bridges"},{date:"2026-02-14",status:"yes"},{date:"2026-02-15",status:"yes"},{date:"2026-02-16",status:"no",note:"traveling"},{date:"2026-02-17",status:"yes"},{date:"2026-02-18",status:"yes"},{date:"2026-02-19",status:"yes"},{date:"2026-02-20",status:"partial",note:"only did breathing"},{date:"2026-02-21",status:"yes"},{date:"2026-02-22",status:"yes"},{date:"2026-02-23",status:"yes"},{date:"2026-02-24",status:"no",note:"sick"},{date:"2026-02-25",status:"yes"},{date:"2026-02-26",status:"yes"},{date:"2026-02-27",status:"partial",note:"shortened session"},{date:"2026-02-28",status:"yes"},{date:"2026-03-01",status:"yes"},{date:"2026-03-02",status:"yes"},{date:"2026-03-03",status:"partial",note:"knee discomfort"},{date:"2026-03-04",status:"yes"},{date:"2026-03-05",status:"yes"},{date:"2026-03-06",status:"yes"},{date:"2026-03-07",status:"yes"},{date:"2026-03-08",status:"yes"},{date:"2026-03-09",status:"yes"},{date:"2026-03-10",status:"yes"},{date:"2026-03-11",status:"yes"}];
+const RTM_CODES={"98975":{name:"Initial Setup",desc:"Device/software setup + patient education",threshold:null},"98977":{name:"MSK Data Monitoring",desc:"≥16 days of data in calendar month",threshold:16},"98980":{name:"Treatment Management (20min)",desc:"Interactive communication ≥20min/month",threshold:20},"98981":{name:"Treatment Management (40min)",desc:"Interactive communication ≥40min/month",threshold:40}};
 // STYLES
 const css=`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
@@ -801,8 +818,10 @@ function Intake({onDone,mainRef}){
   const dobAge=(()=>{if(!ans.dob)return null;const b=new Date(ans.dob);const t=new Date();let a=t.getFullYear()-b.getFullYear();const m=t.getMonth()-b.getMonth();if(m<0||(m===0&&t.getDate()<b.getDate()))a--;return a})();
   const isUnder18=dobAge!==null&&dobAge<18;
   const isOver115=dobAge!==null&&dobAge>115;
-  // PHQ-2 depression risk (clinical threshold: score ≥ 3 out of 6)
+  // PHQ-2 depression risk (clinical threshold: score ≥ 3 out of 6; resource threshold: ≥ 2)
   const phq2Score=(ans.phq2_interest||0)+(ans.phq2_mood||0);
+  const phq2ResourceRef=useRef(false);
+  useEffect(()=>{if(phq2Score>=2&&!phq2ResourceRef.current&&ans.phq2_interest!==undefined&&ans.phq2_mood!==undefined){phq2ResourceRef.current=true;L("phq2_resource_card_shown",{score:phq2Score,patient:(ans.name_first||"")+" "+(ans.name_last||"")})}},[phq2Score]);
   const phq2Positive=phq2Score>=3;
   // Block on demographics (step 0): under 18 OR required fields incomplete
   const page1Incomplete=step===0&&(!ans.name_first||!ans.name_last||!ans.dob||!ans.pregnancy_status||!ans.insurance_type);
@@ -833,6 +852,25 @@ function Intake({onDone,mainRef}){
     {hasExclusion&&step===2&&<div className="ra"style={{background:"#FEF3C7",borderColor:C.or,color:"#92400E",fontSize:14,fontWeight:600,marginBottom:14}}>⚠ Based on your responses, this program may not be appropriate for your condition. Please consult your physician or a specialist PT for in-person evaluation.</div>}
     {steps[step].qs.map(q=><Q key={q.id}q={q}ans={ans}set={set}togM={togM}rfs={rfs}setRfs={setRfs}safetyTriggered={safetyTriggered}setSafetyTriggered={setSafetyTriggered}showSafetyModal={showSafetyModal}setShowSafetyModal={setShowSafetyModal}/>)}
     <ConsistencyAlerts ans={ans} currentQIds={steps[step].qs.map(q=>q.id)}/>
+    {steps[step].qs.some(q=>q.id==="phq2_mood")&&phq2Score>=2&&<div style={{borderRadius:12,overflow:"hidden",margin:"16px 0",border:"2px solid #DC2626",boxShadow:"0 2px 12px rgba(220,38,38,.15)"}}>
+      <div style={{background:"#DC2626",padding:"14px 18px",color:"#fff"}}>
+        <div style={{fontSize:15,fontWeight:700}}>If you are in immediate danger or experiencing a crisis:</div>
+      </div>
+      <div style={{padding:"14px 18px",background:"#FEF2F2"}}>
+        {PSI_RESOURCES.crisis.map((r,i)=><div key={i}style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<PSI_RESOURCES.crisis.length-1?"1px solid #FECACA":"none"}}>
+          <span style={{fontSize:18}}>📞</span>
+          <div><div style={{fontWeight:700,fontSize:13,color:"#991B1B"}}>{r.name}: <a href={"tel:"+r.phone.replace(/[^0-9]/g,"")}style={{color:"#DC2626",textDecoration:"underline"}}>{r.phone}</a></div><div style={{fontSize:11,color:"#7F1D1D"}}>{r.desc}</div></div>
+        </div>)}
+      </div>
+      <div style={{padding:"14px 18px",background:"#FFFBEB",borderTop:"1px solid #FDE68A"}}>
+        <div style={{fontSize:13,fontWeight:600,color:"#78350F",marginBottom:4}}>It sounds like you may be carrying a heavy load right now. You are not alone, and help is free and confidential:</div>
+        {PSI_RESOURCES.support.map((r,i)=><div key={i}style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 0",borderBottom:i<PSI_RESOURCES.support.length-1?"1px solid #FEF3C7":"none"}}>
+          <span style={{fontSize:16,marginTop:1}}>{r.url?"🔗":"📞"}</span>
+          <div><div style={{fontWeight:600,fontSize:12,color:"#78350F"}}>{r.name}{r.phone?<span>: <a href={"tel:"+r.phone.replace(/[^0-9]/g,"")}style={{color:"#D97706"}}>{r.phone}</a></span>:null}</div><div style={{fontSize:11,color:"#92400E",lineHeight:1.5}}>{r.desc}</div>{r.url?<a href={r.url}target="_blank"rel="noopener noreferrer"style={{fontSize:11,color:"#6D28D9"}}>{r.url.replace(/https?:\/\/(www\.)?/,"")}</a>:null}</div>
+        </div>)}
+      </div>
+      <div style={{padding:"10px 18px",background:"#F3F4F6",fontSize:10,color:"#6B7280",lineHeight:1.5}}>{PSI_RESOURCES.disclaimer}</div>
+    </div>}
     <div style={{display:"flex",justifyContent:"space-between",marginTop:20}}>
       <button className="btn bo"onClick={()=>step>0&&goStep(step-1)}disabled={step===0}>← Back</button>
       <button className="btn bpk"onClick={()=>{if(blocked){setTriedNext(true)}else{setTriedNext(false);goStep(step+1)}}}style={{opacity:blocked?0.4:1}}>{step===steps.length-1?"Submit Assessment →":"Continue →"}</button>
@@ -851,6 +889,192 @@ function PatientWaiting({name}){
     <div style={{marginTop:16,fontSize:12,color:C.g400}}>Switch to <strong>PT Provider View</strong> to review and approve the plan, then come back to see your care plan.</div>
   </div>;
 }
+function Week8CheckIn({baseline,onComplete}){
+  const[step,setStep]=useState(0);const[ans,setAns]=useState({});const[done,setDone]=useState(false);
+  const set=(k,v)=>setAns(a=>({...a,[k]:v}));
+  const togM=(k,v)=>setAns(a=>{const cur=a[k]||[];return{...a,[k]:cur.includes(v)?cur.filter(x=>x!==v):[...cur,v]}});
+  // Score helpers
+  const c8ICIQ=(a)=>(a.c8_iciq1??0)+(a.c8_iciq2??0)+(a.c8_iciq3??0);
+  const c8Pain=(a)=>Math.round(((a.c8_pain1??0)+(a.c8_pain2??0))/2*10)/10;
+  const c8PHQ2=(a)=>(a.c8_phq2_interest??0)+(a.c8_phq2_mood??0);
+  const c8FSEX=(a)=>(a.c8_fs2a??0)+(a.c8_fs3a??0)+Math.min(a.c8_fs4a??0,3)+Math.min(a.c8_fs5a??0,3);
+
+  // Build conditional steps
+  const steps=[];
+  // Step 0: ICIQ
+  steps.push({id:"iciq",title:"Bladder Leakage Check-In",qs:ICIQ.map(q=>({...q,id:"c8_"+q.id,conditional:q.conditional?a=>q.conditional(Object.fromEntries(Object.entries(a).map(([k,v])=>[k.replace("c8_",""),v]))):undefined}))});
+  // Step 1: Pain (conditional)
+  if(baseline.pain>0)steps.push({id:"pain",title:"Pain Check-In",qs:[
+    {id:"c8_pain1",text:"What is your pelvic pain level right now? (0 = no pain, 10 = worst pain imaginable)",type:"scale",min:0,max:10,lo:"No pain",hi:"Worst pain imaginable"},
+    {id:"c8_pain2",text:"What has your average pelvic pain been over the past week? (0 = no pain, 10 = worst pain imaginable)",type:"scale",min:0,max:10,lo:"No pain",hi:"Worst pain imaginable"},
+    {id:"c8_pain3",text:"How much has pain affected your daily activities this week? (0 = not at all, 10 = severely limited)",type:"scale",min:0,max:10,lo:"Not at all",hi:"Severely limited"}
+  ]});
+  // Step 2: PHQ-2
+  steps.push({id:"phq2",title:"Emotional Well-Being",qs:[
+    {id:"c8_phq2_interest",text:"Over the past 2 weeks, how often have you been bothered by having little interest or pleasure in doing things?",opts:[["Not at all",0],["Several days",1],["More than half the days",2],["Nearly every day",3]]},
+    {id:"c8_phq2_mood",text:"Over the past 2 weeks, how often have you been bothered by feeling down, depressed, or hopeless?",opts:[["Not at all",0],["Several days",1],["More than half the days",2],["Nearly every day",3]]}
+  ]});
+  // Step 3: FLUTSsex (conditional)
+  if(baseline.fsex>0)steps.push({id:"fsex",title:"Sexual Symptom Check-In",qs:FLUTSSEX.filter(q=>q.id.endsWith("a")).map(q=>({...q,id:"c8_"+q.id}))});
+  // Step 4: Bowel (conditional)
+  if(baseline.constipation)steps.push({id:"bowel",title:"Bowel Symptom Check-In",qs:[{id:"c8_bowel",text:"Have your bowel symptoms changed since starting the program?",opts:[["Better","better"],["About the same","same"],["Worse","worse"]]}]});
+  // Step 5: Avoided activities
+  if(baseline.avoid&&baseline.avoid.length>0)steps.push({id:"activities",title:"Return to Activities",custom:true});
+  // Step 6: NPS
+  steps.push({id:"nps",title:"Program Satisfaction",qs:[{id:"c8_nps",text:"How likely are you to recommend this program to a friend or family member?",type:"scale",min:0,max:10,lo:"Not at all likely",hi:"Extremely likely"}]});
+
+  const curStep=steps[step];
+  const canNext=()=>{
+    if(!curStep)return false;
+    if(curStep.custom)return ans.c8_activities_status!==undefined;
+    return curStep.qs.every(q=>{
+      if(q.conditional&&!q.conditional(ans))return true;
+      return ans[q.id]!==undefined;
+    });
+  };
+
+  const finish=()=>{
+    const iciqScore=c8ICIQ(ans);const painScore=c8Pain(ans);const phq2Score=c8PHQ2(ans);const fsexScore=c8FSEX(ans);
+    const results={iciq:iciqScore,pain:painScore,phq2:phq2Score,fsex:fsexScore,bowel:ans.c8_bowel,nps:ans.c8_nps,activities_status:ans.c8_activities_status,activities_note:ans.c8_activities_note,date:new Date().toLocaleDateString("en-US",{month:"2-digit",day:"2-digit"}),submitted:true};
+    // Audit events
+    L("checkin_week8_complete",{iciq_intake:baseline.iciq,iciq_week8:iciqScore,iciq_delta:baseline.iciq-iciqScore,phq2:phq2Score,nps:ans.c8_nps});
+    if(baseline.iciq-iciqScore<1)L("PT_ALERT_NO_ICIQ_PROGRESS",{iciq_intake:baseline.iciq,iciq_week8:iciqScore,note:"ICIQ improvement <1 point at Week 8"});
+    if(phq2Score>=3)L("depression_screen_positive",{score:phq2Score,severity:phq2Score>=5?"HIGH":"MODERATE",context:"week8_checkin"});
+    if(baseline.pain>0&&painScore-baseline.pain>=2)L("CLINICAL_REGRESSION_FLAG",{symptomType:"pain_worsened",intake:baseline.pain,week8:painScore,delta:painScore-baseline.pain});
+    if(ans.c8_bowel==="worse")L("BOWEL_REGRESSION",{note:"Patient reports bowel symptoms worse at Week 8"});
+    if(baseline.fsex>0){const fDelta=baseline.fsex-fsexScore;if(fDelta>0)L("flutsex_improvement",{intake:baseline.fsex,week8:fsexScore,delta:fDelta});else if(fDelta<0)L("flutsex_regression",{intake:baseline.fsex,week8:fsexScore,delta:fDelta})}
+    if(baseline.avoid&&baseline.avoid.length>0){results.avoid_resumed=ans.c8_activities_status==="yes"||ans.c8_activities_status==="partially"?baseline.avoid:[];results.avoid_resumed_status=ans.c8_activities_status;results.avoid_resumed_note=ans.c8_activities_note||""}
+    setDone(true);onComplete(results);
+  };
+
+  // Render question helper (reuses Q pattern)
+  const renderQ=(q)=>{
+    if(q.conditional&&!q.conditional(ans))return null;
+    return<div key={q.id}className="qc">
+      <div className="qt">{q.text}</div>
+      {q.type==="scale"&&<div>
+        <div className="scv">{ans[q.id]??q.min}</div>
+        <input type="range"className="slr"min={q.min}max={q.max}value={ans[q.id]??q.min}onChange={e=>set(q.id,+e.target.value)}/>
+        <div className="scl"><span>{q.lo}</span><span>{q.hi}</span></div>
+      </div>}
+      {q.opts&&!q.type&&q.opts.map(([l,v])=><button key={v}className={`ob ${ans[q.id]===v?"s":""}`}onClick={()=>set(q.id,v)}>{l}</button>)}
+      {q.type==="multi"&&q.opts.map(([l,v])=><button key={v}className={`mo ${(ans[q.id]||[]).includes(v)?"s":""}`}onClick={()=>togM(q.id,v)}>{l}</button>)}
+    </div>;
+  };
+
+  if(done){
+    const iciqDelta=baseline.iciq-c8ICIQ(ans);const painDelta=baseline.pain-c8Pain(ans);const phq2Score=c8PHQ2(ans);const fsexDelta=baseline.fsex-(baseline.fsex>0?c8FSEX(ans):0);
+    const deltaColor=(d,higherIsBetter=false)=>higherIsBetter?(d>0?C.gn:d<0?C.rd:C.or):(d>0?C.gn:d<0?C.rd:C.or);
+    const deltaArrow=(d)=>d>0?"↓":d<0?"↑":"→";
+    return<div className="fi"style={{textAlign:"center",paddingTop:40}}>
+      <div style={{fontSize:48,marginBottom:16}}>🎉</div>
+      <div className="h1"style={{fontSize:24,marginBottom:8}}>Week 8 Check-In Complete</div>
+      <p style={{fontSize:14,color:C.g500,maxWidth:500,margin:"0 auto 24px",lineHeight:1.6}}>Thank you for completing your check-in! Your PT will review your progress.</p>
+      <div style={{maxWidth:500,margin:"0 auto",textAlign:"left"}}>
+        <div className="card">
+          <div className="chd">Your Progress</div>
+          <div style={{display:"grid",gap:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
+              <span style={{fontSize:13,color:C.g600}}>ICIQ Score</span>
+              <span style={{fontSize:13,fontWeight:700,color:deltaColor(iciqDelta)}}>{baseline.iciq} → {c8ICIQ(ans)} <span>{deltaArrow(iciqDelta)} {Math.abs(iciqDelta)} pts</span></span>
+            </div>
+            {iciqDelta>=3&&<div style={{background:"#D1FAE5",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#065F46",fontWeight:600}}>This level of improvement is clinically significant.</div>}
+            {baseline.pain>0&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
+              <span style={{fontSize:13,color:C.g600}}>Pain Composite</span>
+              <span style={{fontSize:13,fontWeight:700,color:deltaColor(painDelta)}}>{baseline.pain} → {c8Pain(ans)} <span>{deltaArrow(painDelta)}</span></span>
+            </div>}
+            <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
+              <span style={{fontSize:13,color:C.g600}}>PHQ-2</span>
+              <span style={{fontSize:13,fontWeight:700,color:phq2Score>=3?C.rd:C.gn}}>{phq2Score}/6 {phq2Score>=3?"— Positive":"— Negative"}</span>
+            </div>
+            {baseline.fsex>0&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
+              <span style={{fontSize:13,color:C.g600}}>FLUTSsex</span>
+              <span style={{fontSize:13,fontWeight:700,color:deltaColor(fsexDelta)}}>{baseline.fsex} → {c8FSEX(ans)} <span>{deltaArrow(fsexDelta)}</span></span>
+            </div>}
+            {ans.c8_bowel&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
+              <span style={{fontSize:13,color:C.g600}}>Bowel Symptoms</span>
+              <span style={{fontSize:13,fontWeight:700,color:ans.c8_bowel==="better"?C.gn:ans.c8_bowel==="worse"?C.rd:C.or}}>{ans.c8_bowel.charAt(0).toUpperCase()+ans.c8_bowel.slice(1)}</span>
+            </div>}
+            {ans.c8_nps!==undefined&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0"}}>
+              <span style={{fontSize:13,color:C.g600}}>NPS Score</span>
+              <span style={{fontSize:13,fontWeight:700,color:ans.c8_nps>=9?C.gn:ans.c8_nps>=7?C.or:C.rd}}>{ans.c8_nps}/10</span>
+            </div>}
+          </div>
+        </div>
+        {phq2Score>=2&&<div className="card"style={{borderLeft:"4px solid #D97706",background:"#FFFBEB"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#92400E",marginBottom:8}}>Support Resources</div>
+          <div style={{fontSize:12,color:"#78350F",marginBottom:6}}>Based on your responses, we want to make sure you have access to these resources:</div>
+          {PSI_RESOURCES.crisis.map((r,i)=><div key={i}style={{fontSize:12,color:"#7F1D1D",marginBottom:4}}><strong>{r.name}:</strong> <a href={"tel:"+r.phone.replace(/[^0-9]/g,"")}style={{color:"#DC2626"}}>{r.phone}</a> — {r.desc}</div>)}
+          {PSI_RESOURCES.support.map((r,i)=><div key={i}style={{fontSize:12,color:"#4B5563",marginBottom:4}}><strong>{r.name}</strong>{r.phone?" — "+r.phone:""}{r.url?<span> — <a href={r.url}target="_blank"rel="noopener noreferrer"style={{color:"#6D28D9"}}>{r.url.replace(/https?:\/\/(www\.)?/,"")}</a></span>:null}</div>)}
+        </div>}
+      </div>
+    </div>;
+  }
+
+  return<div className="fi">
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+      <div><div className="h1"style={{fontSize:20}}>Week 8 Check-In</div><div className="sub">Step {step+1} of {steps.length}</div></div>
+      <div style={{fontSize:12,color:C.g400}}>Takes about 4-5 minutes</div>
+    </div>
+    <div style={{height:4,background:C.g200,borderRadius:2,marginBottom:20}}><div style={{height:4,background:C.pink,borderRadius:2,width:`${((step+1)/steps.length)*100}%`,transition:"width .3s"}}/></div>
+    <div className="card">
+      <div className="chd">{curStep.title}</div>
+      {curStep.custom?<div>
+        <div className="qt">At intake, you told us you were avoiding <strong>{baseline.avoid.join(", ")}</strong> because of your symptoms. Are you able to do any of these now?</div>
+        {[["Yes, I've resumed these activities","yes"],["Partially — some but not all","partially"],["Not yet","no"]].map(([l,v])=><button key={v}className={`ob ${ans.c8_activities_status===v?"s":""}`}onClick={()=>set("c8_activities_status",v)}>{l}</button>)}
+        <div style={{marginTop:10}}><div className="il">Tell us more (optional)</div><textarea className="inp"value={ans.c8_activities_note||""}onChange={e=>set("c8_activities_note",e.target.value)}placeholder="Which activities have you resumed? Any challenges?"/></div>
+      </div>:curStep.qs.map(q=>renderQ(q))}
+      {curStep.id==="phq2"&&c8PHQ2(ans)>=2&&ans.c8_phq2_interest!==undefined&&ans.c8_phq2_mood!==undefined&&<div style={{marginTop:12,background:"#FFFBEB",border:"1px solid #D97706",borderRadius:10,padding:14}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#92400E",marginBottom:6}}>Support Resources</div>
+        {PSI_RESOURCES.crisis.map((r,i)=><div key={i}style={{fontSize:11,color:"#7F1D1D",marginBottom:3}}><strong>{r.name}:</strong> {r.phone} — {r.desc}</div>)}
+        {PSI_RESOURCES.support.slice(0,2).map((r,i)=><div key={i}style={{fontSize:11,color:"#4B5563",marginBottom:3}}><strong>{r.name}</strong>{r.phone?" — "+r.phone:""}</div>)}
+      </div>}
+      {baseline.pain===0&&curStep.id==="pain"&&<div style={{marginTop:10,padding:"10px 14px",background:"#F0FDF4",borderRadius:8,fontSize:12,color:"#065F46"}}>You reported no pain at intake — if that has changed, please message your PT.</div>}
+    </div>
+    <div style={{display:"flex",justifyContent:"space-between",marginTop:16}}>
+      {step>0?<button className="btn bo"onClick={()=>setStep(s=>s-1)}>← Back</button>:<div/>}
+      {step<steps.length-1?<button className="btn bpk"disabled={!canNext()}onClick={()=>setStep(s=>s+1)}style={{opacity:canNext()?1:.5}}>Next →</button>:
+      <button className="btn bpk"disabled={!canNext()}onClick={finish}style={{opacity:canNext()?1:.5}}>Complete Check-In</button>}
+    </div>
+  </div>;
+}
+
+function Month12CheckIn(){
+  const[ans,setAns]=useState({});
+  const set=(k,v)=>setAns(a=>({...a,[k]:v}));
+  const allAnswered=ans.m12_er!==undefined&&ans.m12_surgery!==undefined&&ans.m12_additional!==undefined;
+  const[submitted,setSubmitted]=useState(false);
+  const submit=()=>{
+    L("month12_checkin_complete",{er_visit:ans.m12_er,surgery:ans.m12_surgery,additional_care:ans.m12_additional});
+    if(ans.m12_surgery==="yes")L("CLINICAL_ESCALATION",{type:"surgical_referral",procedure:ans.m12_surgery_detail||"not specified",context:"month12_checkin"});
+    if(ans.m12_er==="no"&&ans.m12_surgery==="no"&&ans.m12_additional==="no")L("surgical_avoidance_confirmed",{note:"Patient reports no ER visits, no surgery, no additional pelvic care at Month 12"});
+    setSubmitted(true);
+  };
+  if(submitted)return<div style={{textAlign:"center",padding:40}}>
+    <div style={{fontSize:48,marginBottom:16}}>🎉</div>
+    <div className="h1"style={{fontSize:22}}>Thank You!</div>
+    <p style={{fontSize:14,color:C.g500,maxWidth:480,margin:"12px auto",lineHeight:1.6}}>Your responses have been recorded. A $10 Amazon gift card will be sent to your email within 3 business days.</p>
+  </div>;
+  return<div>
+    <div style={{background:"#FEF3C7",border:"2px dashed #D97706",borderRadius:10,padding:"10px 14px",marginBottom:16,textAlign:"center"}}>
+      <strong style={{color:"#D97706",fontSize:13}}>Future State — Month 12 Utilization Check-In</strong>
+      <p style={{fontSize:11,color:"#4B5563",marginTop:2}}>This questionnaire will be administered 12 months after program enrollment.</p>
+    </div>
+    <div className="card">
+      <div className="chd">Month 12 Utilization Questions</div>
+      <div className="qc"><div className="qt">Since completing the Expect program, have you visited an emergency room or urgent care clinic for pelvic floor symptoms?</div>
+        {[["No","no"],["Yes","yes"]].map(([l,v])=><button key={v}className={`ob ${ans.m12_er===v?"s":""}`}onClick={()=>set("m12_er",v)}>{l}</button>)}</div>
+      <div className="qc"><div className="qt">Since completing the Expect program, have you been referred for or undergone pelvic floor surgery?</div>
+        {[["No","no"],["Yes","yes"]].map(([l,v])=><button key={v}className={`ob ${ans.m12_surgery===v?"s":""}`}onClick={()=>set("m12_surgery",v)}>{l}</button>)}
+        {ans.m12_surgery==="yes"&&<div style={{marginTop:8}}><div className="il">What procedure?</div><input className="inp"value={ans.m12_surgery_detail||""}onChange={e=>set("m12_surgery_detail",e.target.value)}placeholder="e.g., sling procedure, prolapse repair"/></div>}</div>
+      <div className="qc"><div className="qt">Since completing the Expect program, have you sought additional pelvic floor care from another provider?</div>
+        {[["No","no"],["Yes","yes"]].map(([l,v])=><button key={v}className={`ob ${ans.m12_additional===v?"s":""}`}onClick={()=>set("m12_additional",v)}>{l}</button>)}
+        {ans.m12_additional==="yes"&&<div style={{marginTop:8}}><div className="il">What type of provider?</div><input className="inp"value={ans.m12_additional_detail||""}onChange={e=>set("m12_additional_detail",e.target.value)}placeholder="e.g., urogynecologist, another PT"/></div>}</div>
+      <button className="btn bpk"disabled={!allAnswered}onClick={submit}style={{marginTop:12,opacity:allAnswered?1:.5}}>Submit Check-In</button>
+    </div>
+  </div>;
+}
+
 function MyCareplan({data}){
   const{ans,iciq,pain,gupi,fluts,fsex,plan}=data;
   const[tab,setTab]=useState("scores");
@@ -863,7 +1087,25 @@ function MyCareplan({data}){
   const avF=(ans.avoid_activities||[]).filter(x=>x!=="none");
   const phq2=(ans.phq2_interest||0)+(ans.phq2_mood||0);
   const dateStr=new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
-
+  // Adherence state
+  const[adherenceLog,setAdherenceLog]=useState(DEMO_ADHERENCE_LOG);
+  const[todayLogged,setTodayLogged]=useState(false);
+  const[adhStatus,setAdhStatus]=useState(null);
+  const[adhNote,setAdhNote]=useState("");
+  const[showCheckin,setShowCheckin]=useState(false);
+  const[week8Results,setWeek8Results]=useState(data.week8||null);
+  const logAdherence=()=>{
+    const entry={date:new Date().toISOString().split("T")[0],status:adhStatus,note:adhNote||undefined};
+    setAdherenceLog(p=>[...p,entry]);setTodayLogged(true);setAdhStatus(null);setAdhNote("");
+    L("daily_adherence_entry",{date:entry.date,status:entry.status,note:entry.note});
+  };
+  // Streak calculation
+  const streak=(()=>{let c=0;for(let i=adherenceLog.length-1;i>=0;i--){if(adherenceLog[i].status==="yes")c++;else break}return c})();
+  // Month adherence days
+  const monthDays=adherenceLog.filter(e=>{const d=new Date(e.date);const now=new Date();return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()}).length;
+  // Baseline for Week 8
+  const baseline={iciq:iciq.total,pain:pain.composite,phq2,fsex:fsex.total,constipation:(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??3)<=1||(ans.bristol_stool??4)<=2,avoid:avF};
+  const onCheckinComplete=(results)=>{setWeek8Results(results);setShowCheckin(false);if(sharedIntake)sharedIntake.week8=results};
   // Polished care plan CSS (from sample-patient-care-plan design)
   const cpCSS=`
   .cp-shell{max-width:820px;margin:0 auto;font-family:'DM Sans',sans-serif;color:#1F2937;line-height:1.6}
@@ -932,6 +1174,8 @@ function MyCareplan({data}){
   .cp-footer{text-align:center;padding:20px 0;font-size:11px;color:#9CA3AF}
   .cp-footer a{color:#6D28D9;text-decoration:none}
   `;
+  // If showing checkin, render that instead
+  if(showCheckin)return<div className="fi"><style>{cpCSS}</style><div className="cp-shell"><Week8CheckIn baseline={baseline} onComplete={onCheckinComplete}/></div></div>;
 
   const ScoresTab=()=><div>
     <div className="cp-card">
@@ -1003,6 +1247,22 @@ function MyCareplan({data}){
   </div>;
 
   const AdjTab=()=><div>
+    {phq2>=2&&<div className="cp-card" style={{borderLeft:"4px solid #D97706",background:"#FFFBEB"}}>
+      <div className="cp-card-title" style={{color:"#92400E"}}>Support Resources</div>
+      <div className="cp-card-sub" style={{color:"#78350F"}}>Based on your responses, your PT wants to make sure you have access to these support resources.</div>
+      <div style={{background:"#FEF2F2",borderRadius:10,padding:14,marginBottom:14}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#991B1B",marginBottom:8}}>If you are in immediate danger or experiencing a crisis:</div>
+        {PSI_RESOURCES.crisis.map((r,i)=><div key={i}style={{fontSize:12,color:"#7F1D1D",marginBottom:4}}>
+          <strong>{r.name}:</strong> <a href={"tel:"+r.phone.replace(/[^0-9]/g,"")}style={{color:"#DC2626"}}>{r.phone}</a> — {r.desc}
+        </div>)}
+      </div>
+      {PSI_RESOURCES.support.map((r,i)=><div key={i}className="cp-adj-item">
+        <div className="cp-adj-icon"style={{background:"#FEF3C7"}}>{r.url?"🔗":"📞"}</div>
+        <div><div style={{fontWeight:600,fontSize:13,color:"#111827"}}>{r.name}{r.phone?<span> — <a href={"tel:"+r.phone.replace(/[^0-9]/g,"")}style={{color:"#D97706"}}>{r.phone}</a></span>:null}</div>
+        <div style={{fontSize:12,color:"#4B5563",marginTop:2,lineHeight:1.5}}>{r.desc}{r.url?<span> <a href={r.url}target="_blank"rel="noopener noreferrer"style={{color:"#6D28D9"}}>{r.url.replace(/https?:\/\/(www\.)?/,"")}</a></span>:null}</div></div>
+      </div>)}
+      <div style={{fontSize:10,color:"#9CA3AF",marginTop:12,lineHeight:1.5}}>{PSI_RESOURCES.disclaimer}</div>
+    </div>}
     <div className="cp-card">
       <div className="cp-card-title">Your Personalized Recommendations</div>
       <div className="cp-card-sub">Based on your assessment, your PT recommends the following additional support alongside your exercises.</div>
@@ -1059,6 +1319,7 @@ function MyCareplan({data}){
           <div className="cp-rpt-row"><span className="cp-rl">Program Tier</span><span className="cp-rv">{tier} — {tierWks} weeks</span></div>
           <div className="cp-rpt-row"><span className="cp-rl">Cueing Style</span><span className="cp-rv">{cueLbl}</span></div>
           <div className="cp-rpt-row"><span className="cp-rl">PHQ-2</span><span className="cp-rv">{phq2}/6 — {phq2>=3?"Positive":"Negative"}</span></div>
+          {phq2>=2&&<div className="cp-rpt-row"><span className="cp-rl">Support Resources</span><span className="cp-rv" style={{color:"#D97706"}}>Provided — PSI crisis lines + support resources (PHQ-2 ≥2)</span></div>}
           {avF.length>0&&<div className="cp-rpt-row"><span className="cp-rl">Activities Avoided</span><span className="cp-rv">{avF.join(", ")} ({avF.length} categories)</span></div>}
           <div className="cp-rpt-row"><span className="cp-rl">Medication Modification</span><span className="cp-rv">{(ans.med_modify??0)===1?"Yes":"No"}</span></div>
         </div>
@@ -1083,7 +1344,59 @@ function MyCareplan({data}){
     </div>
   </div>;
 
-  const tabs=[["scores","📊 My Scores"],["exercises","💪 Exercises"],["adjuncts","📋 Recommendations"],["strategies","🧠 Strategies"],["report","📄 Full Report"]];
+  const tabs=[["scores","📊 My Scores"],["exercises","💪 Exercises"],["adjuncts","📋 Recommendations"],["strategies","🧠 Strategies"],["report","📄 Full Report"],...(week8Results?[["week8results","📈 Week 8 Results"]]:[])];
+
+  // Week 8 Results tab
+  const Week8Tab=()=>{if(!week8Results)return null;const iciqDelta=baseline.iciq-week8Results.iciq;const painDelta=baseline.pain-(week8Results.pain||0);
+    const dc=(d)=>d>0?C.gn:d<0?C.rd:C.or;const da=(d)=>d>0?"↓ improved":d<0?"↑ worsened":"→ no change";
+    return<div><div className="cp-card"><div className="cp-card-title">Week 8 Progress Summary</div>
+      <div className="cp-scores-grid">
+        <div className={`cp-score-chip ${iciqDelta>=3?"good":iciqDelta>0?"":"warn"}`}><div className="cp-sv">{week8Results.iciq}</div><div className="cp-sl">ICIQ Score</div><div className="cp-sd"style={{color:dc(iciqDelta)}}>{da(iciqDelta)} ({iciqDelta>0?"-":iciqDelta<0?"+":""}{Math.abs(iciqDelta)} pts)</div></div>
+        {baseline.pain>0&&<div className={`cp-score-chip ${painDelta>0?"good":"warn"}`}><div className="cp-sv">{week8Results.pain}</div><div className="cp-sl">Pain</div><div className="cp-sd"style={{color:dc(painDelta)}}>{da(painDelta)}</div></div>}
+        <div className={`cp-score-chip ${week8Results.phq2>=3?"warn":"good"}`}><div className="cp-sv">{week8Results.phq2}/6</div><div className="cp-sl">PHQ-2</div><div className="cp-sd">{week8Results.phq2>=3?"Positive":"Negative"}</div></div>
+        {week8Results.nps!==undefined&&<div className={`cp-score-chip ${week8Results.nps>=9?"good":""}`}><div className="cp-sv">{week8Results.nps}</div><div className="cp-sl">NPS</div><div className="cp-sd">Program satisfaction</div></div>}
+      </div>
+      {iciqDelta>=3&&<div style={{marginTop:12,background:"#D1FAE5",borderRadius:8,padding:"10px 14px",fontSize:13,color:"#065F46",fontWeight:600}}>Your ICIQ improvement of {iciqDelta} points is clinically significant!</div>}
+    </div></div>};
+  // Adherence heatmap
+  const AdherenceWidget=()=><div className="cp-card"style={{marginBottom:16}}>
+    <div className="cp-card-title">Daily Exercise Tracking</div>
+    {!todayLogged?<div style={{marginBottom:16}}>
+      <div style={{fontSize:14,fontWeight:600,color:"#111827",marginBottom:10}}>Did you complete your exercises today?</div>
+      <div style={{display:"flex",gap:8,marginBottom:8}}>
+        {[["Yes","yes",C.gn],["Partially","partial",C.or],["No","no",C.g400]].map(([l,v,c])=><button key={v}className="btn bsm"style={{background:adhStatus===v?c:"white",color:adhStatus===v?"white":"#374151",border:`1.5px solid ${adhStatus===v?c:C.g200}`,flex:1}}onClick={()=>setAdhStatus(v)}>{l}</button>)}
+      </div>
+      {(adhStatus==="partial"||adhStatus==="no")&&<div style={{marginBottom:8}}><input className="inp"value={adhNote}onChange={e=>setAdhNote(e.target.value)}placeholder={adhStatus==="partial"?"What happened? (e.g., only did breathing)":"Why not? (optional)"}/></div>}
+      {adhStatus&&<button className="btn bpk bsm"onClick={logAdherence}>Log Today</button>}
+    </div>:<div style={{padding:"10px 14px",background:"#D1FAE5",borderRadius:8,marginBottom:16,fontSize:13,color:"#065F46",fontWeight:600}}>Logged for today</div>}
+    {/* 30-day heatmap */}
+    <div style={{marginBottom:12}}>
+      <div style={{fontSize:12,fontWeight:600,color:"#6B7280",marginBottom:6}}>Last 30 Days</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(10,1fr)",gap:3}}>
+        {adherenceLog.slice(-30).map((e,i)=><div key={i}title={`${e.date}: ${e.status}${e.note?" — "+e.note:""}`}style={{width:"100%",paddingTop:"100%",borderRadius:3,background:e.status==="yes"?C.gn:e.status==="partial"?C.or:C.g300,position:"relative"}}><span style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:7,color:"white",fontWeight:700}}>{new Date(e.date).getDate()}</span></div>)}
+      </div>
+      <div style={{display:"flex",gap:12,marginTop:6,fontSize:10,color:"#9CA3AF"}}>
+        <span><span style={{display:"inline-block",width:8,height:8,borderRadius:2,background:C.gn,marginRight:3}}/>Yes</span>
+        <span><span style={{display:"inline-block",width:8,height:8,borderRadius:2,background:C.or,marginRight:3}}/>Partial</span>
+        <span><span style={{display:"inline-block",width:8,height:8,borderRadius:2,background:C.g300,marginRight:3}}/>No</span>
+      </div>
+    </div>
+    {/* Streak + stats */}
+    <div style={{display:"flex",gap:12}}>
+      {streak>0&&<div style={{flex:1,background:"#FEF3C7",borderRadius:8,padding:"10px 14px",textAlign:"center"}}>
+        <div style={{fontSize:24,fontWeight:700,color:"#D97706"}}>{streak}</div>
+        <div style={{fontSize:11,color:"#92400E"}}>Day streak</div>
+      </div>}
+      <div style={{flex:1,background:"#EDE9FE",borderRadius:8,padding:"10px 14px",textAlign:"center"}}>
+        <div style={{fontSize:24,fontWeight:700,color:"#6D28D9"}}>{Math.round(adherenceLog.filter(e=>e.status==="yes").length/adherenceLog.length*100)}%</div>
+        <div style={{fontSize:11,color:"#4C1D95"}}>Adherence</div>
+      </div>
+      <div style={{flex:1,background:monthDays>=16?"#D1FAE5":"#F3F4F6",borderRadius:8,padding:"10px 14px",textAlign:"center"}}>
+        <div style={{fontSize:24,fontWeight:700,color:monthDays>=16?"#059669":"#6B7280"}}>{monthDays}</div>
+        <div style={{fontSize:11,color:monthDays>=16?"#065F46":"#6B7280"}}>Days this month</div>
+      </div>
+    </div>
+  </div>;
 
   return<div className="fi">
     <style>{cpCSS}</style>
@@ -1097,6 +1410,15 @@ function MyCareplan({data}){
         <div><span className="cp-badge">{iciq.severity} Severity</span><span className="cp-badge">{iciq.subtype}</span><span className="cp-badge">{tierWks}-Week Program</span></div>
       </div>
 
+      {/* Week 8 Check-In Banner */}
+      {!week8Results&&<div style={{background:"linear-gradient(135deg,#4C1D95,#DB2777)",borderRadius:12,padding:"16px 20px",marginBottom:16,color:"white",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div><div style={{fontWeight:700,fontSize:15}}>Your Week 8 Check-In is ready!</div><div style={{fontSize:12,opacity:.8,marginTop:2}}>Takes about 4-5 minutes. Help us measure your progress.</div></div>
+        <button className="btn"style={{background:"white",color:"#4C1D95",fontWeight:700}}onClick={()=>setShowCheckin(true)}>Start Check-In</button>
+      </div>}
+
+      {/* Daily Adherence Widget */}
+      <AdherenceWidget/>
+
       {/* Tabs */}
       <div className="cp-tabs">
         {tabs.map(([id,l])=><div key={id}className={`cp-tab ${tab===id?"on":""}`}onClick={()=>setTab(id)}>{l}</div>)}
@@ -1107,6 +1429,7 @@ function MyCareplan({data}){
       {tab==="adjuncts"&&<AdjTab/>}
       {tab==="strategies"&&<StrategiesTab/>}
       {tab==="report"&&<ReportTab/>}
+      {tab==="week8results"&&<Week8Tab/>}
 
       <div className="cp-footer">
         <p>This care plan was generated by Expect's AI-augmented platform and reviewed by a licensed Physical Therapist.</p>
@@ -1160,8 +1483,14 @@ function PTReview(){
       </div></div>}
     <div className="card"style={{padding:0,overflow:"hidden"}}>
       <div className="plr plh"><span>Patient</span><span>ICIQ</span><span>Pain</span><span>Adherence</span><span>Status</span><span>Next RA</span></div>
-      {DPTS.map(p=>{const li=p.iciq[p.iciq.length-1].s,lp=p.pain[p.pain.length-1].s;return<div className="plr"key={p.id}onClick={()=>setSel(p)}>
-        <div><div style={{fontWeight:600}}>{p.nm}</div><div style={{fontSize:10,color:C.g400}}>Age {p.age} · {p.ref}</div></div>
+      {DPTS.map(p=>{const li=p.iciq[p.iciq.length-1].s,lp=p.pain[p.pain.length-1].s;const w8=p.week8;const intk=p.intake;const iciqProg=w8&&intk?intk.iciq-w8.iciq:null;return<div className="plr"key={p.id}onClick={()=>setSel(p)}>
+        <div><div style={{fontWeight:600}}>{p.nm}</div><div style={{fontSize:10,color:C.g400}}>Age {p.age} · {p.ref}</div>
+          <div style={{display:"flex",gap:3,marginTop:3,flexWrap:"wrap"}}>
+            {w8&&w8.submitted&&<span className="bdg"style={{background:`${C.gn}15`,color:C.gn,fontSize:9}}>Week 8 Complete</span>}
+            {p.adh>=80&&<span className="bdg"style={{background:`${C.gn}15`,color:C.gn,fontSize:9}}>98977 Met</span>}
+            {iciqProg!==null&&iciqProg<1&&<span className="bdg"style={{background:`${C.rd}15`,color:C.rd,fontSize:9}}>No ICIQ Progress</span>}
+          </div>
+        </div>
         <Bdg sev={li<=5?"Slight":li<=12?"Moderate":li<=18?"Severe":"Very Severe"}sc={li}/>
         <Bdg sev={lp<=3?"Mild":lp<=6?"Moderate":"Severe"}sc={lp}/>
         <div><div className="pb"style={{width:60}}><div className="pf"style={{width:`${p.adh}%`,background:p.adh>=80?C.gn:C.or}}/></div><div style={{fontSize:10,color:C.g400,marginTop:2}}>{p.adh}%</div></div>
@@ -1186,6 +1515,7 @@ function PTNewIntakeReview({data,onBack}){
   const[tRun,setTRun]=useState(false);const[tSec,setTSec]=useState(0);const[notes,setNotes]=useState("");
   const[faxSt,setFaxSt]=useState(null);const[patSent,setPatSent]=useState(false);
   const[approved,setApproved]=useState(false);const[showGuardrails,setShowGuardrails]=useState(false);
+  const[psiRefer,setPsiRefer]=useState(false);const[followUpSent,setFollowUpSent]=useState(null);
   const tmRef=useRef();
   useEffect(()=>{if(tRun)tmRef.current=setInterval(()=>setTSec(s=>s+1),1000);else clearInterval(tmRef.current);return()=>clearInterval(tmRef.current)},[tRun]);
   const rc={green:C.gn,yellow:C.or,red:C.rd}[plan.risk];
@@ -1198,6 +1528,8 @@ function PTNewIntakeReview({data,onBack}){
     if((ans.med_modify??0)===1)alerts.push("ALERT: Patient reports modifying prescribed medication due to urinary symptoms. Verify with prescribing provider.");
     if(ans._safety_answer_changed)alerts.push("ALERT: Patient initially reported safety flag but changed answer during intake. Verify safety screen was appropriately addressed.");
     const phq2EN=(ans.phq2_interest||0)+(ans.phq2_mood||0);if(phq2EN>=3)alerts.push(`ALERT: PHQ-2 positive screen for depression (score: ${phq2EN}/6). Full PHQ-9 recommended. Assess capacity to consent.`);
+    if(phq2EN>=2)alerts.push(`PHQ-2 SCORE: ${phq2EN}/6 (${phq2EN>=5?"HIGH":phq2EN>=3?"MODERATE":"SUB-THRESHOLD"}). Patient received PSI mental health support resources at intake. Recommend referring physician follow up with patient within 3–5 days regarding mental health screening and support resources provided.`);
+    if(psiRefer)alerts.push("REFERRAL: Patient referred to PSI Utah (Postpartum Support International) for maternal mental health support. PSI HelpLine: (800) 944-4773, psiutah.org.");
     const alertBlock=alerts.length>0?`\n*** CLINICAL ALERTS ***\n${alerts.map(a=>`>>> ${a}`).join("\n")}\n${"*".repeat(40)}\n\n`:"";
     const dx=plan.dx.map(d=>`${d.c} — ${d.d}`).join("; ");
     const exList=editExs.map(e=>`${e.n}: ${e.s}x${e.r}, hold ${e.h}, ${e.f}`).join("\n");
@@ -1216,6 +1548,7 @@ function PTNewIntakeReview({data,onBack}){
   if(ans._safety_answer_changed)guardrails.push({lvl:"alert",msg:`! SAFETY ANSWER CHANGED: Patient initially indicated a safety concern but later changed their answer. Questions changed: ${(ans._safety_changes||[]).map(c=>c.id).join(", ")}. Verify this was appropriate.`});
   if(typeof EXCLUSIONS!=="undefined"&&EXCLUSIONS.some(r=>ans[r.id]==="yes"))guardrails.push({lvl:"alert",msg:"! Patient screened positive for EXCLUSIONARY condition (Section 3.7 Safe Harbor). This patient may not be eligible for AI-generated plans. Review carefully."});
   const phq2=(ans.phq2_interest||0)+(ans.phq2_mood||0);if(phq2>=3)guardrails.push({lvl:"warn",msg:"PHQ-2 score "+phq2+"/6 — positive screen for depression. Verify capacity to consent and consider mental health resource referral."});
+  if(phq2>=2&&!psiRefer)guardrails.push({lvl:"info",msg:"PHQ-2 score "+phq2+"/6 — patient received support resources. Consider checking the PSI Utah referral box if appropriate."});
   if((ans.symptoms_trigger||[]).includes("sitting_long")&&pain.composite>6)guardrails.push({lvl:"alert",msg:"⚠ POTENTIAL PUDENDAL NEURALGIA: Patient reports pain while sitting for long periods with composite pain >6/10. Evaluate for pudendal nerve involvement."});
   if(iciq.severity==="Very Severe"&&editExs.length<4)guardrails.push({lvl:"warn",msg:"Very Severe ICIQ score but fewer than 4 exercises — consider whether prescription is sufficient."});
   if(notes.trim().length===0&&editExs.some((e,i)=>JSON.stringify(e)!==JSON.stringify(initPlan.ex[i])))guardrails.push({lvl:"warn",msg:"You modified exercises but haven't added clinical rationale in the notes. CMS and OAIP require documented reasoning."});
@@ -1226,7 +1559,9 @@ function PTNewIntakeReview({data,onBack}){
     const approvedPlan={...plan,status:"approved",goals:editGoals.split("\n").filter(Boolean),prec:editPrec.split("\n").filter(Boolean),prog:editProg.split("\n").filter(Boolean),ex:editExs,adjuncts:editAdj};
     setPlan(p=>approvedPlan);
     if(sharedIntake)sharedIntake.plan=approvedPlan;
-    L("plan_reviewed",{patient:nm,action:"approved",time:tSec});L("encounter_note",{patient:nm,cpt:plan.cpt.map(c=>c.c),time:tSec})};
+    L("plan_reviewed",{patient:nm,action:"approved",time:tSec});L("encounter_note",{patient:nm,cpt:plan.cpt.map(c=>c.c),time:tSec});L("RTM_setup_complete",{patient:nm,code:"98975",note:"RTM episode initiated — 98975 billable."});
+    if(psiRefer)L("psi_referral_approved",{patient:nm,phq2Score:(ans.phq2_interest||0)+(ans.phq2_mood||0)});
+    if(sharedIntake)sharedIntake.psiRefer=psiRefer};
 
   const removeEx=(i)=>setEditExs(e=>e.filter((_,j)=>j!==i));
   const updateEx=(i,field,val)=>setEditExs(e=>e.map((ex,j)=>j===i?{...ex,[field]:val}:ex));
@@ -1261,7 +1596,7 @@ function PTNewIntakeReview({data,onBack}){
     {/* SCORE SUMMARY */}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:10,marginBottom:14}}>
       <div className="sc"><div className="scl2">ICIQ-UI SF</div><div className="scv2"style={{color:C.pink}}>{iciq.total}</div><Bdg sev={iciq.severity}/><div className="scs">{iciq.subtype} · 0–21</div></div>
-      <div className="sc"><div className="scl2">FLUTS</div><div className="scv2"style={{color:C.purp}}>{fluts.total}</div><div className="scs">F:{fluts.F}/16 V:{fluts.V}/12 I:{fluts.I}/20</div></div>
+      <div className="sc"><div className="scl2">FLUTS</div><div className="scv2"style={{color:C.purp}}>{fluts.total}</div><div className="scs">F:{fluts.F}/12 V:{fluts.V}/12 I:{fluts.I}/20</div></div>
       <div className="sc"><div className="scl2">FLUTSsex</div><div className="scv2"style={{color:C.purpL}}>{fsex.total}</div><div className="scs">Sexual symptom score</div></div>
       <div className="sc"><div className="scl2">GUPI-F</div><div className="scv2"style={{color:C.blue}}>{gupi.total}</div><Bdg sev={gupi.severity}/><div className="scs">P:{gupi.pain}/23 U:{gupi.urinary}/10 Q:{gupi.qol}/12</div></div>
       <div className="sc"><div className="scl2">Pain</div><div className="scv2"style={{color:C.or}}>{pain.composite}</div><Bdg sev={pain.severity}/><div className="scs">Fn: {["None","Mild","Mod","Sev","Cannot"][pain.functional]}</div></div>
@@ -1325,11 +1660,22 @@ function PTNewIntakeReview({data,onBack}){
           <div style={{marginTop:4,fontSize:10,color:"#991B1B"}}>This flag has been automatically reported to Utah OAIP (de-identified) per regulatory requirements.</div>
         </div>
       </div>}
+      {((ans.phq2_interest||0)+(ans.phq2_mood||0))>=2&&<div className="card" style={{background:psiRefer?"#F0FDF4":"#FEFCE8",borderLeft:`4px solid ${psiRefer?"#16A34A":"#D97706"}`,marginBottom:10,transition:"all .3s"}}>
+        <label style={{display:"flex",alignItems:"flex-start",gap:10,cursor:"pointer"}}>
+          <input type="checkbox" checked={psiRefer} onChange={e=>{setPsiRefer(e.target.checked);if(e.target.checked)L("psi_referral",{patient:nm,phq2Score:(ans.phq2_interest||0)+(ans.phq2_mood||0)})}} style={{marginTop:3,transform:"scale(1.2)"}}/>
+          <div>
+            <div style={{fontSize:13,fontWeight:700,color:psiRefer?"#166534":"#92400E"}}>Refer patient to PSI Utah for maternal mental health support</div>
+            <div style={{fontSize:11,color:psiRefer?"#15803D":"#78350F",marginTop:2,lineHeight:1.5}}>
+              {psiRefer?"Referral logged. This will be included in the encounter note sent to the referring physician.":"Check this box to document a PSI Utah referral in the audit trail and encounter note."}
+            </div>
+          </div>
+        </label>
+      </div>}
       <Section title="ICIQ-UI Short Form" tag={`${iciq.total}/21 · ${iciq.severity}`}>
         {ICIQ.map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+(q.text.length>80?"...":"")} value={getOptLabel(ICIQ,q.id,ans[q.id])} score={q.type!=="multi"?getOptScore(ICIQ,q.id,ans[q.id]):undefined}/>)}
         <div style={{marginTop:6,fontSize:11,color:C.blue,fontWeight:600}}>→ {iciq.subtype}</div>
       </Section>
-      <Section title="ICIQ-FLUTS — Filling" tag={`F: ${fluts.F}/16`}>
+      <Section title="ICIQ-FLUTS — Filling" tag={`F: ${fluts.F}/12`}>
         {FLUTS.filter(q=>["fl3a","fl3b","fl5a","fl5b"].includes(q.id)).map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+"..."} value={getOptLabel(FLUTS,q.id,ans[q.id])} score={q.id.endsWith("a")?getOptScore(FLUTS,q.id,ans[q.id]):undefined}/>)}
         {LEAK_DETAIL.filter(q=>["fl2a","fl2b"].includes(q.id)).map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+"..."} value={getOptLabel(LEAK_DETAIL,q.id,ans[q.id])} score={q.id.endsWith("a")?getOptScore(LEAK_DETAIL,q.id,ans[q.id]):undefined}/>)}
       </Section>
@@ -1479,6 +1825,28 @@ function PTNewIntakeReview({data,onBack}){
         <button className="btn bpk bsm"disabled={patSent}onClick={()=>{setPatSent(true);L("plan_sent_patient",{patient:nm})}}>{patSent?"✓ Sent":"Send Plan"}</button>
       </div>
     </div>}
+    {approved&&((ans.phq2_interest||0)+(ans.phq2_mood||0))>=2&&<div className="card" style={{marginTop:12,borderLeft:"4px solid #D97706"}}>
+      <div className="chd">Automated Follow-Up Email (3–5 Days)</div>
+      <div style={{fontSize:12,color:C.g600,marginBottom:10,lineHeight:1.6}}>
+        Patient received PHQ-2 support resources (score: {(ans.phq2_interest||0)+(ans.phq2_mood||0)}/6). An automated follow-up email will be sent 3–5 days post-approval with a gentle check-in and the same PSI resource links. This is a passive resource re-delivery — no response is routed to the PT.
+      </div>
+      <div style={{background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:8,padding:14,marginBottom:12,fontSize:12,lineHeight:1.6,color:"#374151"}}>
+        <div style={{fontWeight:600,marginBottom:6}}>Email Preview:</div>
+        <div style={{fontStyle:"italic",marginBottom:10}}>{PSI_RESOURCES.followUpMsg}</div>
+        <div style={{fontSize:11,color:"#6B7280"}}>
+          {PSI_RESOURCES.crisis.map((r,i)=><div key={"c"+i}>📞 {r.name}: {r.phone}</div>)}
+          {PSI_RESOURCES.support.map((r,i)=><div key={"s"+i}>{r.url?"🔗":"📞"} {r.name}{r.phone?": "+r.phone:""}{r.url?" — "+r.url.replace(/https?:\/\/(www\.)?/,""):""}</div>)}
+        </div>
+      </div>
+      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+        <button className="btn bpu bsm" disabled={followUpSent==="sending"||followUpSent==="sent"} onClick={()=>{
+          setFollowUpSent("sending");
+          L("phq2_followup_email_queued",{patient:nm,phq2Score:(ans.phq2_interest||0)+(ans.phq2_mood||0),scheduledFor:"3-5 days post-approval",email:ans.email||"—"});
+          setTimeout(()=>setFollowUpSent("sent"),2000);
+        }}>{followUpSent==="sending"?"Scheduling...":followUpSent==="sent"?"✓ Scheduled":"Schedule Follow-Up Email"}</button>
+        {followUpSent==="sent"&&<span style={{fontSize:11,color:C.gn,fontWeight:600}}>Queued — email will send in 3–5 days</span>}
+      </div>
+    </div>}
   </div>;
 }
 
@@ -1487,13 +1855,80 @@ function PTPatientDetail({pt,onBack}){
   const[msgs,setMsgs]=useState(pt.msgs||[]);const[draft,setDraft]=useState("");
   const send=()=>{if(!draft.trim())return;setMsgs(p=>[...p,{fr:"pt",tx:draft,t:new Date().toLocaleString()}]);L("msg_sent",{to:pt.id});setDraft("")};
   const li=pt.iciq[pt.iciq.length-1].s,lp=pt.pain[pt.pain.length-1].s;
+  const w8=pt.week8;const intake=pt.intake;
+  const adhDays=pt.id==="P001"?DEMO_ADHERENCE_LOG.filter(e=>{const d=new Date(e.date);const n=new Date();return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear()}).length:0;
+  // Status badge
+  const getStatus=()=>{if(!w8||!intake)return null;const iciqDelta=intake.iciq-w8.iciq;if(iciqDelta>=3)return{label:"On Track",color:C.gn,bg:"#D1FAE5"};if(iciqDelta>=1)return{label:"Monitor",color:C.or,bg:"#FEF3C7"};return{label:"Clinical Review Required",color:C.rd,bg:"#FEE2E2"}};
+  const status=getStatus();
+  // PT time for RTM (simulated from review timer)
+  const ptMinutes=pt.id==="P001"?32:0;
   return<div className="fi">
     <button className="btn bo bsm"onClick={onBack}style={{marginBottom:16}}>← Back to Patients</button>
-    <div className="h1">{pt.nm}</div><div className="sub">Age {pt.age} · Referred by {pt.ref}</div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div className="h1">{pt.nm}</div><div className="sub">Age {pt.age} · Referred by {pt.ref}</div></div>
+    {status&&<span className="bdg"style={{background:status.bg,color:status.color,fontSize:12,padding:"5px 14px"}}>{status.label}</span>}</div>
     <div className="three"style={{marginBottom:14}}>
-      <div className="sc"><div className="scl2">Latest ICIQ</div><div className="scv2"style={{color:C.pink}}>{li}</div><Bdg sev={li<=5?"Slight":li<=12?"Moderate":li<=18?"Severe":"Very Severe"}/></div>
-      <div className="sc"><div className="scl2">Latest Pain</div><div className="scv2"style={{color:C.or}}>{lp}</div><Bdg sev={lp<=3?"Mild":lp<=6?"Moderate":"Severe"}/></div>
+      <div className="sc"><div className="scl2">Latest ICIQ</div><div className="scv2"style={{color:C.pink}}>{li}</div><Bdg sev={li===0?"None":li<=5?"Slight":li<=12?"Moderate":li<=18?"Severe":"Very Severe"}/></div>
+      <div className="sc"><div className="scl2">Latest Pain</div><div className="scv2"style={{color:C.or}}>{lp}</div><Bdg sev={lp===0?"None":lp<=3?"Mild":lp<=6?"Moderate":"Severe"}/></div>
       <div className="sc"><div className="scl2">Adherence</div><div className="scv2"style={{color:pt.adh>=80?C.gn:C.or}}>{pt.adh}%</div></div>
+    </div>
+    {/* Week 8 Outcomes Split Panel */}
+    {w8&&intake&&<div className="card"style={{marginBottom:14,borderColor:C.purp}}>
+      <div className="chd">Week 8 Outcomes</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        <div><div style={{fontSize:12,fontWeight:700,color:C.g400,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>Intake</div>
+          <div style={{display:"grid",gap:6}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"4px 0"}}><span>ICIQ</span><span style={{fontWeight:700}}>{intake.iciq}/21</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"4px 0"}}><span>Pain</span><span style={{fontWeight:700}}>{intake.pain}/10</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"4px 0"}}><span>PHQ-2</span><span style={{fontWeight:700}}>{intake.phq2}/6</span></div>
+            {intake.fsex>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"4px 0"}}><span>FLUTSsex</span><span style={{fontWeight:700}}>{intake.fsex}/12</span></div>}
+          </div>
+        </div>
+        <div><div style={{fontSize:12,fontWeight:700,color:C.purp,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>Week 8</div>
+          <div style={{display:"grid",gap:6}}>
+            {[["ICIQ",intake.iciq,w8.iciq,21],["Pain",intake.pain,w8.pain,10],["PHQ-2",intake.phq2,w8.phq2,6]].map(([label,intk,wk8,max])=>{const d=intk-wk8;return<div key={label}style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"4px 0"}}>
+              <span>{label}</span>
+              <span style={{fontWeight:700,color:d>0?C.gn:d<0?C.rd:C.or}}>{wk8}/{max} <span style={{fontSize:11}}>{d>0?`↓${d}`:d<0?`↑${Math.abs(d)}`:"→"}</span></span>
+            </div>})}
+            {intake.fsex>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"4px 0"}}>
+              <span>FLUTSsex</span><span style={{fontWeight:700,color:intake.fsex-w8.fsex>0?C.gn:C.rd}}>{w8.fsex}/12 <span style={{fontSize:11}}>{intake.fsex-w8.fsex>0?`↓${intake.fsex-w8.fsex}`:`↑${Math.abs(intake.fsex-w8.fsex)}`}</span></span>
+            </div>}
+          </div>
+        </div>
+      </div>
+      {w8.bowel&&<div style={{marginTop:10,fontSize:12,color:w8.bowel==="better"?C.gn:w8.bowel==="worse"?C.rd:C.or}}>Bowel: {w8.bowel} · NPS: {w8.nps}/10 · Activities resumed: {(w8.avoid_resumed||[]).join(", ")||"None"}</div>}
+    </div>}
+    {/* Week 8 Encounter Note */}
+    {w8&&intake&&<div className="card"style={{marginBottom:14}}>
+      <div className="chd">Week 8 Encounter Note</div>
+      <pre style={{fontSize:11,fontFamily:"'Courier New',monospace",background:C.g50,padding:12,borderRadius:8,whiteSpace:"pre-wrap",lineHeight:1.5,color:C.g700}}>
+{`WEEK 8 CHECK-IN NOTE
+Patient: ${pt.nm} | Date: ${w8.date}
+
+SCORE DELTAS:
+ICIQ: ${intake.iciq} → ${w8.iciq} (${intake.iciq-w8.iciq>0?"-":""}${intake.iciq-w8.iciq} pts)
+Pain: ${intake.pain} → ${w8.pain} (${intake.pain-w8.pain>0?"-":""}${intake.pain-w8.pain})
+PHQ-2: ${intake.phq2} → ${w8.phq2} (${w8.phq2>=3?"POSITIVE":"Negative"})
+${intake.fsex>0?`FLUTSsex: ${intake.fsex} → ${w8.fsex}\n`:""}Bowel: ${w8.bowel||"N/A"}
+NPS: ${w8.nps}/10
+
+STATUS: ${status?status.label:"—"}
+${w8.phq2>=3?`\n*** PHQ-2 POSITIVE (${w8.phq2}/6) ***\nReferring physician notified of PHQ-2 result and recommended follow-up within 3-5 days.`:""}
+Adherence: ${pt.adh}% | Activities resumed: ${(w8.avoid_resumed||[]).join(", ")||"None"}`}
+      </pre>
+    </div>}
+    {/* RTM Billing Panel */}
+    <div className="card"style={{marginBottom:14,borderColor:C.purpL}}>
+      <div className="chd">RTM Billing</div>
+      {[["98975","Initial Setup",pt.ps==="approved",pt.planApprovedDate||"—"],["98977","MSK Data Monitoring",adhDays>=16,`${adhDays}/16 days`],["98980","Treatment Mgmt (20min)",ptMinutes>=20,`${ptMinutes}/20 min`],["98981","Treatment Mgmt (40min)",ptMinutes>=40,`${ptMinutes}/40 min`]].map(([code,name,met,detail])=><div key={code}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.g100}`}}>
+          <div><div style={{fontWeight:600,fontSize:13}}>{code} — {name}</div><div style={{fontSize:11,color:C.g400}}>{RTM_CODES[code].desc}</div></div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:12,color:C.g500}}>{detail}</span>
+            <span className="bdg"style={{background:met?`${C.gn}15`:`${C.g300}15`,color:met?C.gn:C.g400}}>{met?"Threshold Met":"In Progress"}</span>
+          </div>
+        </div>
+        {code==="98977"&&<div style={{marginTop:4,marginBottom:4}}><div style={{height:6,background:C.g200,borderRadius:3,overflow:"hidden"}}><div style={{height:6,background:adhDays>=16?C.gn:C.or,borderRadius:3,width:`${Math.min(100,adhDays/16*100)}%`}}/></div></div>}
+      </div>)}
     </div>
     <div className="two">
       <div className="card"><div className="chd">Score History</div>
@@ -1586,6 +2021,8 @@ function OAIPView(){
     if((a.med_modify??0)===1)redFlags.push({type:"MEDICATION_ALERT",severity:"MODERATE",desc:"Patient modifying prescribed medication due to urinary symptoms",action:"Refer to prescribing provider for medication review",patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()});
     // Pudendal neuralgia flag
     if((a.symptoms_trigger||[]).includes("sitting_long")&&(sharedIntake.pain?.composite||0)>6)redFlags.push({type:"PUDENDAL_NEURALGIA",severity:"HIGH",desc:"Potential pudendal neuralgia: sitting pain + composite pain >6/10",action:"Evaluate for pudendal nerve involvement. Avoid prolonged sitting exercises.",patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()});
+    // PSI Utah referral flag
+    if(sharedIntake.psiRefer)redFlags.push({type:"PSI_REFERRAL",severity:"MODERATE",desc:"Patient referred to PSI Utah for maternal mental health support (PHQ-2: "+((a.phq2_interest||0)+(a.phq2_mood||0))+"/6)",action:"Documented referral to Postpartum Support International. Verify follow-up at next encounter.",patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()});
   }
   // From audit log - adverse events
   log.filter(e=>e.type==="adverse_event_report").forEach(e=>redFlags.push({type:"ADVERSE_EVENT",severity:"CRITICAL",desc:`Adverse event reported: ${e.category||"unknown"} — ${e.detail?.slice(0,80)||"See log"}`,action:"Immediate clinical team notification. Consider program pause.",patient:e.patient||"—",ts:new Date(e.ts).toISOString()}));
@@ -1611,7 +2048,7 @@ function OAIPView(){
   return<div className="fi"><div className="h1">OAIP Compliance Dashboard</div><div className="sub">Utah Office of AI Policy · Regulatory Mitigation Agreement</div>
     {/* View mode tabs */}
     <div style={{display:"flex",gap:0,marginBottom:16,borderBottom:`1px solid ${C.g200}`}}>
-      {[["compliance","Compliance"],["redflags","Red Flags & Alerts"],["audit","Live Audit Stream"],["fhir","Interoperability / HIE"]].map(([id,l])=>
+      {[["compliance","Compliance"],["redflags","Red Flags & Alerts"],["followup","Follow-Up Schedule"],["audit","Live Audit Stream"],["fhir","Interoperability / HIE"]].map(([id,l])=>
         <div key={id}style={{padding:"10px 18px",fontSize:13,fontWeight:viewMode===id?600:400,color:viewMode===id?C.purp:C.g400,borderBottom:`2px solid ${viewMode===id?C.pink:"transparent"}`,cursor:"pointer",whiteSpace:"nowrap"}}onClick={()=>setViewMode(id)}>{l}</div>
       )}
     </div>
@@ -1686,6 +2123,43 @@ function OAIPView(){
         </div>;
       })}
     </div>
+    </>}
+
+    {viewMode==="followup"&&<>
+    {/* Follow-Up Schedule */}
+    {(()=>{
+      const allPts=[...DPTS.map(p=>({id:p.id,nm:p.nm,approvedDate:p.planApprovedDate,w8:p.week8})),...(sharedIntake&&sharedIntake.plan?.status==="approved"?[{id:"NEW",nm:sharedIntake.name||"Current Patient",approvedDate:new Date().toISOString().split("T")[0],w8:sharedIntake.week8}]:[])];
+      const checkpointStatus=(approvedDate,weeksOut,w8Data)=>{
+        if(!approvedDate)return{status:"N/A",color:C.g300};
+        const approved=new Date(approvedDate);const now=new Date();const daysSince=Math.floor((now-approved)/(1000*60*60*24));const dueDay=weeksOut*7;const overdueDays=daysSince-dueDay;
+        if(weeksOut===8&&w8Data&&w8Data.submitted)return{status:"Completed",color:C.gn};
+        if(overdueDays>7)return{status:`Overdue (${overdueDays}d)`,color:C.rd};
+        if(overdueDays>=0)return{status:"Due now",color:C.or};
+        if(dueDay-daysSince<=7)return{status:`Due in ${dueDay-daysSince}d`,color:C.or};
+        return{status:`In ${Math.ceil((dueDay-daysSince)/7)}wk`,color:C.g300};
+      };
+      const w8Stats={completed:allPts.filter(p=>p.w8&&p.w8.submitted).length,pending:allPts.filter(p=>{const s=checkpointStatus(p.approvedDate,8,p.w8);return s.status==="Due now"||s.status.startsWith("Due in")}).length,overdue:allPts.filter(p=>{const s=checkpointStatus(p.approvedDate,8,p.w8);return s.status.startsWith("Overdue")}).length};
+      return<>
+        <div className="four"style={{marginBottom:16}}>
+          <div className="sc"><div className="scl2">Week 8</div><div className="scv2"style={{color:C.gn}}>{w8Stats.completed}</div><div className="scs">completed</div></div>
+          <div className="sc"><div className="scl2">Pending</div><div className="scv2"style={{color:C.or}}>{w8Stats.pending}</div></div>
+          <div className="sc"><div className="scl2">Overdue</div><div className="scv2"style={{color:w8Stats.overdue>0?C.rd:C.gn}}>{w8Stats.overdue}</div></div>
+          <div className="sc"><div className="scl2">Total Patients</div><div className="scv2"style={{color:C.purp}}>{allPts.length}</div></div>
+        </div>
+        <div className="card"style={{padding:0,overflow:"hidden"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",padding:"10px 16px",background:C.g50,borderBottom:`1px solid ${C.g200}`,fontSize:12,fontWeight:600,color:C.g500}}>
+            <span>Patient</span><span>Week 8</span><span>Week 16</span><span>Month 12</span>
+          </div>
+          {allPts.map(p=>{const w8s=checkpointStatus(p.approvedDate,8,p.w8);const w16s=checkpointStatus(p.approvedDate,16);const m12s=checkpointStatus(p.approvedDate,52);
+            return<div key={p.id}style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",padding:"10px 16px",borderBottom:`1px solid ${C.g100}`,fontSize:12,alignItems:"center"}}>
+              <span style={{fontWeight:600}}>{mask(p.nm)}</span>
+              {[w8s,w16s,m12s].map((s,i)=><span key={i}className="bdg"style={{background:`${s.color}15`,color:s.color,justifySelf:"start"}}>{s.status}</span>)}
+            </div>})}
+        </div>
+        <div style={{marginTop:12}}><button className="btn bo bsm"onClick={()=>{const m12=document.getElementById("month12-preview");if(m12)m12.style.display=m12.style.display==="none"?"block":"none"}}>Preview: Month 12 Check-In</button></div>
+        <div id="month12-preview"style={{display:"none",marginTop:12}}><Month12CheckIn/></div>
+      </>;
+    })()}
     </>}
 
     {viewMode==="fhir"&&<>
