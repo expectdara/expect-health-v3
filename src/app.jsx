@@ -11,9 +11,9 @@ const C={
   g50:"#FAFAFD",g100:"#F0EFF5",g200:"#E2E0EC",g300:"#C9C6D6",g400:"#9994AD",g500:"#6E6887",g600:"#524D66",g700:"#3A3650",g800:"#252238",g900:"#16142A",
   gn:"#22C55E",rd:"#EF4444",or:"#F59E0B",
 };
-const log=[];let _lid=0;let authSession=null;let ptSessionToken=null;
+const log=[];let _lid=0;let authSession=null;let ptSessionToken=null;let ptIdentity=null;
 async function db(fn,args,opts){try{const hdrs={"Content-Type":"application/json"};const tok=ptSessionToken||authSession?.sessionToken;if(tok)hdrs["Authorization"]="Bearer "+tok;const r=await fetch("/api/db",{method:"POST",headers:hdrs,body:JSON.stringify({fn:"functions:"+fn,args:args||{}})});const d=await r.json();if(!r.ok)throw new Error(d.error);return d.result}catch(e){console.warn("[db]",fn,e.message);if(opts?.throw)throw e;return null}}
-function L(t,d){const evt={id:`A${++_lid}`,ts:new Date().toISOString(),type:t,...d};log.unshift(evt);db("insertAuditEvent",{eventId:evt.id,ts:evt.ts,type:t,details:d||{},userId:authSession?.userId})}
+function L(t,d){const uid=authSession?.userId||ptIdentity?.userId||null;const det=ptIdentity?{...d,ptEmail:ptIdentity.email,ptName:ptIdentity.name}:(d||{});const evt={id:`A${++_lid}`,ts:new Date().toISOString(),type:t,...d};log.unshift(evt);db("insertAuditEvent",{eventId:evt.id,ts:evt.ts,type:t,details:det,userId:uid})}
 // Shared audit event color map (used by PT AuditLog and OAIP audit stream)
 const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or,daily_adherence_entry:C.gn,checkin_week8_complete:C.blue,PT_ALERT_NO_ICIQ_PROGRESS:"#EA580C",BOWEL_REGRESSION:C.or,flutsex_improvement:C.gn,flutsex_regression:C.rd,RTM_setup_complete:C.purpL,phq2_resource_card_shown:C.or,FOLLOWUP_NONRESPONSE:"#DC2626",CLINICAL_ESCALATION:"#DC2626",surgical_avoidance_confirmed:C.gn,psi_referral:C.or,psi_referral_approved:C.gn,phq2_followup_email_queued:C.or,expansion_match:C.blueL,month12_checkin_complete:C.blue,CARE_PLAN_DOWNLOADED:C.blue,PRENATAL_PROTOCOL_APPLIED:C.gn,OUTCOME_RECORD_CREATED:C.purpL,OUTCOME_RECORD_COMPLETED:C.gn,account_created:C.gn,session_timeout:C.rd,identity_verified:C.blue,pt_login:C.purp,oaip_login:C.purp,landing_email_collected:C.blueL};
 // PHI-sensitive audit keys that must be masked in auditor mode
@@ -2678,15 +2678,18 @@ function ReportIssue({pView}){
 
 // MAIN APP — Three Views
 function PasswordGate({role,onAuth}){
-  const[pw,setPw]=useState("");
+  const[email,setEmail]=useState("");const[pw,setPw]=useState("");
   const[loading,setLoading]=useState(false);const[errMsg,setErrMsg]=useState("");
-  const submit=async()=>{if(loading)return;setLoading(true);setErrMsg("");try{const tok=(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^(crypto.getRandomValues(new Uint8Array(1))[0]&(15>>c/4))).toString(16));const created=await db("createSession",{userId:role+"_user",email:role+"@expect.care",sessionToken:tok,expiresAt:Date.now()+30*60*1000,createdAt:new Date().toISOString(),accessCode:pw},{throw:true});ptSessionToken=tok;localStorage.setItem("expect_session",tok);L(role+"_login",{});onAuth()}catch(e){const msg=e.message||"";if(msg.includes("Invalid access code")){setErrMsg("Incorrect access code. Please try again.")}else{setErrMsg("Unable to connect. Please try again later.")}setPw("");setLoading(false)}};
+  const genTok=()=>(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^(crypto.getRandomValues(new Uint8Array(1))[0]&(15>>c/4))).toString(16));
+  const submit=async()=>{if(loading)return;setLoading(true);setErrMsg("");try{const tok=genTok();const sessionArgs={userId:role+"_user",email:role+"@expect.care",sessionToken:tok,expiresAt:Date.now()+30*60*1000,createdAt:new Date().toISOString()};if(role==="pt"){sessionArgs.email=email;sessionArgs.password=pw}else{sessionArgs.accessCode=pw}await db("createSession",sessionArgs,{throw:true});ptSessionToken=tok;localStorage.setItem("expect_session",tok);const sess=await db("getSessionByToken",{sessionToken:tok});if(sess&&sess.ptName){ptIdentity={email:sess.email,name:sess.ptName,userId:sess.userId}}L(role+"_login",{email:role==="pt"?email:undefined});onAuth()}catch(e){const msg=e.message||"";if(msg.includes("Invalid")){setErrMsg(role==="pt"?"Invalid email or password.":"Incorrect access code.")}else{setErrMsg("Unable to connect. Please try again later.")}setPw("");setLoading(false)}};
+  const isPt=role==="pt";
   return<div className="mn"><div className="card fi"style={{maxWidth:400,margin:"80px auto",textAlign:"center",padding:32}}>
-    <div style={{fontSize:20,fontWeight:700,color:C.purp,marginBottom:8}}>{role==="pt"?"PT Provider":"OAIP"} Portal</div>
-    <p style={{fontSize:13,color:C.g500,marginBottom:20}}>Enter the {role==="pt"?"provider":"oversight"} access code to continue.</p>
+    <div style={{fontSize:20,fontWeight:700,color:C.purp,marginBottom:8}}>{isPt?"PT Provider":"OAIP"} Portal</div>
+    <p style={{fontSize:13,color:C.g500,marginBottom:20}}>{isPt?"Sign in with your provider account.":"Enter the oversight access code to continue."}</p>
     {errMsg&&<div style={{color:C.rd,fontSize:12,marginBottom:12}}>{errMsg}</div>}
-    <input type="password"className="inp"value={pw}onChange={e=>{setPw(e.target.value);setErrMsg("")}}onKeyDown={e=>e.key==="Enter"&&submit()}placeholder="Access code"style={{textAlign:"center",marginBottom:16}}disabled={loading}/>
-    <button className="btn bbl"onClick={submit}disabled={loading}style={{width:"100%",justifyContent:"center",opacity:loading?.6:1}}>{loading?"Verifying...":"Enter"}</button>
+    {isPt&&<input type="email"className="inp"value={email}onChange={e=>{setEmail(e.target.value);setErrMsg("")}}onKeyDown={e=>e.key==="Enter"&&submit()}placeholder="Email address"style={{textAlign:"center",marginBottom:10}}disabled={loading}/>}
+    <input type="password"className="inp"value={pw}onChange={e=>{setPw(e.target.value);setErrMsg("")}}onKeyDown={e=>e.key==="Enter"&&submit()}placeholder={isPt?"Password":"Access code"}style={{textAlign:"center",marginBottom:16}}disabled={loading}/>
+    <button className="btn bbl"onClick={submit}disabled={loading||(isPt&&!email)}style={{width:"100%",justifyContent:"center",opacity:loading?.6:1}}>{loading?"Verifying...":"Sign In"}</button>
   </div></div>;
 }
 
@@ -2697,8 +2700,10 @@ function App(){
   const mainRef=useRef(null);
   const[ptAuthed,setPtAuthed]=useState(false);
   const[oaipAuthed,setOaipAuthed]=useState(false);
-  useEffect(()=>{(async()=>{try{const tok=localStorage.getItem("expect_session");if(!tok)return;const sess=await db("getSessionByToken",{sessionToken:tok});if(!sess||sess.expiresAt<Date.now()){localStorage.removeItem("expect_session");return}authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,expiresAt:sess.expiresAt,createdAt:sess.createdAt};const pt=await db("getPatientByUserId",{userId:sess.userId});if(pt){sharedIntake={ans:pt.ans,iciq:pt.iciq,pain:pt.pain,gupi:pt.gupi,fluts:pt.fluts,fsex:pt.fsex,plan:pt.plan,depressionFlag:pt.depressionFlag,prenatalFlag:pt.prenatalFlag,name:pt.name,physicianName:pt.physicianName,physicianFax:pt.physicianFax,physicianNPI:pt.physicianNPI,safetyAnswerChanged:pt.safetyAnswerChanged,safetyChanges:pt.safetyChanges,outcomeRecordId:pt.outcomeRecordId,week8:pt.week8,psiRefer:pt.psiRefer};setPView("done")}const events=await db("listAuditEvents",{limit:500});if(events&&events.length>0){const existing=new Set(log.map(e=>e.id));events.forEach(e=>{if(!existing.has(e.eventId))log.push({id:e.eventId,ts:e.ts,type:e.type,...(e.details||{})})});log.sort((a,b)=>b.ts.localeCompare(a.ts));_lid=Math.max(_lid,events.length)}}catch(e){console.warn("[hydrate]",e)}})()},[]);
-  const{warn,cd,rem,dismiss}=useSessionTimeout(()=>{if(ptSessionToken){db("deleteSession",{sessionToken:ptSessionToken});ptSessionToken=null}localStorage.removeItem("expect_session");setPView("landing");setMode("patient");setPtAuthed(false);setOaipAuthed(false);setConsentCk({});setRk(r=>r+1)});
+  useEffect(()=>{(async()=>{try{const tok=localStorage.getItem("expect_session");if(!tok)return;const sess=await db("getSessionByToken",{sessionToken:tok});if(!sess||sess.expiresAt<Date.now()){localStorage.removeItem("expect_session");return}// Restore PT/OAIP session
+if(sess.userId.startsWith("pt_")&&sess.userId!=="pt_user"){ptSessionToken=tok;ptIdentity={email:sess.email,name:sess.ptName||sess.email,userId:sess.userId};setPtAuthed(true);setMode("pt")}else if(sess.userId==="oaip_user"){ptSessionToken=tok;setOaipAuthed(true);setMode("oaip")}else{// Patient session
+authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,expiresAt:sess.expiresAt,createdAt:sess.createdAt};const pt=await db("getPatientByUserId",{userId:sess.userId});if(pt){sharedIntake={ans:pt.ans,iciq:pt.iciq,pain:pt.pain,gupi:pt.gupi,fluts:pt.fluts,fsex:pt.fsex,plan:pt.plan,depressionFlag:pt.depressionFlag,prenatalFlag:pt.prenatalFlag,name:pt.name,physicianName:pt.physicianName,physicianFax:pt.physicianFax,physicianNPI:pt.physicianNPI,safetyAnswerChanged:pt.safetyAnswerChanged,safetyChanges:pt.safetyChanges,outcomeRecordId:pt.outcomeRecordId,week8:pt.week8,psiRefer:pt.psiRefer};setPView("done")}}const events=await db("listAuditEvents",{limit:500});if(events&&events.length>0){const existing=new Set(log.map(e=>e.id));events.forEach(e=>{if(!existing.has(e.eventId))log.push({id:e.eventId,ts:e.ts,type:e.type,...(e.details||{})})});log.sort((a,b)=>b.ts.localeCompare(a.ts));_lid=Math.max(_lid,events.length)}}catch(e){console.warn("[hydrate]",e)}})()},[]);
+  const{warn,cd,rem,dismiss}=useSessionTimeout(()=>{if(ptSessionToken){db("deleteSession",{sessionToken:ptSessionToken});ptSessionToken=null}ptIdentity=null;localStorage.removeItem("expect_session");setPView("landing");setMode("patient");setPtAuthed(false);setOaipAuthed(false);setConsentCk({});setRk(r=>r+1)});
   const modes=[{id:"patient",l:"Patient View"},{id:"pt",l:"PT Provider View"},{id:"oaip",l:"Utah OAIP View"}];
 
   return<><style>{css}</style>
@@ -2710,6 +2715,7 @@ function App(){
       </div>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
         {mode==="patient"&&authSession&&<span style={{fontSize:11,color:"rgba(255,255,255,.7)"}}>{authSession.email}</span>}
+        {mode==="pt"&&ptIdentity&&<span style={{fontSize:11,color:"rgba(255,255,255,.7)"}}>{ptIdentity.name}</span>}
         {mode==="patient"&&rem!==null&&<span style={{fontSize:11,color:C.or,fontWeight:600}}>{Math.floor(rem/60)}:{String(rem%60).padStart(2,"0")}</span>}
         {mode==="patient"&&<ReportIssue pView={pView}/>}
       </div>

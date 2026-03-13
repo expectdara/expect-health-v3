@@ -37,9 +37,20 @@ export default defineSchema({
     sessionToken: v.string(),
     expiresAt: v.number(),
     createdAt: v.string(),
+    ptName: v.optional(v.string()),
   })
     .index("by_token", ["sessionToken"])
     .index("by_userId", ["userId"]),
+
+  ptUsers: defineTable({
+    email: v.string(),
+    name: v.string(),
+    passwordHash: v.string(),
+    salt: v.string(),
+    role: v.string(),
+    active: v.boolean(),
+    createdAt: v.string(),
+  }).index("by_email", ["email"]),
 
   auditEvents: defineTable({
     eventId: v.string(),

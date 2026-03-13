@@ -10,6 +10,7 @@ export const createSession = mutation({
     sessionToken: v.string(),
     expiresAt: v.number(),
     createdAt: v.string(),
+    ptName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("sessions", args);
@@ -232,5 +233,44 @@ export const listDemoPatients = query({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("demoPatients").collect();
+  },
+});
+
+// ===== PT USERS =====
+
+export const createPtUser = mutation({
+  args: {
+    email: v.string(),
+    name: v.string(),
+    passwordHash: v.string(),
+    salt: v.string(),
+    role: v.string(),
+    active: v.boolean(),
+    createdAt: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("ptUsers")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+    if (existing) throw new Error("PT user with this email already exists");
+    return await ctx.db.insert("ptUsers", args);
+  },
+});
+
+export const getPtUserByEmail = query({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("ptUsers")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+  },
+});
+
+export const listPtUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("ptUsers").collect();
   },
 });

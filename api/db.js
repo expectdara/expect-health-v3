@@ -29,6 +29,17 @@ function checkRate(ip) {
   return entry.count <= RATE_LIMIT;
 }
 
+// Password hashing — SHA-256 + per-user salt via Web Crypto API
+async function hashPassword(password, salt) {
+  const data = new TextEncoder().encode(salt + password);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function generateSalt() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 const QUERIES = new Set([
   "functions:getSessionByToken",
   "functions:getPatientByUserId",
@@ -38,6 +49,8 @@ const QUERIES = new Set([
   "functions:listAuditEvents",
   "functions:listOutcomeRecords",
   "functions:listDemoPatients",
+  "functions:getPtUserByEmail",
+  "functions:listPtUsers",
 ]);
 
 const ALLOWED = new Set([
@@ -51,6 +64,7 @@ const ALLOWED = new Set([
   "functions:insertOutcomeRecord",
   "functions:completeOutcomeRecord",
   "functions:seedDemoPatient",
+  "functions:createPtUser",
 ]);
 
 // PT/OAIP-only functions — require valid session token
@@ -64,13 +78,11 @@ const AUTH_REQUIRED = new Set([
   "functions:listDemoPatients",
   "functions:completeOutcomeRecord",
   "functions:seedDemoPatient",
+  "functions:listPtUsers",
 ]);
 
-// Access codes for session creation (server-side verification)
-const ACCESS_CODES = {
-  pt_user: process.env.PT_ACCESS_CODE || "expect2026pt",
-  oaip_user: process.env.OAIP_ACCESS_CODE || "expect2026oaip",
-};
+// OAIP shared access code
+const OAIP_CODE = process.env.OAIP_ACCESS_CODE || "expect2026oaip";
 
 export default async function handler(req, res) {
   const allowed = process.env.CORS_ORIGIN || "https://expecthealth.com";
@@ -108,21 +120,62 @@ export default async function handler(req, res) {
     }
   }
 
-  // deleteSession: only allow deleting sessions that exist (self-deletion)
+  // deleteSession: require sessionToken arg
   if (fn === "functions:deleteSession") {
     if (!args?.sessionToken) return res.status(400).json({ error: "Missing session token" });
   }
 
-  // Server-side access code verification for session creation
+  // Session creation — PT uses email+password, OAIP uses shared access code
   if (fn === "functions:createSession") {
-    const code = args?.accessCode;
-    const userId = args?.userId;
-    if (!code || !userId || ACCESS_CODES[userId] !== code) {
-      return res.status(403).json({ error: "Invalid access code" });
+    const { accessCode, email, password, ...sessionArgs } = args;
+
+    if (sessionArgs.userId === "oaip_user") {
+      // OAIP: shared access code
+      if (!accessCode || accessCode !== OAIP_CODE) {
+        return res.status(403).json({ error: "Invalid access code" });
+      }
+    } else if (email && password) {
+      // PT: individual email + password login
+      try {
+        const ptUser = await client.query("functions:getPtUserByEmail", { email: email.toLowerCase().trim() });
+        if (!ptUser || !ptUser.active) {
+          return res.status(403).json({ error: "Invalid email or password" });
+        }
+        const hash = await hashPassword(password, ptUser.salt);
+        if (hash !== ptUser.passwordHash) {
+          return res.status(403).json({ error: "Invalid email or password" });
+        }
+        // Set session identity to individual PT
+        sessionArgs.userId = "pt_" + ptUser.email;
+        sessionArgs.email = ptUser.email;
+        sessionArgs.ptName = ptUser.name;
+      } catch (e) {
+        return res.status(403).json({ error: "Invalid email or password" });
+      }
+    } else {
+      return res.status(403).json({ error: "Invalid credentials" });
     }
-    // Strip accessCode before passing to Convex
-    const { accessCode: _, ...cleanArgs } = args;
-    args = cleanArgs;
+
+    args = sessionArgs;
+  }
+
+  // createPtUser: require SEED_SECRET for admin seeding
+  if (fn === "functions:createPtUser") {
+    const seedSecret = process.env.SEED_SECRET;
+    if (!seedSecret || args?.seedSecret !== seedSecret) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+    const salt = generateSalt();
+    const passwordHash = await hashPassword(args.password, salt);
+    args = {
+      email: args.email.toLowerCase().trim(),
+      name: args.name,
+      passwordHash,
+      salt,
+      role: args.role || "pt",
+      active: true,
+      createdAt: new Date().toISOString(),
+    };
   }
 
   try {
