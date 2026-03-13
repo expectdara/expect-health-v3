@@ -2716,8 +2716,8 @@ function App(){
     </div>
     <div ref={mainRef} style={{overflowY:"auto",maxHeight:"calc(100vh - 56px)"}}>
       {mode==="patient"&&<div className="mn" key={"p"+rk}>
-        {pView==="landing"&&<LandingPage onDone={(em)=>{setLandingEmail(em);setPView("consent")}}/>}
-        {pView==="consent"&&<Consent ck={consentCk} setCk={setConsentCk} onBack={()=>setPView("landing")} onDone={()=>{L("landing_email_collected",{email:landingEmail});setPView("verify")}}/>}
+        {pView==="landing"&&<LandingPage onDone={(em)=>{setLandingEmail(em);L("landing_email_collected",{email:em});setPView("consent")}}/>}
+        {pView==="consent"&&<Consent ck={consentCk} setCk={setConsentCk} onBack={()=>setPView("landing")} onDone={()=>{L("consent_completed",{email:landingEmail});setPView("verify")}}/>}
         {pView==="verify"&&<IdentityVerify onBack={()=>setPView("consent")} onDone={()=>setPView("intake")}/>}
         {pView==="intake"&&<Intake onDone={()=>setPView("done")}mainRef={mainRef}initialEmail={landingEmail}/>}
         {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status!=="approved"&&<PatientWaiting name={sharedIntake.ans?.name_first}/>}
