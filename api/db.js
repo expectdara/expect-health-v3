@@ -1,6 +1,11 @@
 import { ConvexHttpClient } from "convex/browser";
 
-const client = new ConvexHttpClient(process.env.CONVEX_URL);
+// Lazy client — avoids crash if CONVEX_URL is missing at module load
+let _client;
+function getClient() {
+  if (!_client) _client = new ConvexHttpClient(process.env.CONVEX_URL);
+  return _client;
+}
 
 // In-memory rate limiter (resets on cold start, sufficient for serverless)
 const rateMap = new Map();
@@ -15,7 +20,6 @@ function checkRate(ip) {
     rateMap.set(ip, entry);
   }
   entry.count++;
-  // Prune stale entries periodically
   if (rateMap.size > 1000) {
     for (const [k, v] of rateMap) {
       if (now - v.start > RATE_WINDOW) rateMap.delete(k);
@@ -48,12 +52,25 @@ const ALLOWED = new Set([
   "functions:seedDemoPatient",
 ]);
 
+// PT/OAIP-only functions — require valid session token
+const AUTH_REQUIRED = new Set([
+  "functions:listPatients",
+  "functions:listPatientsByStatus",
+  "functions:updatePatientPlan",
+  "functions:updatePatientWeek8",
+  "functions:listAuditEvents",
+  "functions:listOutcomeRecords",
+  "functions:listDemoPatients",
+  "functions:completeOutcomeRecord",
+  "functions:seedDemoPatient",
+]);
+
 export default async function handler(req, res) {
   const allowed = process.env.CORS_ORIGIN || "https://expecthealth.com";
   res.setHeader("Access-Control-Allow-Origin", allowed);
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Methods", "POST");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     return res.status(200).end();
   }
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -62,8 +79,27 @@ export default async function handler(req, res) {
   const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
   if (!checkRate(ip)) return res.status(429).json({ error: "Too many requests" });
 
+  if (!process.env.CONVEX_URL) return res.status(503).json({ error: "Database not configured" });
+
   const { fn, args } = req.body;
   if (!fn || !ALLOWED.has(fn)) return res.status(400).json({ error: "Invalid function" });
+
+  const client = getClient();
+
+  // Auth check for PT/OAIP-only functions
+  if (AUTH_REQUIRED.has(fn)) {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!token) return res.status(401).json({ error: "Authentication required" });
+    try {
+      const session = await client.query("functions:getSessionByToken", { sessionToken: token });
+      if (!session || session.expiresAt < Date.now()) {
+        return res.status(401).json({ error: "Invalid or expired session" });
+      }
+    } catch (e) {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
+  }
 
   try {
     const result = QUERIES.has(fn)

@@ -22,8 +22,8 @@ const C={
   g50:"#FAFAFD",g100:"#F0EFF5",g200:"#E2E0EC",g300:"#C9C6D6",g400:"#9994AD",g500:"#6E6887",g600:"#524D66",g700:"#3A3650",g800:"#252238",g900:"#16142A",
   gn:"#22C55E",rd:"#EF4444",or:"#F59E0B",
 };
-const log=[];let _lid=0;let authSession=null;
-async function db(fn,args){try{const r=await fetch("/api/db",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fn:"functions:"+fn,args:args||{}})});const d=await r.json();if(!r.ok)throw new Error(d.error);return d.result}catch(e){console.warn("[db]",fn,e.message);return null}}
+const log=[];let _lid=0;let authSession=null;let ptSessionToken=null;
+async function db(fn,args){try{const hdrs={"Content-Type":"application/json"};const tok=ptSessionToken||authSession?.sessionToken;if(tok)hdrs["Authorization"]="Bearer "+tok;const r=await fetch("/api/db",{method:"POST",headers:hdrs,body:JSON.stringify({fn:"functions:"+fn,args:args||{}})});const d=await r.json();if(!r.ok)throw new Error(d.error);return d.result}catch(e){console.warn("[db]",fn,e.message);return null}}
 function L(t,d){const evt={id:`A${++_lid}`,ts:new Date().toISOString(),type:t,...d};log.unshift(evt);db("insertAuditEvent",{eventId:evt.id,ts:evt.ts,type:t,details:d||{},userId:authSession?.userId})}
 // Shared audit event color map (used by PT AuditLog and OAIP audit stream)
 const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or,daily_adherence_entry:C.gn,checkin_week8_complete:C.blue,PT_ALERT_NO_ICIQ_PROGRESS:"#EA580C",BOWEL_REGRESSION:C.or,flutsex_improvement:C.gn,flutsex_regression:C.rd,RTM_setup_complete:C.purpL,phq2_resource_card_shown:C.or,FOLLOWUP_NONRESPONSE:"#DC2626",CLINICAL_ESCALATION:"#DC2626",surgical_avoidance_confirmed:C.gn,psi_referral:C.or,psi_referral_approved:C.gn,phq2_followup_email_queued:C.or,expansion_match:C.blueL,month12_checkin_complete:C.blue,CARE_PLAN_DOWNLOADED:C.blue,PRENATAL_PROTOCOL_APPLIED:C.gn,OUTCOME_RECORD_CREATED:C.purpL,OUTCOME_RECORD_COMPLETED:C.gn,account_created:C.gn,session_timeout:C.rd,identity_verified:C.blue,pt_login:C.purp,oaip_login:C.purp,landing_email_collected:C.blueL};
@@ -2677,7 +2677,7 @@ function ReportIssue({pView}){
 function PasswordGate({role,onAuth}){
   const[pw,setPw]=useState("");const[err,setErr]=useState(false);
   const codes={pt:"expect2026pt",oaip:"expect2026oaip"};
-  const submit=()=>{if(pw===codes[role]){L(role+"_login",{});onAuth()}else{setErr(true);setPw("")}};
+  const submit=async()=>{if(pw===codes[role]){const tok=crypto.randomUUID();ptSessionToken=tok;await db("createSession",{userId:role+"_user",email:role+"@expect.care",sessionToken:tok,expiresAt:Date.now()+30*60*1000,createdAt:new Date().toISOString()});L(role+"_login",{});onAuth()}else{setErr(true);setPw("")}};
   return<div className="mn"><div className="card fi"style={{maxWidth:400,margin:"80px auto",textAlign:"center",padding:32}}>
     <div style={{fontSize:20,fontWeight:700,color:C.purp,marginBottom:8}}>{role==="pt"?"PT Provider":"OAIP"} Portal</div>
     <p style={{fontSize:13,color:C.g500,marginBottom:20}}>Enter the {role==="pt"?"provider":"oversight"} access code to continue.</p>
@@ -2695,7 +2695,7 @@ function App(){
   const[ptAuthed,setPtAuthed]=useState(false);
   const[oaipAuthed,setOaipAuthed]=useState(false);
   useEffect(()=>{(async()=>{try{const tok=localStorage.getItem("expect_session");if(!tok)return;const sess=await db("getSessionByToken",{sessionToken:tok});if(!sess||sess.expiresAt<Date.now()){localStorage.removeItem("expect_session");return}authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,expiresAt:sess.expiresAt,createdAt:sess.createdAt};const pt=await db("getPatientByUserId",{userId:sess.userId});if(pt){sharedIntake={ans:pt.ans,iciq:pt.iciq,pain:pt.pain,gupi:pt.gupi,fluts:pt.fluts,fsex:pt.fsex,plan:pt.plan,depressionFlag:pt.depressionFlag,prenatalFlag:pt.prenatalFlag,name:pt.name,physicianName:pt.physicianName,physicianFax:pt.physicianFax,physicianNPI:pt.physicianNPI,safetyAnswerChanged:pt.safetyAnswerChanged,safetyChanges:pt.safetyChanges,outcomeRecordId:pt.outcomeRecordId,week8:pt.week8,psiRefer:pt.psiRefer};setPView("done")}const events=await db("listAuditEvents",{limit:500});if(events&&events.length>0){const existing=new Set(log.map(e=>e.id));events.forEach(e=>{if(!existing.has(e.eventId))log.push({id:e.eventId,ts:e.ts,type:e.type,...(e.details||{})})});log.sort((a,b)=>b.ts.localeCompare(a.ts));_lid=Math.max(_lid,events.length)}}catch(e){console.warn("[hydrate]",e)}})()},[]);
-  const{warn,cd,rem,dismiss}=useSessionTimeout(()=>{setPView("landing");setMode("patient");setPtAuthed(false);setOaipAuthed(false);setRk(r=>r+1)});
+  const{warn,cd,rem,dismiss}=useSessionTimeout(()=>{if(ptSessionToken){db("deleteSession",{sessionToken:ptSessionToken});ptSessionToken=null}setPView("landing");setMode("patient");setPtAuthed(false);setOaipAuthed(false);setRk(r=>r+1)});
   const modes=[{id:"patient",l:"Patient View"},{id:"pt",l:"PT Provider View"},{id:"oaip",l:"Utah OAIP View"}];
 
   return<><style>{css}</style>
