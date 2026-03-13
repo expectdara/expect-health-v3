@@ -764,8 +764,8 @@ function ConciergeSearch({ans,set}){
   </div>;}
 
   return<div className="qc fi">
-    <div className="qt">Find Your Referring Provider</div>
-    <div style={{fontSize:12,color:C.g500,marginBottom:10}}>Search the CMS NPI Registry and our provider network to connect your physician to your care plan.</div>
+    <div className="qt">Find Your Provider</div>
+    <div style={{fontSize:12,color:C.g500,marginBottom:10}}>Search the CMS NPI Registry and our provider network to connect your Utah-based clinician to your care plan.</div>
     <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
       <div style={{flex:1,minWidth:100}}><div className="il">First Name (Optional)</div><input className="inp"value={searchFirst}onChange={e=>setSearchFirst(e.target.value)}placeholder="e.g. Kristen"/></div>
       <div style={{flex:1,minWidth:120}}><div className="il">Last Name *</div><input className="inp"value={searchLast}onChange={e=>setSearchLast(e.target.value)}placeholder="e.g. Miller"/></div>
@@ -2711,7 +2711,7 @@ authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,
     <div className="topnav">
       <div className="topnav-logo"><img src="Expect_Logo_WhiteTM.png" alt="Expect Health" style={{height:"32px"}}/></div>
       <div className="topnav-tabs">
-        {modes.map(m=><div key={m.id}className={`tt ${mode===m.id?"a":""}`}onClick={()=>{if(mode!==m.id){setMode(m.id);setRk(r=>r+1)}}}>{m.l}</div>)}
+        {modes.map(m=><div key={m.id}className={`tt ${mode===m.id?"a":""}`}onClick={()=>{if(mode!==m.id)setMode(m.id)}}>{m.l}</div>)}
       </div>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
         {mode==="patient"&&authSession&&<span style={{fontSize:11,color:"rgba(255,255,255,.7)"}}>{authSession.email}</span>}
@@ -2721,7 +2721,7 @@ authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,
       </div>
     </div>
     <div ref={mainRef} style={{overflowY:"auto",maxHeight:"calc(100vh - 56px)"}}>
-      {mode==="patient"&&<div className="mn" key={"p"+rk}>
+      <div className="mn" key={"p"+rk} style={{display:mode==="patient"?"block":"none"}}>
         {pView==="landing"&&<LandingPage onDone={(em)=>{setLandingEmail(em);L("landing_email_collected",{email:em});setPView("consent")}}/>}
         {pView==="consent"&&<Consent ck={consentCk} setCk={setConsentCk} onBack={()=>setPView("landing")} onDone={()=>{L("consent_completed",{email:landingEmail});setPView("verify")}}/>}
         {pView==="verify"&&<IdentityVerify onBack={()=>setPView("consent")} onDone={()=>setPView("intake")}/>}
@@ -2729,7 +2729,7 @@ authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,
         {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status!=="approved"&&<PatientWaiting name={sharedIntake.ans?.name_first}/>}
         {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status==="approved"&&<MyCareplan data={sharedIntake}/>}
         {pView==="done"&&(!sharedIntake||!sharedIntake.plan)&&<div className="fi"style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:48,marginBottom:16}}>&#x23F3;</div><div className="h1"style={{fontSize:22}}>Session Expired</div><p style={{fontSize:14,color:C.g500,maxWidth:400,margin:"12px auto",lineHeight:1.7}}>Your session could not be restored. Please start over.</p><button className="btn bpk"onClick={()=>setPView("landing")}>Start Over</button></div>}
-      </div>}
+      </div>
       {mode==="pt"&&(ptAuthed?<div className="mnw">
         <div style={{display:"flex",gap:0,marginBottom:20,borderBottom:`1px solid ${C.g200}`}}>
           {[["dash","Dashboard"],["patients","Patients"],["audit","Audit Log"]].map(([id,l])=>
