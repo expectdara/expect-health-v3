@@ -176,7 +176,8 @@ const GUPI_PAIN=[
 {id:"gupi3",text:"How often have you had pain or discomfort in any of the areas mentioned above — including the vaginal entrance, vagina, urethra, pubic area, or bladder — over the last week?",opts:[["Never",0],["Rarely",1],["Sometimes",2],["Often",3],["Usually",4],["Always",5]],conditional:a=>{const painYN=["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d"];const anyYes=painYN.some(k=>a[k]==="yes");const bladderPain=(a.fl4a??0)>0;return anyYes||bladderPain}},
 {id:"gupi4",text:"Which number best describes your AVERAGE pain or discomfort on the days you had it, over the last week? (0 = no pain, 10 = pain as bad as you can imagine)",type:"scale",min:0,max:10,lo:"No pain",hi:"Pain as bad as you can imagine",conditional:a=>a.gupi3!==undefined&&a.gupi3!==0},
 {id:"pain1",text:"What is your current pelvic pain level right now? (0 = no pain, 10 = worst pain imaginable)",type:"scale",min:0,max:10,lo:"No pain",hi:"Worst pain imaginable"},
-{id:"pain2",text:"What has your average pelvic pain been over the past week? (0 = no pain, 10 = worst pain imaginable)",type:"scale",min:0,max:10,lo:"No pain",hi:"Worst pain imaginable"},
+// pain2 removed — gupi4 ("average pain on days you had it, over the last week") serves as the
+// canonical average pain item for both GUPI scoring and backend safety logic (measure once, use twice)
 {id:"pain3",text:"How does your pain affect your daily activities?",opts:[["No effect",0],["Mild — I can do most activities",1],["Moderate — I avoid some activities",2],["Severe — I am significantly limited",3],["I cannot perform daily activities",4]]},
 {id:"symptoms_location",text:"Where do you experience pain or discomfort? Please select all that apply.",type:"multi",opts:[["None — no pain","none"],["Lower abdomen","lower_abd"],["Pelvic floor","pelvic_floor"],["Vaginal area","vaginal"],["Lower back","lower_back"],["Hip area","hip"]]},
 {id:"symptoms_trigger",text:"When do you feel pain or discomfort? Select all that apply.",type:"multi",conditional:a=>!((a.symptoms_location||[]).includes("none")||(a.symptoms_location||[]).length===0),opts:[["During urination","dysuria"],["As my bladder fills (relieved by urinating)","bladder_fills"],["During sexual activity","dyspareunia"],["While inserting a tampon","tampon"],["During bowel movements","bowel_movements"],["While sitting for long periods","sitting_long"],["None of the above","none"]]},
@@ -235,7 +236,8 @@ function sICIQ(a){const t=(a.iciq1??0)+(a.iciq2??0)+(a.iciq3??0);const sv=t===0?
 function sFLUTS(a){const F=(a.fl2a??0)+(a.fl3a??0)+(a.fl5a??0);const V=(a.fl6a??0)+(a.fl7a??0)+(a.fl8a??0);const fl10a_derived=Math.min(a.iciq1??0,4);const I=(a.fl9a??0)+fl10a_derived+(a.fl11a??0)+(a.fl12a??0)+(a.fl13a??0);return{F,V,I,total:F+V+I}}
 function sFSEX(a){return{total:(a.fs2a??0)+(a.fs3a??0)+Math.min(a.fs4a??0,3)+Math.min(a.fs5a??0,3)}}
 function sGUPI(a){const p=(a.gupi1a==="yes"?1:0)+(a.gupi1b==="yes"?1:0)+(a.gupi1c==="yes"?1:0)+(a.gupi1d==="yes"?1:0)+(a.gupi2a==="yes"?1:0)+(a.gupi2b==="yes"?1:0)+(a.gupi2c==="yes"?1:0)+(a.gupi2d==="yes"?1:0)+(a.gupi3??0)+(a.gupi4??0);const u=(a.gupi5??0)+(a.gupi6??0);const q=(a.gupi7??0)+(a.gupi8??0)+(a.gupi9??0);const t=p+u+q;return{total:t,pain:p,urinary:u,qol:q,severity:t<=14?"Mild":t<=29?"Moderate":"Severe"}}
-function sPain(a){const c=a.pain1??0,v=a.pain2??0,f=a.pain3??0;const cm=Math.round((c+v)/2*10)/10;const locs=(a.symptoms_location||[]).filter(x=>x!=="none");const trigs=(a.symptoms_trigger||[]).filter(x=>x!=="none");return{current:c,average:v,composite:cm,functional:f,severity:cm===0?"None":cm<=3?"Mild":cm<=6?"Moderate":"Severe",locations:locs,triggers:trigs}}
+// sPain: composite uses gupi4 (GUPI average pain) as the canonical "average pain" item — measure once, use twice
+function sPain(a){const c=a.pain1??0,v=a.gupi4??0,f=a.pain3??0;const cm=v>0?Math.round((c+v)/2*10)/10:c;const locs=(a.symptoms_location||[]).filter(x=>x!=="none");const trigs=(a.symptoms_trigger||[]).filter(x=>x!=="none");return{current:c,average:v,composite:cm,functional:f,severity:cm===0?"None":cm<=3?"Mild":cm<=6?"Moderate":"Severe",locations:locs,triggers:trigs}}
 
 // Expansion Library — shorthand-to-patient-friendly mappings (per MyCareplan Feature Spec §1.4)
 const EXPANSION_LIB={
@@ -634,9 +636,9 @@ function getInconsistencies(ans){
   // Says "none" for leak amount but reports high interference
   if(ans.iciq2===0&&ans.iciq3>=5)flags.push({field:"iciq3",msg:"You said no urine leaks, but rated high interference with daily life. Please confirm."});
   // Reports no pain anywhere but high pain score
-  if(Array.isArray(ans.symptoms_location)&&ans.symptoms_location.includes("none")&&(ans.pain1>=3||ans.pain2>=3))flags.push({field:"symptoms_location",msg:"You selected 'no pain locations' but reported moderate-to-high pain scores. Please review."});
+  if(Array.isArray(ans.symptoms_location)&&ans.symptoms_location.includes("none")&&(ans.pain1>=3||(ans.gupi4??0)>=3))flags.push({field:"symptoms_location",msg:"You selected 'no pain locations' but reported moderate-to-high pain scores. Please review."});
   // Reports high pain but says no effect on activities
-  if((ans.pain1>=5||ans.pain2>=5)&&ans.pain3===0)flags.push({field:"pain3",msg:"You reported significant pain but said it has no effect on daily activities. Please confirm."});
+  if((ans.pain1>=5||(ans.gupi4??0)>=5)&&ans.pain3===0)flags.push({field:"pain3",msg:"You reported significant pain but said it has no effect on daily activities. Please confirm."});
   // Says never has urgency but reports urgency-type leaking
   if(ans.fl3a===0&&Array.isArray(ans.iciq4)&&ans.iciq4.includes("urgency"))flags.push({field:"fl3a",msg:"You said you never rush to the toilet, but reported leaking before reaching it. Please review."});
   // PHQ-2 positive — not a contradiction but a clinical flag
