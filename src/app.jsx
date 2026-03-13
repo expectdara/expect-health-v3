@@ -467,14 +467,14 @@ function NPILookup({q,ans,set}){
         const providers=data.results.map(r=>{
           const basic=r.basic||{};const addr=(r.addresses||[]).find(a=>a.address_purpose==="LOCATION")||(r.addresses||[])[0]||{};
           const taxonomy=(r.taxonomies||[]).find(t=>t.primary)||{};
-          return{npi:r.number,name:`${basic.first_name||""} ${basic.last_name||""}`.trim(),credential:basic.credential||"",specialty:taxonomy.desc||"",city:addr.city||"",state:addr.state||"",fax:addr.fax_number||"",phone:addr.telephone_number||""};
+          return{npi:r.number,name:`${basic.first_name||""} ${basic.last_name||""}`.trim(),credential:basic.credential||"",specialty:taxonomy.desc||"",practice:basic.organization_name||addr.organization_name||"",city:addr.city||"",state:addr.state||"",fax:addr.fax_number||"",phone:addr.telephone_number||""};
         });
         setNpiResults(providers);
       }else{setNpiErr("No providers found. Try different spelling or state.")}
     }catch(e){setNpiErr("NPI lookup unavailable. Please enter provider info manually below.")}
     setNpiLoading(false);
   };
-  const selectProvider=(p)=>{set("physician_name",p.name+(p.credential?`, ${p.credential}`:""));const demoFax=DEMO_NPI_FAXES[p.npi];const fax=demoFax||p.fax?.replace(/[^\d]/g,"")||"";if(fax){set("physician_fax",fax)}else{const def=getDefaultFax({practice:p.name,specialty:p.specialty});if(def){set("physician_fax",def.fax);set("physician_fax_default",def.label)}else{set("physician_fax","")}}set("physician_npi_id",p.npi);set("physician_npi_selected",p)};
+  const selectProvider=(p)=>{set("physician_name",p.name+(p.credential?`, ${p.credential}`:""));const demoFax=DEMO_NPI_FAXES[p.npi];const fax=demoFax||p.fax?.replace(/[^\d]/g,"")||"";if(fax){set("physician_fax",fax);set("physician_fax_verified",!!demoFax||!!fax);set("physician_fax_default","")}else{const def=getDefaultFax({practice:p.practice,specialty:p.specialty});if(def){set("physician_fax",def.fax);set("physician_fax_default",def.label);set("physician_fax_verified",false)}else{set("physician_fax","");set("physician_fax_default","");set("physician_fax_verified",false)}}set("physician_npi_id",p.npi);set("physician_npi_selected",p)};
   return<div className="qc fi"><div className="qt">{q.text}</div>
     <div style={{fontSize:12,color:C.g500,marginBottom:10}}>Search the CMS NPI Registry to find your physician. This ensures accurate provider information for your care team.</div>
     {!selected?<>
@@ -871,7 +871,6 @@ function LandingPage({onDone}){
   const valid=email&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   return<div className="fi"style={{maxWidth:600,margin:"0 auto"}}>
     <div style={{textAlign:"center",marginBottom:24}}>
-      <div style={{fontSize:40,marginBottom:12}}>🩺</div>
       <div className="h1"style={{fontSize:28}}>AI-Augmented Pelvic Floor Physical Therapy</div>
       <div className="sub"style={{fontSize:15,maxWidth:480,margin:"8px auto 0",lineHeight:1.7}}>Get a personalized pelvic floor care plan created by AI and reviewed by a licensed Utah Physical Therapist.</div>
     </div>
@@ -896,8 +895,7 @@ function LandingPage({onDone}){
 }
 
 // CONSENT
-function Consent({onDone,onBack}){
-  const[ck,setCk]=useState({});
+function Consent({onDone,onBack,ck,setCk}){
   const items=[
     {id:"ai",tx:"I understand this platform uses AI to assist in my care. A licensed Physical Therapist oversees all AI-generated treatment plans. The level of clinical review may vary based on clinical complexity and program phase."},
     {id:"pt",tx:"I understand a licensed Utah PT maintains clinical oversight of AI recommendations. The AI supports — but never replaces — clinical judgment."},
@@ -2680,27 +2678,27 @@ function ReportIssue({pView}){
 
 // MAIN APP — Three Views
 function PasswordGate({role,onAuth}){
-  const[pw,setPw]=useState("");const[err,setErr]=useState(false);
-  const codes={pt:"expect2026pt",oaip:"expect2026oaip"};
-  const submit=async()=>{if(pw===codes[role]){const tok=crypto.randomUUID();const created=await db("createSession",{userId:role+"_user",email:role+"@expect.care",sessionToken:tok,expiresAt:Date.now()+30*60*1000,createdAt:new Date().toISOString()});if(!created){setErr(true);return}ptSessionToken=tok;L(role+"_login",{});onAuth()}else{setErr(true);setPw("")}};
+  const[pw,setPw]=useState("");
+  const[loading,setLoading]=useState(false);const[errMsg,setErrMsg]=useState("");
+  const submit=async()=>{if(loading)return;setLoading(true);setErrMsg("");try{const tok=(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^(crypto.getRandomValues(new Uint8Array(1))[0]&(15>>c/4))).toString(16));const created=await db("createSession",{userId:role+"_user",email:role+"@expect.care",sessionToken:tok,expiresAt:Date.now()+30*60*1000,createdAt:new Date().toISOString(),accessCode:pw},{throw:true});ptSessionToken=tok;localStorage.setItem("expect_session",tok);L(role+"_login",{});onAuth()}catch(e){const msg=e.message||"";if(msg.includes("Invalid access code")){setErrMsg("Incorrect access code. Please try again.")}else{setErrMsg("Unable to connect. Please try again later.")}setPw("");setLoading(false)}};
   return<div className="mn"><div className="card fi"style={{maxWidth:400,margin:"80px auto",textAlign:"center",padding:32}}>
     <div style={{fontSize:20,fontWeight:700,color:C.purp,marginBottom:8}}>{role==="pt"?"PT Provider":"OAIP"} Portal</div>
     <p style={{fontSize:13,color:C.g500,marginBottom:20}}>Enter the {role==="pt"?"provider":"oversight"} access code to continue.</p>
-    {err&&<div style={{color:C.rd,fontSize:12,marginBottom:12}}>Incorrect access code. Please try again.</div>}
-    <input type="password"className="inp"value={pw}onChange={e=>{setPw(e.target.value);setErr(false)}}onKeyDown={e=>e.key==="Enter"&&submit()}placeholder="Access code"style={{textAlign:"center",marginBottom:16}}/>
-    <button className="btn bbl"onClick={submit}style={{width:"100%",justifyContent:"center"}}>Enter</button>
+    {errMsg&&<div style={{color:C.rd,fontSize:12,marginBottom:12}}>{errMsg}</div>}
+    <input type="password"className="inp"value={pw}onChange={e=>{setPw(e.target.value);setErrMsg("")}}onKeyDown={e=>e.key==="Enter"&&submit()}placeholder="Access code"style={{textAlign:"center",marginBottom:16}}disabled={loading}/>
+    <button className="btn bbl"onClick={submit}disabled={loading}style={{width:"100%",justifyContent:"center",opacity:loading?.6:1}}>{loading?"Verifying...":"Enter"}</button>
   </div></div>;
 }
 
 function App(){
-  const[mode,setMode]=useState("patient");const[pView,setPView]=useState("landing");const[landingEmail,setLandingEmail]=useState("");
+  const[mode,setMode]=useState("patient");const[pView,setPView]=useState("landing");const[landingEmail,setLandingEmail]=useState("");const[consentCk,setConsentCk]=useState({});
   const[ptView,setPtView]=useState("dash");
   const[rk,setRk]=useState(0);
   const mainRef=useRef(null);
   const[ptAuthed,setPtAuthed]=useState(false);
   const[oaipAuthed,setOaipAuthed]=useState(false);
   useEffect(()=>{(async()=>{try{const tok=localStorage.getItem("expect_session");if(!tok)return;const sess=await db("getSessionByToken",{sessionToken:tok});if(!sess||sess.expiresAt<Date.now()){localStorage.removeItem("expect_session");return}authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,expiresAt:sess.expiresAt,createdAt:sess.createdAt};const pt=await db("getPatientByUserId",{userId:sess.userId});if(pt){sharedIntake={ans:pt.ans,iciq:pt.iciq,pain:pt.pain,gupi:pt.gupi,fluts:pt.fluts,fsex:pt.fsex,plan:pt.plan,depressionFlag:pt.depressionFlag,prenatalFlag:pt.prenatalFlag,name:pt.name,physicianName:pt.physicianName,physicianFax:pt.physicianFax,physicianNPI:pt.physicianNPI,safetyAnswerChanged:pt.safetyAnswerChanged,safetyChanges:pt.safetyChanges,outcomeRecordId:pt.outcomeRecordId,week8:pt.week8,psiRefer:pt.psiRefer};setPView("done")}const events=await db("listAuditEvents",{limit:500});if(events&&events.length>0){const existing=new Set(log.map(e=>e.id));events.forEach(e=>{if(!existing.has(e.eventId))log.push({id:e.eventId,ts:e.ts,type:e.type,...(e.details||{})})});log.sort((a,b)=>b.ts.localeCompare(a.ts));_lid=Math.max(_lid,events.length)}}catch(e){console.warn("[hydrate]",e)}})()},[]);
-  const{warn,cd,rem,dismiss}=useSessionTimeout(()=>{if(ptSessionToken){db("deleteSession",{sessionToken:ptSessionToken});ptSessionToken=null}setPView("landing");setMode("patient");setPtAuthed(false);setOaipAuthed(false);setRk(r=>r+1)});
+  const{warn,cd,rem,dismiss}=useSessionTimeout(()=>{if(ptSessionToken){db("deleteSession",{sessionToken:ptSessionToken});ptSessionToken=null}localStorage.removeItem("expect_session");setPView("landing");setMode("patient");setPtAuthed(false);setOaipAuthed(false);setConsentCk({});setRk(r=>r+1)});
   const modes=[{id:"patient",l:"Patient View"},{id:"pt",l:"PT Provider View"},{id:"oaip",l:"Utah OAIP View"}];
 
   return<><style>{css}</style>
@@ -2708,7 +2706,7 @@ function App(){
     <div className="topnav">
       <div className="topnav-logo"><img src="Expect_Logo_WhiteTM.png" alt="Expect Health" style={{height:"32px"}}/></div>
       <div className="topnav-tabs">
-        {modes.map(m=><div key={m.id}className={`tt ${mode===m.id?"a":""}`}onClick={()=>{setMode(m.id);setRk(r=>r+1)}}>{m.l}</div>)}
+        {modes.map(m=><div key={m.id}className={`tt ${mode===m.id?"a":""}`}onClick={()=>{if(mode!==m.id){setMode(m.id);setRk(r=>r+1)}}}>{m.l}</div>)}
       </div>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
         {mode==="patient"&&authSession&&<span style={{fontSize:11,color:"rgba(255,255,255,.7)"}}>{authSession.email}</span>}
@@ -2719,7 +2717,7 @@ function App(){
     <div ref={mainRef} style={{overflowY:"auto",maxHeight:"calc(100vh - 56px)"}}>
       {mode==="patient"&&<div className="mn" key={"p"+rk}>
         {pView==="landing"&&<LandingPage onDone={(em)=>{setLandingEmail(em);setPView("consent")}}/>}
-        {pView==="consent"&&<Consent onBack={()=>setPView("landing")} onDone={()=>{L("landing_email_collected",{email:landingEmail});setPView("verify")}}/>}
+        {pView==="consent"&&<Consent ck={consentCk} setCk={setConsentCk} onBack={()=>setPView("landing")} onDone={()=>{L("landing_email_collected",{email:landingEmail});setPView("verify")}}/>}
         {pView==="verify"&&<IdentityVerify onBack={()=>setPView("consent")} onDone={()=>setPView("intake")}/>}
         {pView==="intake"&&<Intake onDone={()=>setPView("done")}mainRef={mainRef}initialEmail={landingEmail}/>}
         {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status!=="approved"&&<PatientWaiting name={sharedIntake.ans?.name_first}/>}

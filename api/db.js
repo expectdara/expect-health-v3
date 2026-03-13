@@ -66,6 +66,12 @@ const AUTH_REQUIRED = new Set([
   "functions:seedDemoPatient",
 ]);
 
+// Access codes for session creation (server-side verification)
+const ACCESS_CODES = {
+  pt_user: process.env.PT_ACCESS_CODE || "expect2026pt",
+  oaip_user: process.env.OAIP_ACCESS_CODE || "expect2026oaip",
+};
+
 export default async function handler(req, res) {
   const allowed = process.env.CORS_ORIGIN || "https://expecthealth.com";
   res.setHeader("Access-Control-Allow-Origin", allowed);
@@ -82,7 +88,7 @@ export default async function handler(req, res) {
 
   if (!process.env.CONVEX_URL) return res.status(503).json({ error: "Database not configured" });
 
-  const { fn, args } = req.body;
+  let { fn, args } = req.body;
   if (!fn || !ALLOWED.has(fn)) return res.status(400).json({ error: "Invalid function" });
 
   const client = await getClient();
@@ -100,6 +106,23 @@ export default async function handler(req, res) {
     } catch (e) {
       return res.status(401).json({ error: "Authentication failed" });
     }
+  }
+
+  // deleteSession: only allow deleting sessions that exist (self-deletion)
+  if (fn === "functions:deleteSession") {
+    if (!args?.sessionToken) return res.status(400).json({ error: "Missing session token" });
+  }
+
+  // Server-side access code verification for session creation
+  if (fn === "functions:createSession") {
+    const code = args?.accessCode;
+    const userId = args?.userId;
+    if (!code || !userId || ACCESS_CODES[userId] !== code) {
+      return res.status(403).json({ error: "Invalid access code" });
+    }
+    // Strip accessCode before passing to Convex
+    const { accessCode: _, ...cleanArgs } = args;
+    args = cleanArgs;
   }
 
   try {

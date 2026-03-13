@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npx esbuild src/app.jsx --bundle --outfile=public/app.js --jsx=transform --jsx-factory=React.createElement --jsx-fragment=React.Fragment --target=es2020 --platform=browser",
+  "buildCommand": "npx esbuild src/app.jsx --bundle --outfile=public/app.js --jsx=transform --jsx-factory=React.createElement --jsx-fragment=React.Fragment --target=es2020 --platform=browser --minify",
   "outputDirectory": "public",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }

@@ -5,7 +5,7 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "build": "npx esbuild src/app.jsx --bundle --outfile=public/app.js --jsx=transform --jsx-factory=React.createElement --jsx-fragment=React.Fragment --target=es2020 --platform=browser",
+    "build": "npx esbuild src/app.jsx --bundle --outfile=public/app.js --jsx=transform --jsx-factory=React.createElement --jsx-fragment=React.Fragment --target=es2020 --platform=browser --minify",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
