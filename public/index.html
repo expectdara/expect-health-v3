@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" integrity="sha384-tMH8h3BGESGckSAVGZ82T9n90ztNXxvdwvdM6UoR56cYcf+0iGXBliJ29D+wZ/x8" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" integrity="sha384-bm7MnzvK++ykSwVJ2tynSE5TRdN+xL418osEVF2DE/L/gfWHj91J2Sphe582B1Bh" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js" integrity="sha384-ku9eM40vVDsFUiERorrdlHlF0LIhdfn716M7TntM72Uo98T7LWiogD3hNenPx8Q0" crossorigin="anonymous"></script>
+<script src="https://js.stripe.com/v3/"></script>
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
 
@@ -21,11 +22,104 @@ const C={
   g50:"#FAFAFD",g100:"#F0EFF5",g200:"#E2E0EC",g300:"#C9C6D6",g400:"#9994AD",g500:"#6E6887",g600:"#524D66",g700:"#3A3650",g800:"#252238",g900:"#16142A",
   gn:"#22C55E",rd:"#EF4444",or:"#F59E0B",
 };
-const log=[];let _lid=0;function L(t,d){log.unshift({id:`A${++_lid}`,ts:new Date().toISOString(),type:t,...d})}
+const log=[];let _lid=0;let authSession=null;
+async function db(fn,args){try{const r=await fetch("/api/db",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fn:"functions:"+fn,args:args||{}})});const d=await r.json();if(!r.ok)throw new Error(d.error);return d.result}catch(e){console.warn("[db]",fn,e.message);return null}}
+function L(t,d){const evt={id:`A${++_lid}`,ts:new Date().toISOString(),type:t,...d};log.unshift(evt);db("insertAuditEvent",{eventId:evt.id,ts:evt.ts,type:t,details:d||{},userId:authSession?.userId})}
 // Shared audit event color map (used by PT AuditLog and OAIP audit stream)
-const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or,daily_adherence_entry:C.gn,checkin_week8_complete:C.blue,PT_ALERT_NO_ICIQ_PROGRESS:"#EA580C",BOWEL_REGRESSION:C.or,flutsex_improvement:C.gn,flutsex_regression:C.rd,RTM_setup_complete:C.purpL,phq2_resource_card_shown:C.or,FOLLOWUP_NONRESPONSE:"#DC2626",CLINICAL_ESCALATION:"#DC2626",surgical_avoidance_confirmed:C.gn,psi_referral:C.or,psi_referral_approved:C.gn,phq2_followup_email_queued:C.or,expansion_match:C.blueL,month12_checkin_complete:C.blue,CARE_PLAN_DOWNLOADED:C.blue,PRENATAL_PROTOCOL_APPLIED:C.gn};
+const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or,daily_adherence_entry:C.gn,checkin_week8_complete:C.blue,PT_ALERT_NO_ICIQ_PROGRESS:"#EA580C",BOWEL_REGRESSION:C.or,flutsex_improvement:C.gn,flutsex_regression:C.rd,RTM_setup_complete:C.purpL,phq2_resource_card_shown:C.or,FOLLOWUP_NONRESPONSE:"#DC2626",CLINICAL_ESCALATION:"#DC2626",surgical_avoidance_confirmed:C.gn,psi_referral:C.or,psi_referral_approved:C.gn,phq2_followup_email_queued:C.or,expansion_match:C.blueL,month12_checkin_complete:C.blue,CARE_PLAN_DOWNLOADED:C.blue,PRENATAL_PROTOCOL_APPLIED:C.gn,OUTCOME_RECORD_CREATED:C.purpL,OUTCOME_RECORD_COMPLETED:C.gn,account_created:C.gn,session_timeout:C.rd,identity_verified:C.blue,pt_login:C.purp,oaip_login:C.purp,landing_email_collected:C.blueL};
 // PHI-sensitive audit keys that must be masked in auditor mode
-const PHI_KEYS=["patient","name","detail","description","original","corrected","text","note","email"];
+const PHI_KEYS=["patient","name","detail","description","original","corrected","text","note","email","dob","date_of_birth","phone","fax","ssn","mrn","address","city","state","zip","account","license","npi","url","ip","device","photo","identifier","name_first","name_last","physicianName","physicianFax","physicianNPI"];
+// Shared PHI masking utility (used by PT AuditLog and OAIP audit stream)
+function hashMask(name){return`ID-${Array.from(new Uint8Array(new TextEncoder().encode(name||""))).reduce((h,b)=>((h<<5)-h+b)>>>0,5381).toString(16).slice(0,6).toUpperCase()}`}
+function maskDetails(details,masked){if(!masked)return details;return Object.fromEntries(Object.entries(details).map(([k,v])=>PHI_KEYS.includes(k)?[k,typeof v==="string"?hashMask(v):"[REDACTED]"]:[k,v]))}
+// Shared PHQ-2 score computation
+function calcPHQ2(ans){return(ans.phq2_interest||0)+(ans.phq2_mood||0)}
+// Shared PSI Resource Card component
+function PsiResourceCard({compact}){
+  if(compact)return<div style={{background:"#FEF3C7",border:"1px solid #D97706",borderRadius:8,padding:12,marginTop:8}}>
+    <div style={{fontWeight:700,fontSize:12,color:"#78350F",marginBottom:6}}>Mental Health Support Resources</div>
+    {PSI_RESOURCES.crisis.map((r,i)=><div key={i}style={{fontSize:11,color:"#7F1D1D",marginBottom:3}}><strong>{r.name}:</strong> {r.phone} — {r.desc}</div>)}
+    {PSI_RESOURCES.support.slice(0,2).map((r,i)=><div key={i}style={{fontSize:11,color:"#4B5563",marginBottom:3}}><strong>{r.name}</strong>{r.phone?" — "+r.phone:""}</div>)}
+  </div>;
+  return<div style={{borderRadius:12,overflow:"hidden",border:`2px solid ${C.purp}`,boxShadow:"0 2px 12px rgba(109,40,217,.15)"}}>
+    <div style={{background:`linear-gradient(135deg,${C.purp},${C.pink})`,padding:"14px 18px",color:"#fff"}}>
+      <div style={{fontSize:15,fontWeight:700}}>If you are in immediate danger or experiencing a crisis:</div>
+    </div>
+    <div style={{padding:"14px 18px",background:"#F5F3FF"}}>
+      {PSI_RESOURCES.crisis.map((r,i)=><div key={i}style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<PSI_RESOURCES.crisis.length-1?"1px solid #E9D5FF":"none"}}>
+        <span style={{fontSize:18}}>📞</span>
+        <div><div style={{fontWeight:700,fontSize:13,color:"#4C1D95"}}>{r.name}: <a href={"tel:"+r.phone.replace(/[^0-9]/g,"")}style={{color:C.purp,textDecoration:"underline"}}>{r.phone}</a></div><div style={{fontSize:11,color:"#5B21B6"}}>{r.desc}</div></div>
+      </div>)}
+    </div>
+    <div style={{padding:"14px 18px",background:"#FFFBEB",borderTop:"1px solid #FDE68A"}}>
+      <div style={{fontSize:13,fontWeight:600,color:"#78350F",marginBottom:4}}>It sounds like you may be carrying a heavy load right now. You are not alone, and help is free and confidential:</div>
+      {PSI_RESOURCES.support.map((r,i)=><div key={i}style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 0",borderBottom:i<PSI_RESOURCES.support.length-1?"1px solid #FEF3C7":"none"}}>
+        <span style={{fontSize:16,marginTop:1}}>{r.url?"🔗":"📞"}</span>
+        <div><div style={{fontWeight:600,fontSize:12,color:"#78350F"}}>{r.name}{r.phone?<span>: <a href={"tel:"+r.phone.replace(/[^0-9]/g,"")}style={{color:"#D97706"}}>{r.phone}</a></span>:null}</div><div style={{fontSize:11,color:"#92400E",lineHeight:1.5}}>{r.desc}</div>{r.url?<a href={r.url}target="_blank"rel="noopener noreferrer"style={{fontSize:11,color:"#6D28D9"}}>{r.url.replace(/https?:\/\/(www\.)?/,"")}</a>:null}</div>
+      </div>)}
+    </div>
+    <div style={{padding:"10px 18px",background:"#F3F4F6",fontSize:10,color:"#6B7280",lineHeight:1.5}}>{PSI_RESOURCES.disclaimer}</div>
+  </div>;
+}
+
+// ============================================================
+// OUTCOME RECORDS — Adaptive Algorithm Foundation (Patent Option 1)
+// ============================================================
+const OUTCOME_RECORDS=[];let _orid=0;
+function ageBracket(dob){if(!dob)return"unknown";const d=new Date(dob);if(isNaN(d))return"unknown";const y=new Date().getFullYear()-d.getFullYear();return y<18?"under18":y<30?"18-29":y<40?"30-39":y<50?"40-49":y<60?"50-59":"60+"}
+function buildOutcomeRecord(intake,plan,reviewTimeSec){
+  const a=intake.ans,iciq=intake.iciq,pain=intake.pain,gupi=intake.gupi,fluts=intake.fluts,fsex=intake.fsex;
+  const phq2=calcPHQ2(a);
+  const avoid=(a.avoid_activities||[]).filter(x=>x!=="none");
+  const constip=(a.bowel_constipation??0)>=2||(a.bowel_frequency??3)<=1||(a.bristol_stool??4)<=2;
+  const triggers=pain.triggers||[];
+  const rec={id:`OR-${++_orid}-${Date.now()}`,created:new Date().toISOString(),
+    baseline:{iciq:{total:iciq.total,severity:iciq.severity,subtype:iciq.subtype},fluts:{F:fluts.F,V:fluts.V,I:fluts.I,total:fluts.total},fsex:{total:fsex.total},gupi:{total:gupi.total,pain:gupi.pain,urinary:gupi.urinary,qol:gupi.qol,severity:gupi.severity},pain:{composite:pain.composite,functional:pain.functional,severity:pain.severity},phq2,age_bracket:ageBracket(a.dob),pregnancy_status:a.pregnancy_status||"none",constipation_composite:constip,avoidance_count:avoid.length,cue_preference:a.cue_preference||"default",pudendal_flag:triggers.includes("sitting_long")&&pain.composite>6,med_modify:a.med_modify??0,prior_treatment:a.prior_treatment||[],symptom_triggers:(a.symptoms_trigger||[]).filter(x=>x!=="none"),subtype:iciq.subtype},
+    treatment:{tier:iciq.total>=13?"Beginner":iciq.total>=6?"Moderate":"Advanced",exercise_ids:(plan.ex||[]).map(e=>e.n),exercise_count:(plan.ex||[]).length,adjunct_types:(plan.adjuncts||[]).map(x=>x.type),adjunct_count:(plan.adjuncts||[]).length,cue_type:a.cue_preference||"default",dx_codes:(plan.dx||[]).map(d=>d.c),risk_level:plan.risk||"green",prenatal_modified:!!plan.prenatal,pt_modified_exercises:false,pt_modified_adjuncts:false,pt_modified_goals:false,pt_rejection:false,review_time_seconds:reviewTimeSec||0},
+    outcome:null};
+  OUTCOME_RECORDS.push(rec);
+  L("OUTCOME_RECORD_CREATED",{recordId:rec.id,tier:rec.treatment.tier,iciq:iciq.total,risk:rec.treatment.risk_level});
+  return rec;
+}
+function completeOutcomeRecord(recordId,baseline,week8){
+  const rec=OUTCOME_RECORDS.find(r=>r.id===recordId);if(!rec)return null;
+  const iciqD=baseline.iciq-(week8.iciq??baseline.iciq),painD=baseline.pain-(week8.pain??baseline.pain),fsexD=baseline.fsex-(week8.fsex??baseline.fsex),phq2D=baseline.phq2-(week8.phq2??baseline.phq2);
+  rec.outcome={iciq_delta:iciqD,pain_delta:painD,fsex_delta:fsexD,phq2_delta:phq2D,bowel_change:week8.bowel||"same",nps:week8.nps??0,activities_resumed:week8.activities_status||"no",adherence_rate:week8.adherence_rate??0,dropout:false,adverse_event:false,clinically_meaningful:iciqD>=3};
+  L("OUTCOME_RECORD_COMPLETED",{recordId:rec.id,iciq_delta:iciqD,clinically_meaningful:rec.outcome.clinically_meaningful});
+  return rec;
+}
+
+// ============================================================
+// BIOMARKER DISCOVERY ENGINE — Digital Biomarker Foundation (Patent Option 2)
+// ============================================================
+const BIOMARKER_CANDIDATES=[
+  {id:"BM001",name:"Non-Response Predictor",desc:"High GUPI + high avoidance + PHQ-2 positive \u2192 poor ICIQ improvement",matchFn:r=>r.baseline.gupi.total>=20&&r.baseline.avoidance_count>=3&&r.baseline.phq2>=3,outcomeFn:r=>r.outcome?.iciq_delta??0,direction:"negative"},
+  {id:"BM002",name:"Pudendal Early Detection",desc:"FLUTS voiding + pain + sitting trigger at lower thresholds than current heuristic",matchFn:r=>r.baseline.fluts.V>=4&&r.baseline.pain.composite>=4&&r.baseline.symptom_triggers.includes("sitting_long"),outcomeFn:r=>r.outcome?.iciq_delta??0,direction:"negative"},
+  {id:"BM003",name:"Dropout Predictor",desc:"High avoidance + PHQ-2 + default cue + no prior treatment \u2192 poor response",matchFn:r=>r.baseline.avoidance_count>=3&&r.baseline.phq2>=2&&r.baseline.cue_preference==="default"&&(r.baseline.prior_treatment||[]).includes("none"),outcomeFn:r=>r.outcome?.iciq_delta??0,direction:"negative"},
+  {id:"BM004",name:"Cue-Response Interaction",desc:"Breathing cue + high GUPI \u2192 better outcomes than biologic cue",matchFn:r=>r.baseline.cue_preference==="breathing"&&r.baseline.gupi.total>=15,compareFn:r=>r.baseline.cue_preference==="biologic"&&r.baseline.gupi.total>=15,outcomeFn:r=>r.outcome?.iciq_delta??0,direction:"positive"},
+  {id:"BM005",name:"Tier Boundary Signal",desc:"Patients near ICIQ tier boundaries (5-7 or 12-14) \u2014 response pattern analysis",matchFn:r=>(r.baseline.iciq.total>=5&&r.baseline.iciq.total<=7)||(r.baseline.iciq.total>=12&&r.baseline.iciq.total<=14),outcomeFn:r=>r.outcome?.iciq_delta??0,direction:"exploratory"}
+];
+const BIOMARKER_MIN_N=30;
+function normalCDF(x){if(x<0)return 1-normalCDF(-x);const t=1/(1+.2316419*x);return 1-.3989422804*Math.exp(-x*x/2)*(t*(.31938153+t*(-.35656378+t*(1.78147794+t*(-1.82125598+t*1.33027443)))))}
+function approxPValue(t,df){if(df<2||!isFinite(t))return 1;const z=df>30?t*(1-1/(4*df))/Math.sqrt(1+t*t/(2*df)):Math.abs(t)*Math.sqrt((df-1.5)/(df*(1+t*t/df)));return 2*(1-normalCDF(Math.abs(z)))}
+function analyzePatterns(records){
+  const completed=records.filter(r=>r.outcome!==null);
+  if(completed.length<BIOMARKER_MIN_N)return{sufficient:false,n:completed.length,required:BIOMARKER_MIN_N,signals:[]};
+  return{sufficient:true,n:completed.length,required:BIOMARKER_MIN_N,signals:BIOMARKER_CANDIDATES.map(bm=>{
+    const match=completed.filter(bm.matchFn),comp=bm.compareFn?completed.filter(bm.compareFn):completed.filter(r=>!bm.matchFn(r));
+    if(match.length<5||comp.length<5)return{biomarker_id:bm.id,name:bm.name,desc:bm.desc,cohort_size:match.length,status:"insufficient",signal_strength:"gray"};
+    const mD=match.map(bm.outcomeFn),cD=comp.map(bm.outcomeFn);
+    const mM=mD.reduce((s,v)=>s+v,0)/mD.length,cM=cD.reduce((s,v)=>s+v,0)/cD.length;
+    const mV=mD.reduce((s,v)=>s+(v-mM)**2,0)/(mD.length-1),cV=cD.reduce((s,v)=>s+(v-cM)**2,0)/(cD.length-1);
+    const pooledSD=Math.sqrt(((mD.length-1)*mV+(cD.length-1)*cV)/(mD.length+cD.length-2));
+    const d=pooledSD>0?(mM-cM)/pooledSD:0,se=Math.sqrt(mV/mD.length+cV/cD.length);
+    const tStat=se>0?(mM-cM)/se:0;
+    const dfN=(mV/mD.length+cV/cD.length)**2,dfD=(mV/mD.length)**2/(mD.length-1)+(cV/cD.length)**2/(cD.length-1);
+    const p=approxPValue(Math.abs(tStat),dfD>0?dfN/dfD:1);
+    const strength=p<.01&&Math.abs(d)>=.5?"strong":p<.05&&Math.abs(d)>=.3?"emerging":"insufficient";
+    return{biomarker_id:bm.id,name:bm.name,desc:bm.desc,cohort_size:match.length,comparison_size:comp.length,mean_match:Math.round(mM*100)/100,mean_comparison:Math.round(cM*100)/100,effect_size:Math.round(d*100)/100,p_estimate:Math.round(p*1000)/1000,signal_strength:strength==="strong"?"green":strength==="emerging"?"yellow":"gray",status:strength};
+  })};
+}
 
 const ICIQ=[
 {id:"iciq1",text:"How often do you leak urine?",opts:[["Never",0],["About once a week or less often",1],["Two or three times a week",2],["About once a day",3],["Several times a day",4],["All the time",5]]},
@@ -276,19 +370,28 @@ function genPlan(iciq,pain,gupi,intake){
   }
   p.prog=["ICIQ ↓≥2 → increase hold +2s","Pain ≤2 × 2wk → add standing PF","Adherence ≥80% × 2wk → add functional progressions"];
   p.cpt=[{c:"97161",d:"PT Eval — Low Complexity",u:1}];
-  L("plan_generated",{planId:p.id,risk:p.risk,iciq:iciq.total,tier,prenatal:!!intake.prenatal_flag});return p;
+  // Review flags — always-review (Phase 2: mandatory PT review) + triggered (Phase 2: discretionary)
+  const phq2=calcPHQ2(intake);
+  p.review_flags=[];
+  if(iciq.total>=13)p.review_flags.push({id:"HIGH_SEVERITY_ICIQ",type:"always",label:"High Severity ICIQ"});
+  if(phq2>=3){p.review_flags.push({id:"DEPRESSION_RISK",type:"always",label:"Depression Risk"});p.risk="yellow"}
+  if(intake.prenatal_flag){p.review_flags.push({id:"PRENATAL",type:"always",label:"Prenatal"});p.risk="yellow"}
+  if(intake._safety_answer_changed){p.review_flags.push({id:"SAFETY_ANSWER_CHANGED",type:"always",label:"Safety Answer Changed"});p.risk="yellow"}
+  if(pudendalFlag)p.review_flags.push({id:"PUDENDAL_SUSPECTED",type:"always",label:"Pudendal Suspected"});
+  L("plan_generated",{planId:p.id,risk:p.risk,iciq:iciq.total,tier,prenatal:!!intake.prenatal_flag,review_flags:p.review_flags.map(f=>f.id)});return p;
 }
 
 const DPTS=[
-  {id:"P001",nm:"Sarah M.",age:32,ref:"OB/GYN",iciq:[{d:"01/15",s:14},{d:"01/29",s:11},{d:"02/12",s:8}],pain:[{d:"01/15",s:5},{d:"01/29",s:3.5},{d:"02/12",s:2}],adh:87,ps:"approved",nra:"02/26",msgs:[{fr:"pt",tx:"Great progress! ICIQ dropped 3 pts.",t:"2/12 10:30am"}],planApprovedDate:"2026-01-15",intake:{iciq:14,pain:6,phq2:2,fsex:3,constipation:true,avoid:["exercise","lifting","sexual"]},week8:{iciq:8,pain:3,phq2:1,fsex:1,bowel:"better",avoid_resumed:["exercise","lifting"],nps:9,date:"03/12",submitted:true}},
-  {id:"P002",nm:"Maria L.",age:28,ref:"Self",iciq:[{d:"01/22",s:9},{d:"02/05",s:7}],pain:[{d:"01/22",s:2},{d:"02/05",s:1}],adh:93,ps:"approved",nra:"02/19",msgs:[]},
-  {id:"P003",nm:"Jennifer K.",age:35,ref:"Medicaid",iciq:[{d:"02/10",s:18}],pain:[{d:"02/10",s:6}],adh:0,ps:"pending_review",nra:"02/24",msgs:[]},
+  {id:"P001",nm:"Sarah M.",age:32,ref:"OB/GYN",iciq:[{d:"01/15",s:14},{d:"01/29",s:11},{d:"02/12",s:8}],pain:[{d:"01/15",s:5},{d:"01/29",s:3.5},{d:"02/12",s:2}],adh:87,ps:"approved",nra:"02/26",msgs:[{fr:"pt",tx:"Great progress! ICIQ dropped 3 pts.",t:"2/12 10:30am"}],planApprovedDate:"2026-01-15",intake:{iciq:14,pain:6,phq2:2,fsex:3,constipation:true,avoid:["exercise","lifting","sexual"]},week8:{iciq:8,pain:3,phq2:1,fsex:1,bowel:"better",avoid_resumed:["exercise","lifting"],nps:9,date:"03/12",submitted:true},review_flags:[{id:"HIGH_SEVERITY_ICIQ",type:"always",label:"High Severity ICIQ"}]},
+  {id:"P002",nm:"Maria L.",age:28,ref:"Self",iciq:[{d:"01/22",s:9},{d:"02/05",s:7}],pain:[{d:"01/22",s:2},{d:"02/05",s:1}],adh:93,ps:"approved",nra:"02/19",msgs:[],review_flags:[]},
+  {id:"P003",nm:"Jennifer K.",age:35,ref:"Medicaid",iciq:[{d:"02/10",s:18}],pain:[{d:"02/10",s:6}],adh:0,ps:"pending_review",nra:"02/24",msgs:[],review_flags:[{id:"HIGH_SEVERITY_ICIQ",type:"always",label:"High Severity ICIQ"}]},
 ];
 const DEMO_ADHERENCE_LOG=[{date:"2026-02-10",status:"yes"},{date:"2026-02-11",status:"yes"},{date:"2026-02-12",status:"yes"},{date:"2026-02-13",status:"partial",note:"hip pain after bridges"},{date:"2026-02-14",status:"yes"},{date:"2026-02-15",status:"yes"},{date:"2026-02-16",status:"no",note:"traveling"},{date:"2026-02-17",status:"yes"},{date:"2026-02-18",status:"yes"},{date:"2026-02-19",status:"yes"},{date:"2026-02-20",status:"partial",note:"only did breathing"},{date:"2026-02-21",status:"yes"},{date:"2026-02-22",status:"yes"},{date:"2026-02-23",status:"yes"},{date:"2026-02-24",status:"no",note:"sick"},{date:"2026-02-25",status:"yes"},{date:"2026-02-26",status:"yes"},{date:"2026-02-27",status:"partial",note:"shortened session"},{date:"2026-02-28",status:"yes"},{date:"2026-03-01",status:"yes"},{date:"2026-03-02",status:"yes"},{date:"2026-03-03",status:"partial",note:"knee discomfort"},{date:"2026-03-04",status:"yes"},{date:"2026-03-05",status:"yes"},{date:"2026-03-06",status:"yes"},{date:"2026-03-07",status:"yes"},{date:"2026-03-08",status:"yes"},{date:"2026-03-09",status:"yes"},{date:"2026-03-10",status:"yes"},{date:"2026-03-11",status:"yes"}];
 const RTM_CODES={"98975":{name:"Initial Setup",desc:"Device/software setup + patient education",threshold:null},"98977":{name:"MSK Data Monitoring",desc:"≥16 days of data in calendar month",threshold:16},"98980":{name:"Treatment Management (20min)",desc:"Interactive communication ≥20min/month",threshold:20},"98981":{name:"Treatment Management (40min)",desc:"Interactive communication ≥40min/month",threshold:40}};
 // STYLES
-const css=`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
+const css=`@font-face{font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;src:url('/fonts/inter.woff2') format('woff2')}
+@font-face{font-family:'DM Sans';font-style:normal;font-weight:400 700;font-display:swap;src:url('/fonts/dmsans.woff2') format('woff2')}
+@font-face{font-family:'DM Serif Display';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/dmserifdisplay.woff2') format('woff2')}
 *{margin:0;padding:0;box-sizing:border-box}body{background:#F8F7FC;color:#252238;font-family:'Helvetica Neue',Helvetica,'Inter',sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
 .topnav{background:linear-gradient(135deg,#4C2C84 0%,#3A1F68 100%);padding:0 32px;display:flex;align-items:center;height:56px;gap:24px;position:sticky;top:0;z-index:100}
 .topnav-logo{font-size:22px;font-weight:700;color:white;letter-spacing:3px}
@@ -722,6 +825,72 @@ function ConciergeSearch({ans,set}){
 
 // Shared state for intake data flowing to PT view
 let sharedIntake = null;
+const DEMO_MODE=true;
+let _flagVer=0;const flagListeners=new Set();
+function notifyFlagChange(){_flagVer++;flagListeners.forEach(fn=>fn(_flagVer))}
+function useFlagSync(){const[,setV]=useState(0);useEffect(()=>{flagListeners.add(setV);return()=>flagListeners.delete(setV)},[]);}
+
+// SESSION TIMEOUT (15 min idle → 60s warning → auto-logout)
+function useSessionTimeout(onTimeout){
+  const lastAct=useRef(Date.now());const[warn,setWarn]=useState(false);const[cd,setCd]=useState(60);const[rem,setRem]=useState(null);
+  useEffect(()=>{
+    const reset=()=>{lastAct.current=Date.now();if(warn){setWarn(false);setCd(60)}};
+    const evts=["click","keypress","touchstart","scroll"];
+    evts.forEach(e=>window.addEventListener(e,reset,{passive:true}));
+    const iv=setInterval(()=>{
+      if(!authSession){setRem(null);return}
+      const elapsed=Date.now()-lastAct.current;const left=15*60*1000-elapsed;
+      if(left<=0&&!warn){setWarn(true);setCd(60);setRem(null)}
+      else if(left<=2*60*1000&&left>0)setRem(Math.ceil(left/1000));
+      else setRem(null);
+      if(warn){const wElapsed=elapsed-15*60*1000;const sLeft=60-Math.floor(wElapsed/1000);
+        if(sLeft<=0){L("session_timeout",{userId:authSession?.userId,email:authSession?.email});try{const tok=localStorage.getItem("expect_session");if(tok)db("deleteSession",{sessionToken:tok});localStorage.removeItem("expect_session")}catch(e){}authSession=null;sharedIntake=null;setWarn(false);onTimeout()}
+        else setCd(sLeft)}
+    },1000);
+    return()=>{evts.forEach(e=>window.removeEventListener(e,reset));clearInterval(iv)};
+  },[warn]);
+  return{warn,cd,rem,dismiss:()=>{lastAct.current=Date.now();setWarn(false);setCd(60)}};
+}
+function SessionWarningModal({cd,onDismiss}){
+  return<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}}>
+    <div className="card fi"style={{maxWidth:420,textAlign:"center",padding:32}}>
+      <div style={{fontSize:28,color:C.or,marginBottom:12,fontWeight:700}}>Session Expiring</div>
+      <p style={{fontSize:14,color:C.g600,lineHeight:1.6,marginBottom:16}}>Your session will expire in <b style={{color:C.rd,fontSize:22}}>{cd}</b> seconds due to inactivity.</p>
+      <p style={{fontSize:12,color:C.g400,marginBottom:20}}>Click below or interact with the page to stay logged in.</p>
+      <button className="btn bbl"onClick={onDismiss}style={{width:"100%",justifyContent:"center"}}>I'm Still Here</button>
+    </div>
+  </div>;
+}
+
+// LANDING PAGE (Step 1 — Email Collection)
+function LandingPage({onDone}){
+  const[email,setEmail]=useState("");const[err,setErr]=useState(null);
+  const valid=email&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return<div className="fi"style={{maxWidth:600,margin:"0 auto"}}>
+    <div style={{textAlign:"center",marginBottom:24}}>
+      <div style={{fontSize:40,marginBottom:12}}>🩺</div>
+      <div className="h1"style={{fontSize:28}}>AI-Augmented Pelvic Floor Physical Therapy</div>
+      <div className="sub"style={{fontSize:15,maxWidth:480,margin:"8px auto 0",lineHeight:1.7}}>Get a personalized pelvic floor care plan created by AI and reviewed by a licensed Utah Physical Therapist.</div>
+    </div>
+    <div className="card"style={{borderColor:C.purp}}>
+      <div style={{background:"rgba(76,44,132,.04)",border:`1px solid ${C.g200}`,borderRadius:8,padding:"12px 16px",marginBottom:16,fontSize:12,color:C.g600,lineHeight:1.6}}>
+        This service utilizes AI to assist licensed professionals in care planning. All treatment decisions are finalized by a human clinician.
+      </div>
+      <div className="chd">Get Started</div>
+      <p style={{fontSize:13,color:C.g500,marginBottom:14,lineHeight:1.6}}>Enter your email address to begin. This lets us save your progress and send you a secure link to your care plan when it's ready.</p>
+      <div style={{marginBottom:14}}>
+        <div className="il">Email Address</div>
+        <input className="inp"type="email"value={email}onChange={e=>{setEmail(e.target.value);setErr(null)}}placeholder="you@example.com"/>
+      </div>
+      {err&&<div style={{color:C.rd,fontSize:12,marginBottom:8}}>{err}</div>}
+      <button className="btn bpk"style={{width:"100%",justifyContent:"center",opacity:valid?1:.4}}disabled={!valid}onClick={()=>{if(!valid){setErr("Please enter a valid email address.");return}L("landing_email_collected",{email});onDone(email)}}>Begin Assessment →</button>
+      <div style={{fontSize:10,color:C.g400,marginTop:10,textAlign:"center",lineHeight:1.5}}>Your email is used only to deliver your care plan and for abandonment recovery. No spam, ever.</div>
+    </div>
+    <div style={{textAlign:"center",marginTop:16}}>
+      <div style={{fontSize:11,color:C.g400}}>Utah OAIP Regulatory Sandbox Pilot · Expect Health Inc.</div>
+    </div>
+  </div>;
+}
 
 // CONSENT
 function Consent({onDone}){
@@ -735,6 +904,7 @@ function Consent({onDone}){
     {id:"pilot",tx:"I understand this is a pilot under a Regulatory Mitigation Agreement with the Utah Office of AI Policy."},
     {id:"rest",tx:"I understand that if I report a concern about AI-supported care, Expect Health will provide a no-cost clinical review and, if clinically appropriate, corrective pelvic floor PT follow-up (telehealth or in-person, as available), subject to program terms."},
     {id:"coll",tx:"Data collected includes: intake responses, scores, adherence, chat interactions, and outcomes — all in HIPAA-compliant encrypted systems."},
+    {id:"enotify",tx:"I consent to receive electronic notifications about my care plan. I understand these notifications will link to a secure portal and will not contain sensitive health details directly."},
     {id:"utah",tx:"I confirm that I am currently located in the state of Utah."},
     {id:"age",tx:"I confirm I am at least 18 years old and provide this consent voluntarily."},
   ];
@@ -745,16 +915,50 @@ function Consent({onDone}){
       {items.map(i=><div key={i.id}className="ck"onClick={()=>setCk(p=>({...p,[i.id]:!p[i.id]}))}><div className={`cb ${ck[i.id]?"on":""}`}>{ck[i.id]?"✓":""}</div><div style={{fontSize:13,color:ck[i.id]?C.g800:C.g500,lineHeight:1.6}}>{i.tx}</div></div>)}
     </div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <span style={{fontSize:10,color:C.g400}}>Consent v1.1 · Feb 2026</span>
-      <button className="btn bpk"disabled={!ok}onClick={()=>{L("consent_signed",{});onDone()}}style={{opacity:ok?1:.4}}>I Agree — Continue →</button>
+      <span style={{fontSize:10,color:C.g400}}>Consent v1.2 · Mar 2026</span>
+      <button className="btn bpk"disabled={!ok}onClick={()=>{L("consent_signed",{version:"1.2",items:Object.keys(ck).filter(k=>ck[k])});onDone()}}style={{opacity:ok?1:.4}}>I Agree — Continue →</button>
     </div></div>;
 }
 
+// IDENTITY VERIFICATION (Stripe Identity or demo bypass)
+function IdentityVerify({onDone}){
+  const[st,setSt]=useState(DEMO_MODE?"demo":"pending");
+  const verify=async()=>{
+    if(DEMO_MODE){setSt("verified");L("identity_verified",{mode:"demo"});setTimeout(onDone,1500);return}
+    setSt("loading");
+    try{
+      const res=await fetch("/api/create-verification-session",{method:"POST",headers:{"Content-Type":"application/json"}});
+      const{clientSecret}=await res.json();
+      const stripe=Stripe(window.__STRIPE_PK||"pk_test_placeholder");
+      const{error}=await stripe.verifyIdentity(clientSecret);
+      if(error){setSt("error");return}
+      setSt("verified");L("identity_verified",{mode:"stripe"});setTimeout(onDone,1500);
+    }catch(e){setSt("error")}
+  };
+  return<div className="fi"style={{maxWidth:520,margin:"0 auto"}}>
+    <div className="h1">Identity Verification</div>
+    <div className="sub">Required for HIPAA-compliant care delivery</div>
+    <div className="card"style={{borderColor:C.blue,textAlign:"center",padding:32}}>
+      {st==="demo"&&<><div style={{fontSize:40,marginBottom:12}}>Demo Mode</div>
+        <p style={{fontSize:13,color:C.g500,marginBottom:20,lineHeight:1.6}}>Identity verification is simulated in demo mode. In production, patients verify identity via government-issued photo ID using Stripe Identity.</p>
+        <button className="btn bbl"onClick={verify}>Simulate Verification</button></>}
+      {st==="pending"&&<><p style={{fontSize:13,color:C.g600,marginBottom:20,lineHeight:1.7}}>To protect your health information, we need to verify your identity. You will be asked to take a photo of your government-issued ID.</p>
+        <button className="btn bbl"onClick={verify}>Verify My Identity</button></>}
+      {st==="loading"&&<div style={{fontSize:14,color:C.blue}}>Launching verification...</div>}
+      {st==="verified"&&<><div style={{fontSize:40,marginBottom:12,color:C.gn}}>Verified</div>
+        <div style={{fontSize:14,color:C.gn,fontWeight:600}}>Identity confirmed. Proceeding to intake...</div></>}
+      {st==="error"&&<><div style={{fontSize:13,color:C.rd,marginBottom:12}}>Verification could not be completed. Please try again.</div>
+        <button className="btn brd"onClick={()=>setSt("pending")}>Retry</button></>}
+    </div>
+  </div>;
+}
+
 // INTAKE
-function Intake({onDone,mainRef}){
-  const[step,setStep]=useState(0);const[ans,setAns]=useState({});const[rfs,setRfs]=useState([]);
+function Intake({onDone,mainRef,initialEmail}){
+  const[step,setStep]=useState(0);const[ans,setAns]=useState(initialEmail?{email:initialEmail}:{});const[rfs,setRfs]=useState([]);
   const[safetyTriggered,setSafetyTriggered]=useState({});const[showSafetyModal,setShowSafetyModal]=useState(null);
   const[triedNext,setTriedNext]=useState(false);
+  const[acctPw,setAcctPw]=useState("");const[acctPwC,setAcctPwC]=useState("");const[acctErr,setAcctErr]=useState(null);const doneRef=useRef(false);
   const set=(k,v)=>{setAns(p=>{const next={...p,[k]:v};if(k==="pregnancy_status"){next.prenatal_flag=v==="pregnant";if(v==="pregnant")L("PRENATAL_PROTOCOL_APPLIED",{context:"PATIENT_INDICATED_ACTIVE_PREGNANCY"});if(v!=="pregnant"){delete next.ex_highrisk_preg;setRfs(r=>r.filter(f=>f.id!=="ex_highrisk_preg"));setSafetyTriggered(s=>{const n={...s};delete n.ex_highrisk_preg;return n})}}return next})};
   const togM=(k,v)=>setAns(p=>{
     const cur=p[k]||[];
@@ -791,6 +995,7 @@ function Intake({onDone,mainRef}){
     {t:"Pain & Discomfort",s:"All pain questions — genitourinary pain + current pain assessment. Over the past week.",qs:GUPI_PAIN},
     {t:"Quality of Life",s:"How your symptoms have affected your life over the past week.",qs:QOL_IMPACT},
     {t:"Your History & Goals",s:"A few more questions to help your PT create the best plan for you.",qs:CLINICAL_EXTRA},
+    {t:"Create Your Account",s:"Set up your account to securely access your care plan.",qs:[],custom:"account"},
   ];
   const hasER=rfs.some(f=>f.act==="er");
   const hasAnyRF=rfs.length>0;
@@ -800,22 +1005,23 @@ function Intake({onDone,mainRef}){
   const isUnder18=dobAge!==null&&dobAge<18;
   const isOver115=dobAge!==null&&dobAge>115;
   // PHQ-2 depression risk (clinical threshold: score ≥ 3 out of 6; resource threshold: ≥ 2)
-  const phq2Score=(ans.phq2_interest||0)+(ans.phq2_mood||0);
+  const phq2Score=calcPHQ2(ans);
   const phq2ResourceRef=useRef(false);
   useEffect(()=>{if(phq2Score>=2&&!phq2ResourceRef.current&&ans.phq2_interest!==undefined&&ans.phq2_mood!==undefined){phq2ResourceRef.current=true;L("phq2_resource_card_shown",{score:phq2Score,patient:(ans.name_first||"")+" "+(ans.name_last||"")})}},[phq2Score]);
   const phq2Positive=phq2Score>=3;
   // Block on demographics (step 0): under 18 OR required fields incomplete
-  const page1Incomplete=step===0&&(!ans.name_first||!ans.name_last||!ans.dob||!ans.pregnancy_status||!ans.insurance_type);
+  const page1Incomplete=step===0&&(!ans.name_first||!ans.name_last||!ans.dob||!ans.pregnancy_status||!ans.insurance_type||!ans.email);
   // Block on safety (step 1) for ANY red flag, block on exclusions (step 2) for ANY exclusion
   const blocked=(step===0&&(isUnder18||page1Incomplete))||(step===1&&hasAnyRF)||(step===2&&hasExclusion);
   useEffect(()=>{
-    if(step!==steps.length)return;
+    if(step!==steps.length||doneRef.current)return;doneRef.current=true;
     const iciq=sICIQ(ans),pain=sPain(ans),gupi=sGUPI(ans),fluts=sFLUTS(ans),fsex=sFSEX(ans),plan=genPlan(iciq,pain,gupi,ans);
     L("intake_done",{iciq:iciq.total,pain:pain.composite,gupi:gupi.total});
-    const phq2Total=(ans.phq2_interest||0)+(ans.phq2_mood||0);
+    const phq2Total=calcPHQ2(ans);
     const depressionFlag=phq2Total>=3?{positive:true,score:phq2Total,maxScore:6,interest:ans.phq2_interest||0,mood:ans.phq2_mood||0,threshold:3,recommendation:"PHQ-9 full screening recommended. Consider mental health resource referral.",oaip_report:{flagType:"DEPRESSION_RISK",severity:phq2Total>=5?"HIGH":"MODERATE",score:phq2Total,maxScore:6,timestamp:new Date().toISOString()}}:{positive:false,score:phq2Total};
-    sharedIntake={ans,iciq,pain,gupi,fluts,fsex,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,name:(ans.name_first||"")+" "+(ans.name_last||""),physicianName:ans.physician_name,physicianFax:ans.physician_fax,physicianNPI:ans.physician_npi_id,safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[]};
+    sharedIntake={ans,iciq,pain,gupi,fluts,fsex,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,name:(ans.name_first||"")+" "+(ans.name_last||""),physicianName:ans.physician_name,physicianFax:ans.physician_fax,physicianNPI:ans.physician_npi_id,safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],userId:authSession?.userId};
     if(depressionFlag.positive)L("depression_screen_positive",{score:phq2Total,severity:phq2Total>=5?"HIGH":"MODERATE",patient:(ans.name_first||"")+" "+(ans.name_last||"")});
+    if(authSession){db("upsertPatient",{userId:authSession.userId,email:authSession.email,name:sharedIntake.name,ans,iciq,pain,gupi,fluts,fsex,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,physicianName:ans.physician_name||"",physicianFax:ans.physician_fax||"",physicianNPI:ans.physician_npi_id||"",safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],status:"pending_review",createdAt:new Date().toISOString()})}
     if(onDone)onDone();
   },[step]);
   if(step===steps.length)return null;
@@ -825,37 +1031,26 @@ function Intake({onDone,mainRef}){
       <div style={{background:C.purp,color:C.white,padding:"6px 14px",borderRadius:20,fontSize:12,fontWeight:600,flexShrink:0}}>{step+1} / {steps.length}</div>
     </div>
     <div style={{display:"flex",gap:3,marginBottom:20}}>{steps.map((_,i)=><div key={i}style={{flex:1,height:4,borderRadius:2,background:i<=step?`linear-gradient(90deg,${C.pink},${C.purp})`:C.g200,transition:"all .3s"}}/>)}</div>
-    {triedNext&&page1Incomplete&&step===0&&!isUnder18&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please complete the required fields — name, date of birth, pregnancy status, and insurance type — to continue.</div>}
+    {triedNext&&page1Incomplete&&step===0&&!isUnder18&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please complete the required fields — name, email, date of birth, pregnancy status, and insurance type — to continue.</div>}
     {isUnder18&&step===0&&<div className="ra"style={{background:"#FEE2E2",borderColor:C.rd,color:"#991B1B",fontSize:14,fontWeight:600,marginBottom:14}}>⛔ This program is designed for adults 18 years and older. Based on the date of birth you entered, you are under 18. If you believe this is an error, please correct your date of birth above.</div>}
     {isOver115&&step===0&&<div className="ra"style={{background:"#FEF3C7",borderColor:C.or,color:"#92400E",fontSize:14,fontWeight:600,marginBottom:14}}>🤔 The date of birth you entered would make you over 115 years old. Could you double-check that your birth date is correct? Typos in the year are common.</div>}
     {hasER&&step===1&&<div className="ra"style={{background:"#FEE2E2",borderColor:C.rd,color:"#991B1B",fontSize:15,fontWeight:600,marginBottom:14}}>⛔ STOP — Please call 911 or go to the nearest emergency room immediately.</div>}
     {hasAnyRF&&!hasER&&step===1&&<div className="ra"style={{background:"#FEF3C7",borderColor:C.or,color:"#92400E",fontSize:14,fontWeight:600,marginBottom:14}}>⚠ Based on your responses, you need to see your physician before starting this program. Please contact your doctor for evaluation.</div>}
     {hasExclusion&&step===2&&<div className="ra"style={{background:"#FEF3C7",borderColor:C.or,color:"#92400E",fontSize:14,fontWeight:600,marginBottom:14}}>⚠ Based on your responses, this program may not be appropriate for your condition. Please consult your physician or a specialist PT for in-person evaluation.</div>}
-    {steps[step].qs.map(q=><Q key={q.id}q={q}ans={ans}set={set}togM={togM}rfs={rfs}setRfs={setRfs}safetyTriggered={safetyTriggered}setSafetyTriggered={setSafetyTriggered}showSafetyModal={showSafetyModal}setShowSafetyModal={setShowSafetyModal}/>)}
+    {steps[step].custom==="account"?<div className="card"style={{borderColor:C.purp}}>
+      <div className="chd">Your Login Credentials</div>
+      <div style={{marginBottom:14}}><div className="il">Email</div><input className="inp"type="email"value={ans.email||""}readOnly style={{background:C.g50,color:C.g500}}/><div style={{fontSize:10,color:C.g400,marginTop:2}}>Email from your intake — cannot be changed here</div></div>
+      <div style={{marginBottom:14}}><div className="il">Create Password</div><input className="inp"type="password"value={acctPw}onChange={e=>{setAcctPw(e.target.value);setAcctErr(null)}}placeholder="8+ characters, 1 uppercase, 1 number"/></div>
+      <div style={{marginBottom:14}}><div className="il">Confirm Password</div><input className="inp"type="password"value={acctPwC}onChange={e=>{setAcctPwC(e.target.value);setAcctErr(null)}}placeholder="Re-enter password"/></div>
+      {acctErr&&<div style={{color:C.rd,fontSize:12,marginBottom:8,padding:"6px 10px",background:`${C.rd}10`,borderRadius:6}}>{acctErr}</div>}
+      <div style={{fontSize:11,color:C.g400,lineHeight:1.5}}>Your password must be at least 8 characters with at least 1 uppercase letter and 1 number. This account will be used to access your care plan securely.</div>
+    </div>:steps[step].qs.map(q=><Q key={q.id}q={q}ans={ans}set={set}togM={togM}rfs={rfs}setRfs={setRfs}safetyTriggered={safetyTriggered}setSafetyTriggered={setSafetyTriggered}showSafetyModal={showSafetyModal}setShowSafetyModal={setShowSafetyModal}/>)}
     {step===0&&ans.prenatal_flag&&<div style={{background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:10,padding:"12px 16px",margin:"8px 0 12px",fontSize:13,color:"#166534",lineHeight:1.6}}>We'll tailor your care plan with prenatal-safe modifications so you can safely support your pelvic floor throughout your pregnancy.</div>}
     <ConsistencyAlerts ans={ans} currentQIds={steps[step].qs.map(q=>q.id)}/>
-    {steps[step].qs.some(q=>q.id==="phq2_mood")&&phq2Score>=2&&<div style={{borderRadius:12,overflow:"hidden",margin:"16px 0",border:`2px solid ${C.purp}`,boxShadow:"0 2px 12px rgba(109,40,217,.15)"}}>
-      <div style={{background:`linear-gradient(135deg,${C.purp},${C.pink})`,padding:"14px 18px",color:"#fff"}}>
-        <div style={{fontSize:15,fontWeight:700}}>If you are in immediate danger or experiencing a crisis:</div>
-      </div>
-      <div style={{padding:"14px 18px",background:"#F5F3FF"}}>
-        {PSI_RESOURCES.crisis.map((r,i)=><div key={i}style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<PSI_RESOURCES.crisis.length-1?"1px solid #E9D5FF":"none"}}>
-          <span style={{fontSize:18}}>📞</span>
-          <div><div style={{fontWeight:700,fontSize:13,color:"#4C1D95"}}>{r.name}: <a href={"tel:"+r.phone.replace(/[^0-9]/g,"")}style={{color:C.purp,textDecoration:"underline"}}>{r.phone}</a></div><div style={{fontSize:11,color:"#5B21B6"}}>{r.desc}</div></div>
-        </div>)}
-      </div>
-      <div style={{padding:"14px 18px",background:"#FFFBEB",borderTop:"1px solid #FDE68A"}}>
-        <div style={{fontSize:13,fontWeight:600,color:"#78350F",marginBottom:4}}>It sounds like you may be carrying a heavy load right now. You are not alone, and help is free and confidential:</div>
-        {PSI_RESOURCES.support.map((r,i)=><div key={i}style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 0",borderBottom:i<PSI_RESOURCES.support.length-1?"1px solid #FEF3C7":"none"}}>
-          <span style={{fontSize:16,marginTop:1}}>{r.url?"🔗":"📞"}</span>
-          <div><div style={{fontWeight:600,fontSize:12,color:"#78350F"}}>{r.name}{r.phone?<span>: <a href={"tel:"+r.phone.replace(/[^0-9]/g,"")}style={{color:"#D97706"}}>{r.phone}</a></span>:null}</div><div style={{fontSize:11,color:"#92400E",lineHeight:1.5}}>{r.desc}</div>{r.url?<a href={r.url}target="_blank"rel="noopener noreferrer"style={{fontSize:11,color:"#6D28D9"}}>{r.url.replace(/https?:\/\/(www\.)?/,"")}</a>:null}</div>
-        </div>)}
-      </div>
-      <div style={{padding:"10px 18px",background:"#F3F4F6",fontSize:10,color:"#6B7280",lineHeight:1.5}}>{PSI_RESOURCES.disclaimer}</div>
-    </div>}
+    {steps[step].qs.some(q=>q.id==="phq2_mood")&&phq2Score>=2&&<div style={{margin:"16px 0"}}><PsiResourceCard/></div>}
     <div style={{display:"flex",justifyContent:"space-between",marginTop:20}}>
       <button className="btn bo"onClick={()=>step>0&&goStep(step-1)}disabled={step===0}>← Back</button>
-      <button className="btn bpk"onClick={()=>{if(blocked){setTriedNext(true)}else{setTriedNext(false);goStep(step+1)}}}style={{opacity:blocked?0.4:1}}>{step===steps.length-1?"Submit Assessment →":"Continue →"}</button>
+      <button className="btn bpk"onClick={()=>{if(steps[step].custom==="account"){const email=ans.email||"";if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setAcctErr("Please enter a valid email in the demographics step.");return}if(acctPw.length<8){setAcctErr("Password must be at least 8 characters.");return}if(!/[A-Z]/.test(acctPw)){setAcctErr("Password must contain at least 1 uppercase letter.");return}if(!/[0-9]/.test(acctPw)){setAcctErr("Password must contain at least 1 number.");return}if(acctPw!==acctPwC){setAcctErr("Passwords do not match.");return}const _uuid=()=>typeof crypto.randomUUID==="function"?crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==="x"?r:r&3|8).toString(16)});authSession={userId:"usr_"+_uuid(),email,sessionToken:"tok_"+_uuid(),expiresAt:Date.now()+30*60*1000,createdAt:new Date().toISOString()};L("account_created",{email,userId:authSession.userId});db("createSession",{userId:authSession.userId,email:authSession.email,sessionToken:authSession.sessionToken,expiresAt:authSession.expiresAt,createdAt:authSession.createdAt});try{localStorage.setItem("expect_session",authSession.sessionToken)}catch(e){}setAcctErr(null);goStep(step+1)}else if(blocked){setTriedNext(true)}else{setTriedNext(false);goStep(step+1)}}}style={{opacity:blocked?0.4:1}}>{steps[step].custom==="account"?"Create Account & Submit →":step===steps.length-1?"Submit Assessment →":"Continue →"}</button>
     </div></div>;
 }
 
@@ -868,7 +1063,6 @@ function PatientWaiting({name}){
       <div style={{fontSize:12,color:C.g400,marginBottom:4}}>What happens next</div>
       <div style={{fontSize:13,color:C.g700}}>PT review within 24 hours → Your care plan will appear here</div>
     </div>
-    <div style={{marginTop:16,fontSize:12,color:C.g400}}>Switch to <strong>PT Provider View</strong> to review and approve the plan, then come back to see your care plan.</div>
   </div>;
 }
 function Week8CheckIn({baseline,onComplete}){
@@ -926,6 +1120,11 @@ function Week8CheckIn({baseline,onComplete}){
     if(ans.c8_bowel==="worse")L("BOWEL_REGRESSION",{note:"Patient reports bowel symptoms worse at Week 8"});
     if(baseline.fsex>0){const fDelta=baseline.fsex-fsexScore;if(fDelta>0)L("flutsex_improvement",{intake:baseline.fsex,week8:fsexScore,delta:fDelta});else if(fDelta<0)L("flutsex_regression",{intake:baseline.fsex,week8:fsexScore,delta:fDelta})}
     if(baseline.avoid&&baseline.avoid.length>0){results.avoid_resumed=ans.c8_activities_status==="yes"||ans.c8_activities_status==="partially"?baseline.avoid:[];results.avoid_resumed_status=ans.c8_activities_status;results.avoid_resumed_note=ans.c8_activities_note||""}
+    // Triggered review flags (Phase 2: discretionary PT review)
+    if(sharedIntake?.plan?.review_flags){
+      if(baseline.iciq-iciqScore<=-3&&!sharedIntake.plan.review_flags.some(f=>f.id==="CLINICAL_REGRESSION")){sharedIntake.plan.review_flags.push({id:"CLINICAL_REGRESSION",type:"triggered",label:"ICIQ Worsened \u22653"});notifyFlagChange()}
+      if(phq2Score>(baseline.phq2||0)&&!sharedIntake.plan.review_flags.some(f=>f.id==="PHQ2_WORSENING")){sharedIntake.plan.review_flags.push({id:"PHQ2_WORSENING",type:"triggered",label:"PHQ-2 Worsened"});notifyFlagChange()}
+    }
     setDone(true);onComplete(results);
   };
 
@@ -1006,11 +1205,7 @@ function Week8CheckIn({baseline,onComplete}){
         {[["Yes, I've resumed these activities","yes"],["Partially — some but not all","partially"],["Not yet","no"]].map(([l,v])=><button key={v}className={`ob ${ans.c8_activities_status===v?"s":""}`}onClick={()=>set("c8_activities_status",v)}>{l}</button>)}
         <div style={{marginTop:10}}><div className="il">Tell us more (optional)</div><textarea className="inp"value={ans.c8_activities_note||""}onChange={e=>set("c8_activities_note",e.target.value)}placeholder="Which activities have you resumed? Any challenges?"/></div>
       </div>:curStep.qs.map(q=>renderQ(q))}
-      {curStep.id==="phq2"&&c8PHQ2(ans)>=2&&ans.c8_phq2_interest!==undefined&&ans.c8_phq2_mood!==undefined&&<div style={{marginTop:12,background:"#FFFBEB",border:"1px solid #D97706",borderRadius:10,padding:14}}>
-        <div style={{fontSize:12,fontWeight:700,color:"#92400E",marginBottom:6}}>Support Resources</div>
-        {PSI_RESOURCES.crisis.map((r,i)=><div key={i}style={{fontSize:11,color:"#7F1D1D",marginBottom:3}}><strong>{r.name}:</strong> {r.phone} — {r.desc}</div>)}
-        {PSI_RESOURCES.support.slice(0,2).map((r,i)=><div key={i}style={{fontSize:11,color:"#4B5563",marginBottom:3}}><strong>{r.name}</strong>{r.phone?" — "+r.phone:""}</div>)}
-      </div>}
+      {curStep.id==="phq2"&&c8PHQ2(ans)>=2&&ans.c8_phq2_interest!==undefined&&ans.c8_phq2_mood!==undefined&&<PsiResourceCard compact/>}
       {baseline.pain===0&&curStep.id==="pain"&&<div style={{marginTop:10,padding:"10px 14px",background:"#F0FDF4",borderRadius:8,fontSize:12,color:"#065F46"}}>You reported no pain at intake — if that has changed, please message your PT.</div>}
     </div>
     <div style={{display:"flex",justifyContent:"space-between",marginTop:16}}>
@@ -1067,7 +1262,7 @@ function MyCareplan({data}){
   const tierWks=iciq.total>=13?"12":iciq.total>=6?"8":"6";
   const cueLbl={biologic:"Body function",imaginative:'Imaginative ("blueberry" cue per Crane & Dugan, 2025)',breathing:"Breath-based",simple_contract:"Simple contraction",default:"Default"}[ans.cue_preference]||"Default";
   const avF=(ans.avoid_activities||[]).filter(x=>x!=="none");
-  const phq2=(ans.phq2_interest||0)+(ans.phq2_mood||0);
+  const phq2=calcPHQ2(ans);
   const dateStr=new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
   // Adherence state
   const[adherenceLog,setAdherenceLog]=useState(DEMO_ADHERENCE_LOG);
@@ -1084,7 +1279,7 @@ function MyCareplan({data}){
   const[week8Results,setWeek8Results]=useState(data.week8||null);
   const logAdherence=()=>{
     const entry={date:new Date().toISOString().split("T")[0],status:adhStatus,note:adhNote||undefined};
-    setAdherenceLog(p=>[...p,entry]);setTodayLogged(true);setAdhStatus(null);setAdhNote("");
+    setAdherenceLog(p=>{const updated=[...p,entry];const recent=updated.slice(-14);if(recent.length>=14){const yesCount=recent.filter(e=>e.status==="yes").length;if(yesCount/recent.length<0.5&&sharedIntake?.plan?.review_flags&&!sharedIntake.plan.review_flags.some(f=>f.id==="ADHERENCE_CONCERN"))sharedIntake.plan.review_flags.push({id:"ADHERENCE_CONCERN",type:"triggered",label:"Adherence <50%"});notifyFlagChange()}return updated});setTodayLogged(true);setAdhStatus(null);setAdhNote("");
     L("daily_adherence_entry",{date:entry.date,status:entry.status,note:entry.note});
   };
   // Streak calculation
@@ -1093,7 +1288,7 @@ function MyCareplan({data}){
   const monthDays=adherenceLog.filter(e=>{const d=new Date(e.date);const now=new Date();return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()}).length;
   // Baseline for Week 8
   const baseline={iciq:iciq.total,pain:pain.composite,phq2,fsex:fsex.total,constipation:(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??3)<=1||(ans.bristol_stool??4)<=2,avoid:avF};
-  const onCheckinComplete=(results)=>{setWeek8Results(results);setShowCheckin(false);if(sharedIntake)sharedIntake.week8=results};
+  const onCheckinComplete=(results)=>{setWeek8Results(results);setShowCheckin(false);if(sharedIntake){sharedIntake.week8=results;if(sharedIntake.userId)db("updatePatientWeek8",{userId:sharedIntake.userId,week8:results});if(sharedIntake.outcomeRecordId){const adhRate=adherenceLog.length>0?Math.round(adherenceLog.filter(e=>e.status==="yes").length/adherenceLog.length*100):0;const orec=completeOutcomeRecord(sharedIntake.outcomeRecordId,baseline,{...results,adherence_rate:adhRate});if(orec&&orec.outcome)db("completeOutcomeRecord",{recordId:sharedIntake.outcomeRecordId,outcome:orec.outcome})}}};
   // Polished care plan CSS (from sample-patient-care-plan design)
   const cpCSS=`
   .cp-shell{max-width:820px;margin:0 auto;font-family:'DM Sans',sans-serif;color:#1F2937;line-height:1.6}
@@ -1489,7 +1684,6 @@ function MyCareplan({data}){
       <div className="cp-footer">
         <p>This care plan was generated by Expect's AI-augmented platform and reviewed by a licensed Physical Therapist.</p>
         <p>Expect is a participant in the <a href="#">Utah Office of AI Policy Regulatory Sandbox</a>.</p>
-        <p style={{marginTop:8}}>Questions about your plan? Contact your PT through the secure Expect portal.</p>
         <p style={{marginTop:4,fontSize:10}}>© 2026 Expect Health. All rights reserved. <a href="#">Privacy Policy</a> · <a href="#">Terms of Service</a></p>
       </div>
     </div>
@@ -1525,6 +1719,7 @@ function getOptLabel(qs,id,val){const q=qs.find(q=>q.id===id);if(!q)return val;i
 function getOptScore(qs,id,val){const q=qs.find(q=>q.id===id);if(!q)return undefined;if(q.type==="yn")return val==="yes"?1:0;if(q.type==="scale")return val;if(q.type==="multi"&&Array.isArray(val))return val.length;if(q.opts){const o=q.opts.find(([l,ov])=>ov===val);return typeof o?.[1]==="number"?o[1]:undefined}return undefined}
 
 function PTReview(){
+  useFlagSync();
   const[sel,setSel]=useState(null);const[viewNew,setViewNew]=useState(false);
   if(viewNew&&sharedIntake)return<PTNewIntakeReview data={sharedIntake}onBack={()=>setViewNew(false)}/>;
   if(sel)return<PTPatientDetail pt={sel}onBack={()=>setSel(null)}/>;
@@ -1533,7 +1728,8 @@ function PTReview(){
     {sharedIntake&&<div className="card fi"style={{borderColor:C.pink,cursor:"pointer"}}onClick={()=>setViewNew(true)}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div><div style={{fontWeight:700,fontSize:15,color:C.pink}}> New Intake — {sharedIntake.name}</div>
-        <div style={{fontSize:12,color:C.g500,marginTop:2}}>Completed just now · AI plan generated · Awaiting your review</div></div>
+        <div style={{fontSize:12,color:C.g500,marginTop:2}}>Completed just now · AI plan generated · Awaiting your review</div>
+        {sharedIntake.plan?.review_flags?.length>0&&<div style={{display:"flex",gap:3,marginTop:4,flexWrap:"wrap"}}>{sharedIntake.plan.review_flags.map(f=><span key={f.id}className="bdg"style={{background:f.type==="always"?`${C.rd}15`:`${C.or}15`,color:f.type==="always"?C.rd:C.or,fontSize:9}}>{f.label}</span>)}</div>}</div>
         <span className="bdg pu"style={{background:`${C.or}15`,color:C.or}}>⏳ Review Now</span>
       </div></div>}
     <div className="card"style={{padding:0,overflow:"hidden"}}>
@@ -1544,6 +1740,7 @@ function PTReview(){
             {w8&&w8.submitted&&<span className="bdg"style={{background:`${C.gn}15`,color:C.gn,fontSize:9}}>Week 8 Complete</span>}
             {p.adh>=80&&<span className="bdg"style={{background:`${C.gn}15`,color:C.gn,fontSize:9}}>98977 Met</span>}
             {iciqProg!==null&&iciqProg<1&&<span className="bdg"style={{background:`${C.rd}15`,color:C.rd,fontSize:9}}>No ICIQ Progress</span>}
+            {p.review_flags?.map(f=><span key={f.id}className="bdg"style={{background:f.type==="always"?`${C.rd}15`:`${C.or}15`,color:f.type==="always"?C.rd:C.or,fontSize:9}}>{f.label}</span>)}
           </div>
         </div>
         <Bdg sev={li<=5?"Slight":li<=12?"Moderate":li<=18?"Severe":"Very Severe"}sc={li}/>
@@ -1582,7 +1779,7 @@ function PTNewIntakeReview({data,onBack}){
     const alerts=[];
     if((ans.med_modify??0)===1)alerts.push("ALERT: Patient reports modifying prescribed medication due to urinary symptoms. Verify with prescribing provider.");
     if(ans._safety_answer_changed)alerts.push("ALERT: Patient initially reported safety flag but changed answer during intake. Verify safety screen was appropriately addressed.");
-    const phq2EN=(ans.phq2_interest||0)+(ans.phq2_mood||0);if(phq2EN>=3)alerts.push(`ALERT: PHQ-2 positive screen for depression (score: ${phq2EN}/6). Full PHQ-9 recommended. Assess capacity to consent.`);
+    const phq2EN=calcPHQ2(ans);if(phq2EN>=3)alerts.push(`ALERT: PHQ-2 positive screen for depression (score: ${phq2EN}/6). Full PHQ-9 recommended. Assess capacity to consent.`);
     if(phq2EN>=2)alerts.push(`PHQ-2 SCORE: ${phq2EN}/6 (${phq2EN>=5?"HIGH":phq2EN>=3?"MODERATE":"SUB-THRESHOLD"}). Patient received PSI mental health support resources at intake. Recommend referring physician follow up with patient within 3–5 days regarding mental health screening and support resources provided.`);
     if(psiRefer)alerts.push("REFERRAL: Patient referred to PSI Utah (Postpartum Support International) for maternal mental health support. PSI HelpLine: (800) 944-4773, psiutah.org.");
     const alertBlock=alerts.length>0?`\n*** CLINICAL ALERTS ***\n${alerts.map(a=>`>>> ${a}`).join("\n")}\n${"*".repeat(40)}\n\n`:"";
@@ -1602,7 +1799,7 @@ function PTNewIntakeReview({data,onBack}){
   if(REDFLAGS.some(r=>ans[r.id]==="yes"))guardrails.push({lvl:"alert",msg:"! Patient had positive red flag(s) in safety screening. Verify these were addressed."});
   if(ans._safety_answer_changed)guardrails.push({lvl:"alert",msg:`! SAFETY ANSWER CHANGED: Patient initially indicated a safety concern but later changed their answer. Questions changed: ${(ans._safety_changes||[]).map(c=>c.id).join(", ")}. Verify this was appropriate.`});
   if(EXCLUSIONS.some(r=>ans[r.id]==="yes"))guardrails.push({lvl:"alert",msg:"! Patient screened positive for EXCLUSIONARY condition (Section 3.7 Safe Harbor). This patient may not be eligible for AI-generated plans. Review carefully."});
-  const phq2=(ans.phq2_interest||0)+(ans.phq2_mood||0);if(phq2>=3)guardrails.push({lvl:"warn",msg:"PHQ-2 score "+phq2+"/6 — positive screen for depression. Verify capacity to consent and consider mental health resource referral."});
+  const phq2=calcPHQ2(ans);if(phq2>=3)guardrails.push({lvl:"warn",msg:"PHQ-2 score "+phq2+"/6 — positive screen for depression. Verify capacity to consent and consider mental health resource referral."});
   if(phq2>=2&&!psiRefer)guardrails.push({lvl:"info",msg:"PHQ-2 score "+phq2+"/6 — patient received support resources. Consider checking the PSI Utah referral box if appropriate."});
   if((ans.symptoms_trigger||[]).includes("sitting_long")&&pain.composite>6)guardrails.push({lvl:"alert",msg:"⚠ POTENTIAL PUDENDAL NEURALGIA: Patient reports pain while sitting for long periods with composite pain >6/10. Evaluate for pudendal nerve involvement."});
   if(iciq.severity==="Very Severe"&&editExs.length<4)guardrails.push({lvl:"warn",msg:"Very Severe ICIQ score but fewer than 4 exercises — consider whether prescription is sufficient."});
@@ -1612,12 +1809,13 @@ function PTNewIntakeReview({data,onBack}){
 
   const tryApprove=()=>{if(guardrails.some(g=>g.lvl==="alert"||g.lvl==="warn"))setShowGuardrails(true);else doFinalApprove()};
   const doFinalApprove=()=>{setTRun(false);setApproved(true);setShowGuardrails(false);
-    const approvedPlan={...plan,status:"approved",goals:editGoals.split("\n").filter(Boolean),prec:editPrec.split("\n").filter(Boolean),prog:editProg.split("\n").filter(Boolean),ex:editExs,adjuncts:editAdj};
+    const approvedPlan={...plan,status:"approved",review_flags:sharedIntake?.plan?.review_flags||plan.review_flags||[],goals:editGoals.split("\n").filter(Boolean),prec:editPrec.split("\n").filter(Boolean),prog:editProg.split("\n").filter(Boolean),ex:editExs,adjuncts:editAdj};
     setPlan(p=>approvedPlan);
     if(sharedIntake)sharedIntake.plan=approvedPlan;
+    if(sharedIntake&&!sharedIntake.outcomeRecordId){const orec=buildOutcomeRecord(sharedIntake,approvedPlan,tSec);orec.treatment.pt_modified_exercises=JSON.stringify(editExs)!==JSON.stringify(initPlan.ex);orec.treatment.pt_modified_adjuncts=JSON.stringify(editAdj)!==JSON.stringify(initPlan.adjuncts);orec.treatment.pt_modified_goals=editGoals!==initPlan.goals.join("\n");sharedIntake.outcomeRecordId=orec.id;db("insertOutcomeRecord",{recordId:orec.id,baseline:orec.baseline,treatment:orec.treatment,createdAt:orec.created})}
     L("plan_reviewed",{patient:nm,action:"approved",time:tSec});L("encounter_note",{patient:nm,cpt:plan.cpt.map(c=>c.c),time:tSec});L("RTM_setup_complete",{patient:nm,code:"98975",note:"RTM episode initiated — 98975 billable."});
     if(psiRefer)L("psi_referral_approved",{patient:nm,phq2Score:(ans.phq2_interest||0)+(ans.phq2_mood||0)});
-    if(sharedIntake)sharedIntake.psiRefer=psiRefer};
+    if(sharedIntake){sharedIntake.psiRefer=psiRefer;const uid=sharedIntake.userId;if(uid)db("updatePatientPlan",{userId:uid,plan:approvedPlan,status:"approved",outcomeRecordId:sharedIntake.outcomeRecordId,psiRefer:psiRefer||false})}};
 
   const removeEx=(i)=>setEditExs(e=>e.filter((_,j)=>j!==i));
   const updateEx=(i,field,val)=>setEditExs(e=>e.map((ex,j)=>j===i?{...ex,[field]:val}:ex));
@@ -1832,7 +2030,7 @@ function PTNewIntakeReview({data,onBack}){
       </div>}
 
       {/* GUARDRAIL MODAL */}
-      {showGuardrails&&<div style={{background:`${C.or}08`,border:`2px solid ${C.or}`,borderRadius:12,padding:18,marginBottom:12}}>
+      {showGuardrails&&<div style={{background:`${C.or}1A`,border:`2px solid ${C.or}`,borderRadius:12,padding:18,marginBottom:12}}>
         <div style={{fontWeight:700,color:C.or,marginBottom:8}}>! Pre-Approval Checks</div>
         {guardrails.map((g,i)=><div key={i}style={{fontSize:12,marginBottom:6,padding:"6px 10px",borderRadius:6,background:g.lvl==="alert"?`${C.rd}10`:g.lvl==="warn"?`${C.or}10`:`${C.blue}08`,color:g.lvl==="alert"?C.rd:g.lvl==="warn"?C.or:C.blue}}>{g.msg}</div>)}
         <div style={{display:"flex",gap:6,marginTop:10}}>
@@ -1843,7 +2041,7 @@ function PTNewIntakeReview({data,onBack}){
 
       {!showGuardrails&&<div style={{display:"flex",gap:6}}>
         <button className="btn bbl"onClick={tryApprove}>✓ Approve Plan</button>
-        <button className="btn brd"onClick={()=>{L("plan_rejected",{patient:nm});setPlan(p=>({...p,status:"rejected"}))}}>✕ Reject</button>
+        <button className="btn brd"onClick={()=>{L("plan_rejected",{patient:nm});setPlan(p=>({...p,status:"rejected"}));const uid=sharedIntake?.userId;if(uid)db("updatePatientPlan",{userId:uid,plan:{...plan,status:"rejected"},status:"rejected"})}}>✕ Reject</button>
       </div>}
     </div>}
 
@@ -2033,7 +2231,6 @@ function PTDash(){
 
 function AuditLog(){
   const[ptAuditorMode,setPtAuditorMode]=useState(false);
-  const ptMask=(name)=>ptAuditorMode?`ID-${Array.from(new Uint8Array(new TextEncoder().encode(name||""))).reduce((h,b)=>((h<<5)-h+b)>>>0,5381).toString(16).slice(0,6).toUpperCase()}`:(name||"—");
   return<div className="fi"><div className="h1">Audit Log</div><div className="sub">Immutable record · {log.length} entries</div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
       <div style={{fontSize:13,color:C.g600}}>{log.length} entries</div>
@@ -2045,7 +2242,7 @@ function AuditLog(){
       {log.length===0&&<div style={{padding:40,textAlign:"center",color:C.g400,fontSize:12}}>No events yet.</div>}
       {log.map(e=>{
         const details=Object.fromEntries(Object.entries(e).filter(([k])=>!["id","ts","type"].includes(k)));
-        const masked=ptAuditorMode?Object.fromEntries(Object.entries(details).map(([k,v])=>PHI_KEYS.includes(k)?[k,typeof v==="string"?ptMask(v):"[REDACTED]"]:[k,v])):details;
+        const masked=maskDetails(details,ptAuditorMode);
         return<div key={e.id}style={{padding:"10px 16px",borderBottom:`1px solid ${C.g100}`,fontSize:12,display:"flex",gap:10,alignItems:"flex-start"}}>
         <div style={{width:140,flexShrink:0,color:C.g400,fontSize:10}}>{new Date(e.ts).toLocaleString()}</div>
         <span className="bdg"style={{background:`${AUDIT_COLORS[e.type]||C.g400}12`,color:AUDIT_COLORS[e.type]||C.g400,flexShrink:0}}>{e.type.replace(/_/g," ")}</span>
@@ -2082,7 +2279,7 @@ function OAIPView(){
     // Pudendal neuralgia flag
     if((a.symptoms_trigger||[]).includes("sitting_long")&&(sharedIntake.pain?.composite||0)>6)redFlags.push({type:"PUDENDAL_NEURALGIA",severity:"HIGH",desc:"Potential pudendal neuralgia: sitting pain + composite pain >6/10",action:"Evaluate for pudendal nerve involvement. Avoid prolonged sitting exercises.",patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()});
     // PSI Utah referral flag
-    if(sharedIntake.psiRefer)redFlags.push({type:"PSI_REFERRAL",severity:"MODERATE",desc:"Patient referred to PSI Utah for maternal mental health support (PHQ-2: "+((a.phq2_interest||0)+(a.phq2_mood||0))+"/6)",action:"Documented referral to Postpartum Support International. Verify follow-up at next encounter.",patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()});
+    if(sharedIntake.psiRefer)redFlags.push({type:"PSI_REFERRAL",severity:"MODERATE",desc:"Patient referred to PSI Utah for maternal mental health support (PHQ-2: "+calcPHQ2(a)+"/6)",action:"Documented referral to Postpartum Support International. Verify follow-up at next encounter.",patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()});
   }
   // From audit log - adverse events
   log.filter(e=>e.type==="adverse_event_report").forEach(e=>redFlags.push({type:"ADVERSE_EVENT",severity:"CRITICAL",desc:`Adverse event reported: ${e.category||"unknown"} — ${e.detail?.slice(0,80)||"See log"}`,action:"Immediate clinical team notification. Consider program pause.",patient:e.patient||"—",ts:new Date(e.ts).toISOString()}));
@@ -2105,12 +2302,12 @@ function OAIPView(){
 
   // Auditor view - de-identified
   const[auditorMode,setAuditorMode]=useState(true);
-  const mask=(name)=>auditorMode?`ID-${Array.from(new Uint8Array(new TextEncoder().encode(name||""))).reduce((h,b)=>((h<<5)-h+b)>>>0,5381).toString(16).slice(0,6).toUpperCase()}`:(name||"—");
+  const mask=(name)=>auditorMode?hashMask(name):(name||"—");
 
   return<div className="fi"><div className="h1">OAIP Compliance Dashboard</div><div className="sub">Utah Office of AI Policy · Regulatory Mitigation Agreement</div>
     {/* View mode tabs */}
     <div style={{display:"flex",gap:0,marginBottom:16,borderBottom:`1px solid ${C.g200}`}}>
-      {[["compliance","Compliance"],["redflags","Red Flags & Alerts"],["followup","Follow-Up Schedule"],["audit","Live Audit Stream"],["fhir","Interoperability / HIE"]].map(([id,l])=>
+      {[["compliance","Compliance"],["redflags","Red Flags & Alerts"],["followup","Follow-Up Schedule"],["audit","Live Audit Stream"],["fhir","Interoperability / HIE"],["outcomes","Outcome Research"]].map(([id,l])=>
         <div key={id}style={{padding:"10px 18px",fontSize:13,fontWeight:viewMode===id?600:400,color:viewMode===id?C.purp:C.g400,borderBottom:`2px solid ${viewMode===id?C.pink:"transparent"}`,cursor:"pointer",whiteSpace:"nowrap"}}onClick={()=>setViewMode(id)}>{l}</div>
       )}
     </div>
@@ -2177,7 +2374,7 @@ function OAIPView(){
       {log.length===0&&<div style={{padding:40,textAlign:"center",color:C.g400,fontSize:12}}>No events yet.</div>}
       {log.map(e=>{
         const details=Object.fromEntries(Object.entries(e).filter(([k])=>!["id","ts","type"].includes(k)));
-        const maskedDetails=auditorMode?Object.fromEntries(Object.entries(details).map(([k,v])=>PHI_KEYS.includes(k)?[k,typeof v==="string"?mask(v):"[REDACTED]"]:[k,v])):details;
+        const maskedDetails=maskDetails(details,auditorMode);
         return<div key={e.id}style={{padding:"10px 16px",borderBottom:`1px solid ${C.g100}`,fontSize:12,display:"flex",gap:10,alignItems:"flex-start"}}>
           <div style={{width:140,flexShrink:0,color:C.g400,fontSize:10}}>{new Date(e.ts).toLocaleString()}</div>
           <span className="bdg"style={{background:`${AUDIT_COLORS[e.type]||C.g400}12`,color:AUDIT_COLORS[e.type]||C.g400,flexShrink:0}}>{e.type.replace(/_/g," ")}</span>
@@ -2292,6 +2489,67 @@ function OAIPView(){
       },null,2)}</pre>})()}
     </div>
     </>}
+
+    {/* Outcome Research Tab */}
+    {viewMode==="outcomes"&&<>
+    {(()=>{
+      const recs=OUTCOME_RECORDS;const completed=recs.filter(r=>r.outcome!==null);
+      const meaningful=completed.filter(r=>r.outcome.clinically_meaningful);
+      const meanDelta=completed.length>0?Math.round(completed.reduce((s,r)=>s+r.outcome.iciq_delta,0)/completed.length*10)/10:0;
+      const analysis=analyzePatterns(OUTCOME_RECORDS);
+      const sigColors={green:C.gn,yellow:C.or,gray:C.g400};
+      return<>
+      <div className="four"style={{marginBottom:16}}>
+        <div className="sc"><div className="scl2">Total Records</div><div className="scv2"style={{color:C.purp}}>{recs.length}</div></div>
+        <div className="sc"><div className="scl2">Completed</div><div className="scv2"style={{color:C.blue}}>{completed.length}</div></div>
+        <div className="sc"><div className="scl2">Clin. Meaningful</div><div className="scv2"style={{color:C.gn}}>{meaningful.length}</div><div className="scs">{completed.length>0?Math.round(meaningful.length/completed.length*100):0}%</div></div>
+        <div className="sc"><div className="scl2">Mean ICIQ Delta</div><div className="scv2"style={{color:meanDelta>0?C.gn:C.or}}>{meanDelta>0?"+":""}{meanDelta}</div></div>
+      </div>
+      {recs.length===0&&<div className="card"style={{textAlign:"center",padding:40}}>
+        <div style={{fontSize:32,marginBottom:8}}>📊</div>
+        <div style={{color:C.g500,fontSize:14}}>No outcome records yet. Records are created when a PT approves a plan.</div>
+      </div>}
+      {recs.length>0&&<div className="card"style={{padding:0,overflow:"hidden"}}>
+        <div style={{padding:"14px 18px",background:C.g50,borderBottom:`1px solid ${C.g200}`,fontWeight:600,fontSize:13,color:C.purp}}>Outcome Records ({recs.length})</div>
+        <div style={{display:"grid",gridTemplateColumns:"1.2fr 1fr 1fr 1fr 1fr 1fr",padding:"8px 16px",background:C.g50,borderBottom:`1px solid ${C.g200}`,fontSize:10,fontWeight:600,color:C.g500,textTransform:"uppercase",letterSpacing:1}}>
+          <span>Record</span><span>Tier</span><span>ICIQ Base</span><span>Status</span><span>ICIQ Delta</span><span>NPS</span>
+        </div>
+        {recs.map(r=><div key={r.id}style={{display:"grid",gridTemplateColumns:"1.2fr 1fr 1fr 1fr 1fr 1fr",padding:"10px 16px",borderBottom:`1px solid ${C.g100}`,fontSize:12,alignItems:"center"}}>
+          <span style={{fontWeight:500,fontSize:11,color:C.g600}}>{r.id.slice(0,12)}</span>
+          <span className="bdg"style={{background:`${C.blue}15`,color:C.blue,justifySelf:"start"}}>{r.treatment.tier}</span>
+          <span>{r.baseline.iciq.total}/21</span>
+          <span className="bdg"style={{background:r.outcome?`${C.gn}15`:`${C.or}15`,color:r.outcome?C.gn:C.or,justifySelf:"start"}}>{r.outcome?"Complete":"Pending"}</span>
+          <span style={{fontWeight:700,color:r.outcome?(r.outcome.iciq_delta>0?C.gn:r.outcome.iciq_delta<0?C.rd:C.or):C.g400}}>{r.outcome?((r.outcome.iciq_delta>0?"+":"")+r.outcome.iciq_delta):"\u2014"}</span>
+          <span>{r.outcome?r.outcome.nps+"/10":"\u2014"}</span>
+        </div>)}
+      </div>}
+      {completed.length>0&&<div className="card"style={{marginTop:16}}>
+        <div className="chd">Outcomes by Tier</div>
+        <div className="three">
+          {["Beginner","Moderate","Advanced"].map(t=>{const tc=completed.filter(r=>r.treatment.tier===t);const md=tc.length>0?Math.round(tc.reduce((s,r)=>s+r.outcome.iciq_delta,0)/tc.length*10)/10:0;
+            return<div key={t}className="sc"><div className="scl2">{t}</div><div className="scv2"style={{color:md>0?C.gn:C.or}}>{md>0?"+":""}{md}</div><div className="scs">n={tc.length}</div></div>})}
+        </div>
+      </div>}
+      {/* Research Signals — Biomarker Discovery */}
+      <div className="card"style={{marginTop:16}}>
+        <div className="chd">Research Signals (Biomarker Discovery)</div>
+        <div style={{fontSize:12,color:C.g500,marginBottom:12}}>Hypothesis testing framework. Requires {analysis.required} completed outcome records. Currently: {analysis.n} records.</div>
+        {!analysis.sufficient&&<div className="ra"style={{background:"#F0F4FF",borderLeft:`4px solid ${C.blue}`,borderRadius:8,padding:"10px 14px",color:"#1E40AF",fontSize:12}}>Insufficient data for signal analysis. {analysis.required-analysis.n} more completed records needed.</div>}
+        {analysis.sufficient&&analysis.signals.map(s=><div key={s.biomarker_id}style={{padding:"12px 16px",borderBottom:`1px solid ${C.g100}`,display:"flex",gap:12,alignItems:"flex-start"}}>
+          <div style={{width:8,height:8,borderRadius:"50%",background:sigColors[s.signal_strength]||C.g400,marginTop:6,flexShrink:0}}/>
+          <div style={{flex:1}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontWeight:600,fontSize:13,color:C.g800}}>{s.name}</span><span className="bdg"style={{background:`${(sigColors[s.signal_strength]||C.g400)}15`,color:sigColors[s.signal_strength]||C.g400}}>{s.status}</span></div>
+            <div style={{fontSize:11,color:C.g500,marginTop:2}}>{s.desc}</div>
+            {s.status!=="insufficient"&&<div style={{display:"flex",gap:16,marginTop:6,fontSize:11,color:C.g600}}><span>n={s.cohort_size} vs {s.comparison_size}</span><span>Mean: {s.mean_match} vs {s.mean_comparison}</span><span>d={s.effect_size}</span><span>p~{s.p_estimate}</span></div>}
+            {s.status==="insufficient"&&s.cohort_size>0&&<div style={{fontSize:11,color:C.g400,marginTop:4}}>Matched {s.cohort_size} records — need at least 5 per cohort</div>}
+          </div>
+        </div>)}
+        <div style={{padding:"10px 16px",background:C.g50,fontSize:10,color:C.g400,borderTop:`1px solid ${C.g100}`}}>Signals are exploratory hypotheses, not validated predictions. Effect sizes (Cohen's d) and p-values are approximate. Full validation requires IRB-approved analysis.</div>
+      </div>
+      </>;
+    })()}
+    </>}
+
   </div>;
 }
 // Report Issue component — persistent in patient view
@@ -2312,9 +2570,9 @@ function ReportIssue({pView}){
 
   const submit=(type)=>{
     const pt=sharedIntake?.name||"—";
-    if(type==="worsening"){L("CLINICAL_REGRESSION_FLAG",{severity,symptomType:isNew?"new":"worsening",detail:worseDesc||undefined,patient:pt})}
+    if(type==="worsening"){L("CLINICAL_REGRESSION_FLAG",{severity,symptomType:isNew?"new":"worsening",detail:worseDesc||undefined,patient:pt});if(sharedIntake?.plan?.review_flags&&!sharedIntake.plan.review_flags.some(f=>f.id==="CLINICAL_REGRESSION_REPORTED")){sharedIntake.plan.review_flags.push({id:"CLINICAL_REGRESSION_REPORTED",type:"triggered",label:"Worsening Reported"});notifyFlagChange()}}
     else if(type==="pain"){L("EXERCISE_PAIN_REPORT",{severity:painSeverity,context:"during_exercises",patient:pt})}
-    else if(type==="adverse"){L("adverse_event_report",{category:adverseType,detail:adverseDetail,patient:pt})}
+    else if(type==="adverse"){L("adverse_event_report",{category:adverseType,detail:adverseDetail,patient:pt});if(sharedIntake?.plan?.review_flags&&!sharedIntake.plan.review_flags.some(f=>f.id==="ADVERSE_EVENT")){sharedIntake.plan.review_flags.push({id:"ADVERSE_EVENT",type:"triggered",label:"Adverse Event Reported"});notifyFlagChange()}}
     else if(type==="clarity"){L("clinical_review_request",{category:"clarity",note:reviewNote||undefined,patient:pt})}
     else if(type==="optout"){L("clinical_review_request",{category:"optout",note:reviewNote||undefined,patient:pt})}
     else{L("TECHNICAL_ISSUE_REPORT",{description:techDesc||"No description provided",patient:pt})}
@@ -2416,29 +2674,54 @@ function ReportIssue({pView}){
 }
 
 // MAIN APP — Three Views
+function PasswordGate({role,onAuth}){
+  const[pw,setPw]=useState("");const[err,setErr]=useState(false);
+  const codes={pt:"expect2026pt",oaip:"expect2026oaip"};
+  const submit=()=>{if(pw===codes[role]){L(role+"_login",{});onAuth()}else{setErr(true);setPw("")}};
+  return<div className="mn"><div className="card fi"style={{maxWidth:400,margin:"80px auto",textAlign:"center",padding:32}}>
+    <div style={{fontSize:20,fontWeight:700,color:C.purp,marginBottom:8}}>{role==="pt"?"PT Provider":"OAIP"} Portal</div>
+    <p style={{fontSize:13,color:C.g500,marginBottom:20}}>Enter the {role==="pt"?"provider":"oversight"} access code to continue.</p>
+    {err&&<div style={{color:C.rd,fontSize:12,marginBottom:12}}>Incorrect access code. Please try again.</div>}
+    <input type="password"className="inp"value={pw}onChange={e=>{setPw(e.target.value);setErr(false)}}onKeyDown={e=>e.key==="Enter"&&submit()}placeholder="Access code"style={{textAlign:"center",marginBottom:16}}/>
+    <button className="btn bbl"onClick={submit}style={{width:"100%",justifyContent:"center"}}>Enter</button>
+  </div></div>;
+}
+
 function App(){
-  const[mode,setMode]=useState("patient");const[pView,setPView]=useState("consent");
+  const[mode,setMode]=useState("patient");const[pView,setPView]=useState("landing");const[landingEmail,setLandingEmail]=useState("");
   const[ptView,setPtView]=useState("dash");
   const[rk,setRk]=useState(0);
   const mainRef=useRef(null);
+  const[ptAuthed,setPtAuthed]=useState(false);
+  const[oaipAuthed,setOaipAuthed]=useState(false);
+  useEffect(()=>{(async()=>{try{const tok=localStorage.getItem("expect_session");if(!tok)return;const sess=await db("getSessionByToken",{sessionToken:tok});if(!sess||sess.expiresAt<Date.now()){localStorage.removeItem("expect_session");return}authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,expiresAt:sess.expiresAt,createdAt:sess.createdAt};const pt=await db("getPatientByUserId",{userId:sess.userId});if(pt){sharedIntake={ans:pt.ans,iciq:pt.iciq,pain:pt.pain,gupi:pt.gupi,fluts:pt.fluts,fsex:pt.fsex,plan:pt.plan,depressionFlag:pt.depressionFlag,prenatalFlag:pt.prenatalFlag,name:pt.name,physicianName:pt.physicianName,physicianFax:pt.physicianFax,physicianNPI:pt.physicianNPI,safetyAnswerChanged:pt.safetyAnswerChanged,safetyChanges:pt.safetyChanges,outcomeRecordId:pt.outcomeRecordId,week8:pt.week8,psiRefer:pt.psiRefer};setPView("done")}const events=await db("listAuditEvents",{limit:500});if(events&&events.length>0){const existing=new Set(log.map(e=>e.id));events.forEach(e=>{if(!existing.has(e.eventId))log.push({id:e.eventId,ts:e.ts,type:e.type,...(e.details||{})})});log.sort((a,b)=>b.ts.localeCompare(a.ts));_lid=Math.max(_lid,events.length)}}catch(e){console.warn("[hydrate]",e)}})()},[]);
+  const{warn,cd,rem,dismiss}=useSessionTimeout(()=>{setPView("landing");setMode("patient");setPtAuthed(false);setOaipAuthed(false);setRk(r=>r+1)});
   const modes=[{id:"patient",l:"Patient View"},{id:"pt",l:"PT Provider View"},{id:"oaip",l:"Utah OAIP View"}];
 
   return<><style>{css}</style>
+    {warn&&<SessionWarningModal cd={cd} onDismiss={dismiss}/>}
     <div className="topnav">
       <div className="topnav-logo"><img src="Expect_Logo_WhiteTM.png" alt="Expect Health" style={{height:"32px"}}/></div>
       <div className="topnav-tabs">
         {modes.map(m=><div key={m.id}className={`tt ${mode===m.id?"a":""}`}onClick={()=>{setMode(m.id);setRk(r=>r+1)}}>{m.l}</div>)}
       </div>
-      {mode==="patient"&&<ReportIssue pView={pView}/>}
+      <div style={{display:"flex",alignItems:"center",gap:12}}>
+        {mode==="patient"&&authSession&&<span style={{fontSize:11,color:"rgba(255,255,255,.7)"}}>{authSession.email}</span>}
+        {mode==="patient"&&rem!==null&&<span style={{fontSize:11,color:C.or,fontWeight:600}}>{Math.floor(rem/60)}:{String(rem%60).padStart(2,"0")}</span>}
+        {mode==="patient"&&<ReportIssue pView={pView}/>}
+      </div>
     </div>
     <div ref={mainRef} style={{overflowY:"auto",maxHeight:"calc(100vh - 56px)"}}>
       {mode==="patient"&&<div className="mn" key={"p"+rk}>
-        {pView==="consent"&&<Consent onDone={()=>setPView("intake")}/>}
-        {pView==="intake"&&<Intake onDone={()=>setPView("done")}mainRef={mainRef}/>}
+        {pView==="landing"&&<LandingPage onDone={(em)=>{setLandingEmail(em);setPView("consent")}}/>}
+        {pView==="consent"&&<Consent onDone={()=>setPView("verify")}/>}
+        {pView==="verify"&&<IdentityVerify onDone={()=>setPView("intake")}/>}
+        {pView==="intake"&&<Intake onDone={()=>setPView("done")}mainRef={mainRef}initialEmail={landingEmail}/>}
         {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status!=="approved"&&<PatientWaiting name={sharedIntake.ans?.name_first}/>}
         {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status==="approved"&&<MyCareplan data={sharedIntake}/>}
+        {pView==="done"&&(!sharedIntake||!sharedIntake.plan)&&<div className="fi"style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:48,marginBottom:16}}>&#x23F3;</div><div className="h1"style={{fontSize:22}}>Session Expired</div><p style={{fontSize:14,color:C.g500,maxWidth:400,margin:"12px auto",lineHeight:1.7}}>Your session could not be restored. Please start over.</p><button className="btn bpk"onClick={()=>setPView("landing")}>Start Over</button></div>}
       </div>}
-      {mode==="pt"&&<div className="mnw">
+      {mode==="pt"&&(ptAuthed?<div className="mnw">
         <div style={{display:"flex",gap:0,marginBottom:20,borderBottom:`1px solid ${C.g200}`}}>
           {[["dash","Dashboard"],["patients","Patients"],["audit","Audit Log"]].map(([id,l])=>
             <div key={id}style={{padding:"10px 18px",fontSize:13,fontWeight:ptView===id?600:400,color:ptView===id?C.purp:C.g400,borderBottom:`2px solid ${ptView===id?C.pink:"transparent"}`,cursor:"pointer"}}onClick={()=>setPtView(id)}>{l}</div>
@@ -2447,8 +2730,8 @@ function App(){
         {ptView==="dash"&&<PTDash/>}
         {ptView==="patients"&&<PTReview/>}
         {ptView==="audit"&&<AuditLog/>}
-      </div>}
-      {mode==="oaip"&&<div className="mnw"><OAIPView/></div>}
+      </div>:<PasswordGate role="pt"onAuth={()=>setPtAuthed(true)}/>)}
+      {mode==="oaip"&&(oaipAuthed?<div className="mnw"><OAIPView/></div>:<PasswordGate role="oaip"onAuth={()=>setOaipAuthed(true)}/>)}
     </div>
   </>;
 }

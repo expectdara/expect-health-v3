@@ -196,7 +196,13 @@ Expect requests the following regulatory mitigation under the UAIPA:
 
 Requested pilot duration: 12 months, with option for a single 12-month extension per UAIPA.
 
-Enrollment Projections: Expect targets 250+ enrolled patients across diagnosis subtypes during Phase 1 (est. Months 1-4), 500 during Phase 2 (Months 5-8), and 500 during Phase 3 (Months 9-12), totaling approximately 1,250 patients over the 12-month pilot. Enrollment channels include OB/GYN and PCP referral networks, Utah Medicaid MCO partnerships, and direct-to-consumer outreach. Phase progression is gated by volume (250 consecutive AI-PT matches per subtype), not calendar, so if enrollment is slower than projected, Expect will request the 12-month extension permitted under UAIPA.
+Enrollment Projections: Expect uses a tiered enrollment model for Phase 1 to set realistic expectations while preserving statistical ambition:
+
+- Minimum Viable: 50 patients -- Sufficient for safety data and primary outcomes analysis (ICIQ improvement >= 3 points). Provides 80% power to detect a 3-point ICIQ change (SD ~4) with paired t-test. Enables initial adverse event rate estimation and PT workflow validation.
+- Target: 150 patients -- Powered for secondary outcomes (pain reduction, adherence, PHQ-2 trends) and subgroup analysis by incontinence subtype (Stress, Urge, Mixed). Enables meaningful fairness analysis across demographic groups and preliminary cue-preference response comparison.
+- Stretch: 250 patients -- Full statistical power across all endpoints, including multi-instrument biomarker discovery (see Section 5.3). Sufficient for three-way subtype comparison with Bonferroni correction and exploratory predictive modeling. Supports peer-reviewed publication with robust sample size.
+
+Phase 2 targets 500 enrolled, Phase 3 targets 500 enrolled, for a total of approximately 700-1,250 patients over the 12-month pilot depending on Phase 1 tier achieved. Enrollment channels include OB/GYN and PCP referral networks, Utah Medicaid MCO partnerships, and direct-to-consumer outreach. Phase progression is gated by volume (250 consecutive AI-PT matches per subtype at the Stretch tier, or proportionally adjusted at lower tiers), not calendar, so if enrollment is slower than projected, Expect will request the 12-month extension permitted under UAIPA.
 
 (See Table 2 below for phase details)
 
@@ -278,9 +284,9 @@ Proposed Reporting Process
 3.7 Alignment with Approved Utah Sandbox Precedents
 
 Expect's pilot design mirrors the Doctronic pilot--the first AI healthcare application approved under the Utah AI Regulatory Sandbox--across four dimensions:
-- Volume-Based Gating: 250 supervised cases per diagnosis category (Stress UI, Urge UI, Mixed UI) prior to any AI autonomy, ensuring statistically significant validation rather than calendar-based phase advancement.
+- Volume-Based Gating: Tiered enrollment targets (Minimum Viable: 50, Target: 150, Stretch: 250) per diagnosis category (Stress UI, Urge UI, Mixed UI) prior to any AI autonomy, ensuring statistically meaningful validation rather than calendar-based phase advancement. At all tiers, 100% PT review is maintained until phase progression criteria are met.
 - Liability Parity: Malpractice insurance covers the AI algorithm as a distinct provider, holding the AI to the same liability standard as a licensed clinician.
-- 10% Post-Calibration Audit Rate: After the 250-case calibration period, 10% human audit rate for low-risk cases.
+- 10% Post-Calibration Audit Rate: After the calibration period (minimum 50 cases per subtype), 10% human audit rate for low-risk cases.
 - Identity Verification: Selfie-and-photo-ID verification at intake to confirm Utah residency and prevent fraud.
 
 Lower Risk Profile Than Approved Precedent: Doctronic's approved pilot authorizes AI to dispense medications--which carry risks of drug interactions, overdose, and allergic reactions. Expect prescribes pelvic floor exercises. The worst-case outcome is temporary muscle soreness, not a life-threatening adverse event.
@@ -457,7 +463,35 @@ Related Service/Product
 Federal Research Partnership
 The VHA CRADA (see Section 1.1) provides a clinical validation pathway. The specific AI workflows in this pilot are distinct from current VA deployments.
 
-5.3 Path to Reimbursement
+5.3 Proprietary Technology Innovation
+
+Expect's platform includes two novel technology subsystems that go beyond the application of published clinical instruments. These subsystems are the subject of provisional patent filings and represent Expect's core intellectual property.
+
+Adaptive Outcome Algorithm
+
+The platform collects structured, PHI-free outcome records linking each patient's baseline clinical profile (instrument scores, demographic bracket, symptom triggers, comorbidity flags) to their treatment parameters (exercise tier, adjunct types, cueing style, PT modifications) and Week 8 outcomes (ICIQ delta, pain delta, adherence rate, patient-reported satisfaction). Each outcome record is de-identified at creation -- age is stored as a bracket (e.g., "30-39"), and no name, date of birth, or contact information is retained.
+
+As outcome records accumulate, the algorithm identifies which baseline profile + treatment parameter combinations produce the greatest clinical improvement. In Phase 1, this data is observational only -- the algorithm does not influence plan generation. In Phase 2 and beyond, the outcome data may be used to refine exercise selection, adjunct recommendations, and cueing strategies for patients with similar baseline profiles, creating an adaptive feedback loop that improves over time. This "learning from outcomes" capability is architecturally distinct from the deterministic scoring used for initial plan generation.
+
+The adaptive algorithm's key innovation is that it operates entirely on de-identified, structured outcome data -- not on raw clinical text, images, or patient communications. This design enables continuous improvement while maintaining full HIPAA compliance and avoiding the privacy risks associated with large language model training on clinical data.
+
+Multi-Instrument Biomarker Discovery Engine
+
+The platform includes a statistical analysis engine designed to discover novel multi-instrument patterns ("digital biomarkers") that predict treatment response, non-response, or dropout. Five initial biomarker hypotheses are embedded in the platform:
+
+1. Non-Response Predictor: High GUPI + high activity avoidance + PHQ-2 positive may predict poor ICIQ improvement despite treatment adherence.
+2. Pudendal Early Detection: FLUTS voiding subscale + pain composite + sitting trigger at lower thresholds than the current clinical heuristic may identify pudendal involvement earlier.
+3. Dropout Predictor: High avoidance + elevated PHQ-2 + default cueing + no prior treatment history may predict early program abandonment.
+4. Cue-Response Interaction: Breathing-based cueing may produce better outcomes than biologic cueing for patients with high genitourinary pain (GUPI >= 15).
+5. Tier Boundary Signal: Patients near ICIQ tier boundaries (scores 5-7 or 12-14) may show differential response patterns that inform more precise tier assignment.
+
+Each hypothesis is evaluated using inline Welch's t-test with Cohen's d effect size calculation, requiring no external statistical libraries. A minimum of 30 completed outcome records is required before any signal analysis is performed. Biomarker signals are classified as "strong" (p < 0.01, |d| >= 0.5), "emerging" (p < 0.05, |d| >= 0.3), or "insufficient data."
+
+The biomarker discovery engine's innovation is the systematic application of cross-instrument correlation analysis to pelvic floor treatment outcomes -- a combination that has not been explored in the published literature. The five validated instruments used in this platform (ICIQ-UI SF, ICIQ-FLUTS, ICIQ-FLUTSsex, GUPI-Female, and PHQ-2) have never been administered together in a structured digital workflow that enables automated pattern discovery across their combined score space.
+
+All biomarker signals are exploratory hypotheses generated from pilot data. Full validation requires IRB-approved analysis with appropriate sample sizes and pre-registered protocols. The OAIP Outcome Research dashboard displays biomarker signals for transparency.
+
+5.4 Path to Reimbursement
 
 Billing Strategy: Expect uses existing CPT codes rather than waiting for new "Digital Therapeutic" CPT codes. Because a licensed Physical Therapist reviews and approves 100% of plans in Phase 1 (and retains supervisory authority in subsequent phases), the platform's output qualifies as a standard physical therapy evaluation and plan of care under existing regulations.
 
@@ -483,7 +517,7 @@ Expect addresses trust through five transparency commitments:
 - Clinical reviewer credibility: All AI-generated treatment plans are reviewed by Nicole L. Dugan, PT, DPT, WCS--a board-certified Women's Health Clinical Specialist with 25+ years of pelvic floor PT experience. Dr. Dugan is faculty at the Herman & Wallace Pelvic Rehabilitation Institute, developed the APTA Women's Health Residency Program at Penn Medicine, and co-authored the cueing framework used in this platform (Crane & Dugan, 2025). Full CV available on request. The platform is designed for referral by board-certified urogynecologists, the primary referral pathway into pelvic floor PT
 
 Expect will proactively address potential public concerns by emphasizing:
-- The AI earns autonomy through demonstrated safety--250 supervised cases per subtype before any auto-approval, with ongoing 10% audit and immediate rollback if any adverse event occurs
+- The AI earns autonomy through demonstrated safety--a minimum of 50 supervised cases per subtype (up to 250 at the Stretch tier) before any auto-approval, with ongoing 10% audit and immediate rollback if any adverse event occurs
 - The platform expands access to care that most Utah women currently cannot get
 - Patient data is never sold or used for advertising
 - If the AI causes harm, Expect pays for remedial care
@@ -497,6 +531,8 @@ Trade Secrets
 - AI plan generation algorithms: The specific logic, weighting, and decision trees used to translate validated instrument scores into individualized treatment plans, adjunct recommendations, and risk stratification
 - Scoring-to-diagnosis mapping: The proprietary thresholds and combinatorial rules used to generate ICD-10 diagnostic codes from multi-instrument score profiles
 - PT review guardrail logic: The specific consistency checks (9 cross-instrument contradiction rules), minimum review time thresholds, safety answer change detection, clinical shorthand expansion mappings, and clinical warning algorithms
+- Adaptive outcome algorithm: The specific outcome record schema, baseline-to-outcome linkage methodology, and treatment parameter optimization logic (see Section 5.3; subject to provisional patent filing)
+- Multi-instrument biomarker discovery engine: The specific biomarker hypotheses, cross-instrument correlation methods, and statistical signal classification logic (see Section 5.3; subject to provisional patent filing)
 
 Commercial Information
 - Financial projections, unit economics, and gross margin calculations
@@ -515,7 +551,7 @@ The Expect platform comprises the following components. The patient-facing appli
 
 - Patient-Facing Web Application: React-based responsive application. 9-step guided intake (97+ questions), informed consent (10 checkboxes), 5-tab care plan viewer, MyChart/EHR export (client-side PDF), 6-pathway symptom reporting, secure messaging. See Section 1.4 for full walkthrough.
 - PT Provider Dashboard: Three-tab interface (Dashboard, Patients, Audit Log). 9 pre-approval guardrail checks, CMS-compliant encounter note with shorthand expansion (12 abbreviations), review timer. See Section 1.4, PT Provider Experience.
-- OAIP Compliance Dashboard: Four-tab interface (Compliance, Red Flags & Alerts, Live Audit Stream, Interoperability / HIE). 11 clinical signal types. Auditor Mode (see Section 4.3). See Section 1.4, OAIP Oversight Experience.
+- OAIP Compliance Dashboard: Six-tab interface (Compliance, Red Flags & Alerts, Follow-Up Schedule, Live Audit Stream, Interoperability / HIE, Outcome Research). 11 clinical signal types. Auditor Mode (see Section 4.3). See Section 1.4, OAIP Oversight Experience. The Outcome Research tab displays de-identified outcome records, tier-level outcome breakdowns, and biomarker discovery signals (see Section 5.3).
 - AI Scoring Engine: Deterministic algorithms for ICIQ-UI SF (0-21), FLUTS (F/V/I), FLUTSsex (0-12), GUPI-Female (P/U/Q, 0-45), pain composite (0-10). Incontinence subtype classification. PHQ-2 depression screening (threshold >=3/6).
 - AI Plan Generator: Rule-based plan generation: ICD-10 mapping (up to 8 codes including pudendal neuralgia), 3-tier exercise prescription (Beginner/Moderate/Advanced), adjunct engine (9 recommendation types), risk stratification (green/yellow), precautions, progression criteria, and prenatal exercise substitution (see Section 3.8).
 - Audit Log: 24 event types, ISO 8601 timestamps. Auditor Mode de-identification (see Section 4.3). In-memory storage during sandbox phase.
@@ -524,6 +560,9 @@ The Expect platform comprises the following components. The patient-facing appli
 - Default Fax Pre-Population: Org/specialty matching for 4 Utah health system patterns. Applied only when NPI has no fax on file. Demo providers excluded.
 - Patient-Directed EHR Sharing: Client-side PDF generation. See Section 1.4, Step 8.
 - FHIR R4 Preview: FHIR R4 Bundle with US Core profiles. See Section 4.3, EHR Interface.
+- Outcome Record Engine: PHI-free structured outcome records linking baseline clinical profiles to treatment parameters and Week 8 outcomes. De-identified at creation (age brackets, no PII). See Section 5.3.
+- Biomarker Discovery Engine: Inline statistical analysis (Welch's t-test, Cohen's d effect size) for 5 biomarker hypotheses across multi-instrument score space. Minimum 30 completed records required for signal analysis. See Section 5.3.
+- Review Flags System: Automated risk classification with 5 always-review flags (HIGH_SEVERITY_ICIQ, DEPRESSION_RISK, PRENATAL, SAFETY_ANSWER_CHANGED, PUDENDAL_SUSPECTED) and 4 triggered flags (CLINICAL_REGRESSION, PHQ2_WORSENING, ADHERENCE_CONCERN, ADVERSE_EVENT). Phase 1: informational only. Phase 2: routes high-risk plans to mandatory PT review.
 
 
 APPENDIX B: Patient Safety, Clinical Oversight, and Remediation Framework
@@ -911,7 +950,7 @@ Table 2: Pilot Phases and Timeline (Section 3.1)
 | Phase | Duration | Description | Benchmark to Advance |
 |---|---|---|---|
 | Pre-Deployment | Months -2 to 0 | Platform shared with OAIP for technical review. Informed consent language approved. Test patients (internal) complete full workflow. HIPAA technical safeguards fully implemented: AES-256 encryption at rest, authentication and authorization enforcement, and automatic session timeout. | OAIP technical sign-off; no critical defects; consent approved; HIPAA technical safeguards verified before any real patient data enters the system |
-| Phase 1: Calibration Mode | First 250 plans per diagnosis subtype (est. Months 1-4) | 100% of AI-generated plans reviewed by PT before patient delivery. All scores, responses, and AI reasoning visible to PT. Minimum 2-minute review time enforced. Graduation requires 250 consecutive AI-PT matches per diagnosis subtype (Stress UI, Urge UI, Mixed UI), following the volume-based gating standard established by the approved Doctronic pilot. Target: 250+ enrolled patients across subtypes. | 250 consecutive AI-PT matches per subtype achieved; AI-PT agreement rate >=95%; zero adverse events; zero PHI breaches; PT satisfaction >=4/5 |
+| Phase 1: Calibration Mode | Est. Months 1-4 | 100% of AI-generated plans reviewed by PT before patient delivery. All scores, responses, and AI reasoning visible to PT. Minimum 2-minute review time enforced. Tiered enrollment: Minimum Viable = 50 patients (safety + primary outcomes), Target = 150 (secondary outcomes + subgroup analysis), Stretch = 250 (full power across all endpoints + biomarker discovery). Phase graduation volume-gated per Doctronic precedent. | AI-PT agreement rate >=95%; zero adverse events; zero PHI breaches; PT satisfaction >=4/5; minimum 50 completed cases |
 | Phase 2: High-Frequency Sampling | Months 4-8 | AI plans for low-risk patients (ICIQ <=12, pain <=3, Moderate/Mild) may be auto-approved with PT spot-check (10% random audit, consistent with the Doctronic post-calibration standard). High-risk patients remain 100% PT review. Target: 500 enrolled. | Sustained AI-PT agreement >=95%; ICIQ improvement >=3 pts avg; adverse events = 0; complaint rate <5% |
 | Phase 3: Expanded Deployment | Months 9-12 | Auto-approval threshold expanded. PT review for all high-risk and first-time patients. Statewide Medicaid MCO partnerships activated. Target: 500 enrolled. | Continued safety metrics; outcomes data sufficient for peer-reviewed publication; OAIP final review |
 
@@ -943,7 +982,7 @@ Table 5: Foreseeable Risks and Mitigations (Section 4.1)
 
 | Risk Category | Specific Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
-| AI Failure | AI generates incorrect diagnosis or inappropriate exercise prescription | Medium | High | Mandatory PT review of every AI output during calibration phase (first 250 cases per subtype). Validated instruments limit AI interpretation scope. PT can reject/modify any recommendation at any phase. 9 guardrail checks alert PT to inconsistencies. |
+| AI Failure | AI generates incorrect diagnosis or inappropriate exercise prescription | Medium | High | Mandatory PT review of every AI output during calibration phase (minimum 50 cases per subtype, up to 250 at Stretch tier). Validated instruments limit AI interpretation scope. PT can reject/modify any recommendation at any phase. 9 guardrail checks alert PT to inconsistencies. |
 | AI Failure | Algorithmic error in treatment plan generation | Low | High | Plan generation uses deterministic scoring algorithms, not free-text LLM generation. ICD-10 codes derived from validated score thresholds. No generative AI in the scoring pipeline. Pudendal neuralgia detection uses a heuristic flag (sitting_long trigger + pain >6/10) that requires mandatory PT review -- it is not acted on autonomously. |
 | AI Failure | Systematic scoring error affecting multiple patients | Low | Very High | Scoring functions validated against published instrument scoring manuals. PT review catches individual errors. Monthly audit of 10% random sample by independent clinician. |
 | Patient Safety | Patient experiences adverse event during prescribed exercise | Low-Medium | Medium-High | Red-flag triage screens for emergencies before intake. Pain >3/10 precaution on all plans. Patient can report symptoms via 6-pathway "Report a Problem" button (including exercise pain and worsening symptoms pathways with severity sliders). Clinical regression reports with severity >=7 are flagged as CRITICAL in the OAIP dashboard. |

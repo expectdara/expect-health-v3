@@ -2,5 +2,24 @@
   "name": "expect-health-v3",
   "version": "3.0.0",
   "description": "Expect Health AI Pelvic Floor PT Platform - Utah OAIP Pilot",
-  "private": true
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/expectdara/expect-health-v3.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/expectdara/expect-health-v3/issues"
+  },
+  "homepage": "https://github.com/expectdara/expect-health-v3#readme",
+  "dependencies": {
+    "convex": "^1.33.0",
+    "stripe": "^14.0.0"
+  }
 }

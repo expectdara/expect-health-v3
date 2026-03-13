@@ -16,7 +16,7 @@ with open('/Users/Dara Cook/Downloads/expect-utah/expect_oaip_pilot_proposal_REW
     full_text = f.read()
 
 # ── Create document from original as template (to inherit styles) ────────────
-doc = Document('/Users/Dara Cook/Downloads/expect-utah/expect_oaip_pilot_proposal_updated (1).docx')
+doc = Document('/Users/Dara Cook/Downloads/expect-utah/expect_oaip_pilot_proposal_FINAL.docx')
 
 # Clear all existing content but preserve sectPr
 body = doc.element.body
