@@ -8,8 +8,10 @@ Two user types: **patients** (intake flow) and **physical therapists** (review p
 ## Key Files
 
 ### Platform
-- `public/index.html` — **THE** deployed clinical platform (single-file React app via Babel standalone). This is what Vercel serves.
-- `expect-utah-clinical-platform-v3 goodNPI.html` — Working copy / development version. Changes should land in `public/index.html` for deployment.
+- `src/app.jsx` — **THE** platform source (all React components, scoring, care plan logic). Edit this file.
+- `public/index.html` — HTML shell (CDN scripts + loads compiled `app.js`). Vercel serves this.
+- `public/app.js` — **Build artifact** (compiled from `src/app.jsx` by esbuild). Do NOT edit directly — run `npm run build`.
+- `expect-utah-clinical-platform-v3 goodNPI.html` — Legacy working copy. May lag behind `src/app.jsx`.
 - `api/npi.js` — Vercel serverless function proxying CMS NPI Registry lookups (avoids CORS).
 - `vercel.json` — Vercel config: routes `public/` as output, rewrites to `index.html`, security headers.
 
@@ -27,7 +29,7 @@ Two user types: **patients** (intake flow) and **physical therapists** (review p
 ## Architecture
 
 ### Platform Stack
-- Single HTML file with inline React (JSX), compiled by Babel standalone in-browser.
+- JSX source in `src/app.jsx`, compiled by esbuild at build time → `public/app.js`.
 - All clinical logic is deterministic (no LLM/AI at runtime) — scoring, tier assignment, exercise selection, ICD-10 diagnosis.
 - Deployed on Vercel with `/api/npi` serverless proxy for NPI lookups.
 - Logo assets in `public/`: `Expect_Logo_WhiteTM.png`, `Exepect_Submark_White.png`.
@@ -54,8 +56,8 @@ Two user types: **patients** (intake flow) and **physical therapists** (review p
 
 ## Coding Conventions
 
-### When editing `public/index.html`:
-- This is a minified single-file app. Keep changes compact and inline with existing style.
+### When editing `src/app.jsx`:
+- This is the platform source. After editing, run `npm run build` to compile to `public/app.js`.
 - All scoring functions: `sICIQ()`, `sFLUTS()`, `sFSEX()`, `sGUPI()`, `sPain()` — deterministic, no side effects.
 - `genPlan()` is the care plan generator — all adjunct/dx/exercise logic lives here.
 - `EXPANSION_LIB` is the adjunct library — 3+ char match triggers smart phrase auto-population.
@@ -70,14 +72,14 @@ Two user types: **patients** (intake flow) and **physical therapists** (review p
 - Remote: `https://github.com/expectdara/expect-health-v3.git`
 - Branch: `main`
 - Vercel auto-deploys from `main`. Push = deploy.
-- Always commit `public/index.html` for platform changes to go live.
+- Always commit `src/app.jsx` for platform changes. Vercel runs `npm run build` automatically on deploy.
 - Do NOT commit: `.DS_Store`, `.claude/`, Word temp files (`~$*.docx`).
 
 ## Important Rules
 - **PHQ-2 wording is validated** — do not change "Several days" or any response option text.
 - **All clinical logic is deterministic** — no LLM calls, no randomness, no hallucination risk.
 - **PHI handling**: Auditor Mode toggle masks 17 PHI field types. All PT actions are audit-logged.
-- **Two HTML files exist** — `public/index.html` is deployed; the `goodNPI.html` working copy may lag behind. Always check which file needs the change.
+- **Source is `src/app.jsx`** — `public/index.html` is just the HTML shell. The `goodNPI.html` working copy is legacy and may lag behind.
 - **Dr. Nicole Dugan** is the clinical authority. Her feedback on clinical content (cue wording, adjunct text, instrument selection) takes priority.
 
 ## Established Patterns (do not redesign these)
