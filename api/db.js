@@ -1,9 +1,10 @@
-import { ConvexHttpClient } from "convex/browser";
-
-// Lazy client — avoids crash if CONVEX_URL is missing at module load
+// Lazy client — dynamic import avoids module-load crash on Vercel
 let _client;
-function getClient() {
-  if (!_client) _client = new ConvexHttpClient(process.env.CONVEX_URL);
+async function getClient() {
+  if (!_client) {
+    const { ConvexHttpClient } = await import("convex/browser");
+    _client = new ConvexHttpClient(process.env.CONVEX_URL);
+  }
   return _client;
 }
 
@@ -84,7 +85,7 @@ export default async function handler(req, res) {
   const { fn, args } = req.body;
   if (!fn || !ALLOWED.has(fn)) return res.status(400).json({ error: "Invalid function" });
 
-  const client = getClient();
+  const client = await getClient();
 
   // Auth check for PT/OAIP-only functions
   if (AUTH_REQUIRED.has(fn)) {
