@@ -702,14 +702,12 @@ function ConciergeSearch({ans,set}){
       if(searchFirst.trim())params.set("first_name",searchFirst.trim());
       if(searchCity.trim())params.set("city",searchCity.trim());
       params.set("state","UT");
-      const apiUrl=location.protocol==="file:"?`https://npiregistry.cms.hhs.gov/api/?${params}`:`/api/npi?${params}`;
-      let data;
-      const res=await fetch(apiUrl);if(!res.ok)throw new Error("NPI lookup failed");data=await res.json();
-      if(data.result_count>0){const mapped=data.results.map(r=>{
-          const b=r.basic||{};const addr=(r.addresses||[]).find(a=>a.address_purpose==="LOCATION")||(r.addresses||[])[0]||{};
-          const tax=(r.taxonomies||[]).find(t=>t.primary)||{};
-          return{id:`NPI-${r.number}`,first:b.first_name||"",last:b.last_name||"",specialty:tax.desc||"",practice:b.organization_name||addr.organization_name||"",city:addr.city||"",state:addr.state||"",npi:r.number,fax:(addr.fax_number||"").replace(/[^\d]/g,""),credential:b.credential||""};
-        });setNpiResults(mapped);npiCount=mapped.length}else{setNpiErr("No providers found in NPI Registry. Try different spelling or use the concierge option below.")}
+      const mapNpi=(r)=>{const b=r.basic||{};const addr=(r.addresses||[]).find(a=>a.address_purpose==="LOCATION")||(r.addresses||[])[0]||{};const tax=(r.taxonomies||[]).find(t=>t.primary)||{};return{id:`NPI-${r.number}`,first:b.first_name||"",last:b.last_name||"",specialty:tax.desc||"",practice:b.organization_name||addr.organization_name||"",city:addr.city||"",state:addr.state||"",npi:r.number,fax:(addr.fax_number||"").replace(/[^\d]/g,""),credential:b.credential||""}};
+      const baseUrl=location.protocol==="file:"?"https://npiregistry.cms.hhs.gov/api/?":"api/npi?";
+      let res=await fetch(baseUrl+params);if(!res.ok)throw new Error("NPI lookup failed");let data=await res.json();
+      // If city was specified but no results, retry without city
+      if(data.result_count===0&&searchCity.trim()){params.delete("city");res=await fetch(baseUrl+params);if(res.ok)data=await res.json()}
+      if(data.result_count>0){const mapped=data.results.map(mapNpi);setNpiResults(mapped);npiCount=mapped.length}else{setNpiErr("No providers found in NPI Registry. Try different spelling or use the concierge option below.")}
     }catch(e){setNpiErr("NPI Registry lookup unavailable. You can search our demo providers or use the concierge option below.")}
     setNpiLoading(false);
     L("CONCIERGE_SEARCH",{first:searchFirst,last:searchLast,city:searchCity,practice:searchPractice,mockCount:found.length,npiCount});
