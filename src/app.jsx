@@ -161,14 +161,18 @@ const FLUTSSEX=[
 const GUPI_PAIN=[
 {id:"fl4a",text:"Do you have pain in your bladder?",opts:[["Never",0],["Occasionally",1],["Sometimes",2],["Most of the time",3],["All of the time",4]]},
 {id:"fl4b",text:"How much does the bladder pain bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal",conditional:a=>a.fl4a!==undefined&&a.fl4a!==0},
-{id:"gupi1a",text:"In the last week, have you experienced any pain or discomfort at the entrance to your vagina?",type:"yn"},
-{id:"gupi1b",text:"In the last week, have you experienced any pain or discomfort in your vagina?",type:"yn"},
-{id:"gupi1c",text:"In the last week, have you experienced any pain or discomfort in your urethra (the small opening where urine comes out)?",type:"yn"},
-{id:"gupi1d",text:"In the last week, have you experienced any pain or discomfort below your waist, in your pubic or bladder area?",type:"yn"},
-{id:"gupi2a",text:"In the last week, have you experienced pain or burning during urination?",type:"yn"},
-{id:"gupi2b",text:"In the last week, have you experienced pain or discomfort during or after sexual activity, tampon use, or any vaginal penetration?",type:"yn"},
-{id:"gupi2c",text:"In the last week, have you experienced pain or discomfort as your bladder fills?",type:"yn"},
-{id:"gupi2d",text:"In the last week, have you experienced pain or discomfort that was relieved by voiding (meaning the discomfort went away or got better after you urinated)?",type:"yn"},
+{id:"gupi1_table",text:"In the last week, have you experienced any pain or discomfort in the following areas?",type:"yn_table",rows:[
+  {id:"gupi1a",label:"Entrance to the vagina"},
+  {id:"gupi1b",label:"Vagina"},
+  {id:"gupi1c",label:"Urethra (the small opening where urine comes out)"},
+  {id:"gupi1d",label:"Below the waist, in the pubic or bladder area"},
+]},
+{id:"gupi2_table",text:"In the last week, have you experienced any of the following?",type:"yn_table",rows:[
+  {id:"gupi2a",label:"Pain or burning during urination"},
+  {id:"gupi2b",label:"Pain or discomfort during or after sexual activity, tampon use, or any vaginal penetration"},
+  {id:"gupi2c",label:"Pain or discomfort as your bladder fills"},
+  {id:"gupi2d",label:"Pain or discomfort relieved by voiding (went away or got better after urinating)"},
+]},
 {id:"gupi3",text:"How often have you had pain or discomfort in any of the areas mentioned above — including the vaginal entrance, vagina, urethra, pubic area, or bladder — over the last week?",opts:[["Never",0],["Rarely",1],["Sometimes",2],["Often",3],["Usually",4],["Always",5]],conditional:a=>{const painYN=["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d"];const anyYes=painYN.some(k=>a[k]==="yes");const bladderPain=(a.fl4a??0)>0;return anyYes||bladderPain}},
 {id:"gupi4",text:"Which number best describes your AVERAGE pain or discomfort on the days you had it, over the last week? (0 = no pain, 10 = pain as bad as you can imagine)",type:"scale",min:0,max:10,lo:"No pain",hi:"Pain as bad as you can imagine",conditional:a=>a.gupi3!==undefined&&a.gupi3!==0},
 {id:"pain1",text:"What is your current pelvic pain level right now? (0 = no pain, 10 = worst pain imaginable)",type:"scale",min:0,max:10,lo:"No pain",hi:"Worst pain imaginable"},
@@ -584,6 +588,18 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
   if(q.type==="text")return<div className="qc fi"><div className="qt">{q.text}</div><input className="inp"spellCheck={true}value={ans[q.id]||""}onChange={e=>set(q.id,e.target.value)}placeholder={q.ph||""}/></div>;
   if(q.type==="textarea")return<div className="qc fi"><div className="qt">{q.text}</div><textarea className="inp"spellCheck={true}value={ans[q.id]||""}onChange={e=>set(q.id,e.target.value)}placeholder={q.ph||""}/></div>;
   if(q.type==="twotext")return<div className="qc fi"><div className="qt">{q.text}</div><div style={{display:"flex",gap:10}}><div style={{flex:1}}><div className="il">First name</div><input className="inp"value={ans[q.id+"_first"]||""}onChange={e=>set(q.id+"_first",e.target.value)}/></div><div style={{flex:1}}><div className="il">Last name</div><input className="inp"value={ans[q.id+"_last"]||""}onChange={e=>set(q.id+"_last",e.target.value)}/></div></div></div>;
+  if(q.type==="yn_table")return<div className="qc fi"><div className="qt">{q.text}</div>
+    <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+      <thead><tr><th style={{textAlign:"left",padding:"8px 12px",borderBottom:`2px solid ${C.g200}`,color:C.g500,fontWeight:600,fontSize:12}}></th><th style={{width:60,textAlign:"center",padding:"8px 6px",borderBottom:`2px solid ${C.g200}`,color:C.g500,fontWeight:600,fontSize:12}}>No</th><th style={{width:60,textAlign:"center",padding:"8px 6px",borderBottom:`2px solid ${C.g200}`,color:C.g500,fontWeight:600,fontSize:12}}>Yes</th></tr></thead>
+      <tbody>{q.rows.map((row,i)=><tr key={row.id}style={{background:i%2?"#FAFAFA":"white"}}>
+        <td style={{padding:"10px 12px",borderBottom:`1px solid ${C.g100}`,color:C.g700,lineHeight:1.5}}>{row.label}</td>
+        {["no","yes"].map(v=><td key={v}style={{textAlign:"center",padding:"10px 6px",borderBottom:`1px solid ${C.g100}`}}>
+          <div onClick={()=>set(row.id,v)} style={{width:24,height:24,borderRadius:12,border:`2px solid ${ans[row.id]===v?(v==="yes"?C.pink:C.g400):C.g300}`,background:ans[row.id]===v?(v==="yes"?C.pink:C.g400):"white",margin:"0 auto",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}}>
+            {ans[row.id]===v&&<div style={{width:8,height:8,borderRadius:4,background:"white"}}/>}
+          </div>
+        </td>)}
+      </tr>)}</tbody>
+    </table></div>;
   if(q.type==="yn")return<div className="qc fi"><div className="qt">{q.text}</div><div style={{display:"flex",gap:8}}>{["No","Yes"].map(o=><button key={o}className={`ob ${ans[q.id]===o.toLowerCase()?"s":""}`}style={{flex:1,textAlign:"center"}}onClick={()=>{
     if(q.rf&&o==="No"&&safetyTriggered[q.id]){setShowSafetyModal(q.id);return}
     set(q.id,o.toLowerCase());
