@@ -306,7 +306,7 @@ function genPlan(iciq,pain,gupi,intake){
   else if(iciq.subtype.includes("Mixed"))p.dx.push({c:"N39.46",d:"Mixed incontinence"});
   if(pain.composite>=1)p.dx.push({c:"N94.89",d:"Pelvic pain condition"});
   if(pain.triggers.includes("dyspareunia"))p.dx.push({c:"N94.10",d:"Dyspareunia"});
-  if(gupi?.total>=10)p.dx.push({c:"N81.9",d:"Pelvic floor dysfunction"});
+  // GUPI total is displayed for PT review but does not auto-assign a dx code
   // Constipation composite: straining ≥2 OR frequency <3x/week (bowel_frequency 0-1) OR Bristol type 1-2
   const constipationFlag=(intake.bowel_constipation??0)>=2||(intake.bowel_frequency??3)<=1||(intake.bristol_stool??4)<=2;
   if(constipationFlag)p.dx.push({c:"K59.00",d:"Constipation, unspecified"});
@@ -339,7 +339,7 @@ function genPlan(iciq,pain,gupi,intake){
   if(pain.composite>=4)p.ex.unshift({n:"Pain De-Sensitization Breathing",s:1,r:3,h:"2 min",f:"as needed",d:"Prolonged diaphragmatic breathing for pain modulation."});
   // Adjunct recommendations
   if(iciq.subtype.includes("Stress")&&iciq.total>=10)p.adjuncts.push({type:"device",n:"PF Biofeedback Device",d:"Surface EMG home biofeedback (e.g., Pericoach, Elvie) for real-time PF contraction feedback.",rx:"Consider if patient does not progress with HEP alone by week 4."});
-  if(iciq.subtype.includes("Stress")&&gupi?.total>=15)p.adjuncts.push({type:"device",n:"Pessary Evaluation",d:"Recommend internal vaginal device for light mechanical pelvic organ support.",rx:"If light leaking with activity or pressure symptoms persist at week 8. OTC options: Impressa, Revive, Uresta."});
+  if(iciq.subtype.includes("Stress")&&iciq.total>=13)p.adjuncts.push({type:"device",n:"Pessary Evaluation",d:"Recommend internal vaginal device for light mechanical pelvic organ support.",rx:"If light leaking with activity or pressure symptoms persist at week 8. OTC options: Impressa, Revive, Uresta."});
   if(iciq.subtype.includes("Urge")||iciq.subtype.includes("Mixed"))p.adjuncts.push({type:"behavioral",n:"Bladder Training Program",d:"Timed voiding schedule with progressive interval increases. Start with current voiding interval, increase by 15 min every 1-2 weeks. Include urge suppression techniques.",rx:"Begin immediately alongside exercise program."});
   if(pain.composite>=5||pain.triggers.includes("dyspareunia"))p.adjuncts.push({type:"device",n:"Vaginal Dilator Therapy",d:"Graduated plastic or silicone dilator set for desensitization and tissue mobility.",rx:"Start smallest size, progress per tolerance."});
   if(constipationFlag)p.adjuncts.push({type:"behavioral",n:"Bowel Management Program",d:"Toileting posture (squatty potty), fiber/fluid optimization, defecation dynamics training.",rx:"Address constipation — straining worsens PF dysfunction."});
