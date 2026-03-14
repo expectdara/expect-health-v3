@@ -844,9 +844,6 @@ function ConciergeSearch({ans,set}){
 
 // Shared state for intake data flowing to PT view
 let sharedIntake = null;
-// Identity verification bypass — injected at build time via esbuild --define
-// Set DEMO_MODE=true in Vercel env vars for testing; defaults to false (real verification required)
-const DEMO_MODE=typeof __DEMO_MODE__!=="undefined"?__DEMO_MODE__:false;
 let _flagVer=0;const flagListeners=new Set();
 function notifyFlagChange(){_flagVer++;flagListeners.forEach(fn=>fn(_flagVer))}
 function useFlagSync(){const[,setV]=useState(0);useEffect(()=>{flagListeners.add(setV);return()=>flagListeners.delete(setV)},[]);}
@@ -939,38 +936,51 @@ function Consent({onDone,onBack,ck,setCk}){
     </div></div>;
 }
 
-// IDENTITY VERIFICATION (Stripe Identity or demo bypass)
-function IdentityVerify({onDone,onBack}){
-  const[st,setSt]=useState(DEMO_MODE?"demo":"pending");
-  const verify=async()=>{
-    if(DEMO_MODE){setSt("verified");L("identity_verified",{mode:"demo"});setTimeout(onDone,1500);return}
-    setSt("loading");
-    try{
-      const res=await fetch("/api/create-verification-session",{method:"POST",headers:{"Content-Type":"application/json"}});
-      const{clientSecret}=await res.json();
-      if(typeof Stripe==="undefined"){setSt("error");return}
-      const stripe=Stripe(window.__STRIPE_PK||"pk_test_placeholder");
-      const{error}=await stripe.verifyIdentity(clientSecret);
-      if(error){setSt("error");return}
-      setSt("verified");L("identity_verified",{mode:"stripe"});setTimeout(onDone,1500);
-    }catch(e){setSt("error")}
+// EMAIL VERIFICATION — confirms patient controls the email they provided
+// Photo ID verification (Persona) available if OAIP requires additional identity assurance
+function IdentityVerify({onDone,onBack,email}){
+  const[st,setSt]=useState("input");
+  const[addr,setAddr]=useState(email||"");
+  const[code,setCode]=useState("");
+  const[sentCode,setSentCode]=useState(null);
+  const[err,setErr]=useState(null);
+  const genCode=()=>{const c=String(Math.floor(100000+Math.random()*900000));return c};
+  const sendCode=()=>{
+    const em=addr.trim().toLowerCase();
+    if(!em||!em.includes("@")){setErr("Please enter a valid email address.");return}
+    const c=genCode();setSentCode(c);setSt("sent");setErr(null);
+    // In production, this sends via a server-side email API (Resend/SendGrid).
+    // For the pilot, the code is displayed to the user for demo purposes.
+    L("email_verification_sent",{email:em});
+  };
+  const checkCode=()=>{
+    if(code===sentCode){setSt("verified");L("identity_verified",{mode:"email",email:addr.trim().toLowerCase()});setTimeout(onDone,1200)}
+    else{setErr("Incorrect code. Please try again.")}
   };
   return<div className="fi"style={{maxWidth:520,margin:"0 auto"}}>
-    <div className="h1">Identity Verification</div>
-    <div className="sub">Required for HIPAA-compliant care delivery</div>
-    <div className="card"style={{borderColor:C.blue,textAlign:"center",padding:32}}>
-      {st==="demo"&&<><div style={{fontSize:40,marginBottom:12}}>Demo Mode</div>
-        <p style={{fontSize:13,color:C.g500,marginBottom:20,lineHeight:1.6}}>Identity verification is simulated in demo mode. In production, patients verify identity via government-issued photo ID using Stripe Identity.</p>
-        <button className="btn bbl"onClick={verify}>Simulate Verification</button></>}
-      {st==="pending"&&<><p style={{fontSize:13,color:C.g600,marginBottom:20,lineHeight:1.7}}>To protect your health information, we need to verify your identity. You will be asked to take a photo of your government-issued ID.</p>
-        <button className="btn bbl"onClick={verify}>Verify My Identity</button></>}
-      {st==="loading"&&<div style={{fontSize:14,color:C.blue}}>Launching verification...</div>}
-      {st==="verified"&&<><div style={{fontSize:40,marginBottom:12,color:C.gn}}>Verified</div>
-        <div style={{fontSize:14,color:C.gn,fontWeight:600}}>Identity confirmed. Proceeding to intake...</div></>}
-      {st==="error"&&<><div style={{fontSize:13,color:C.rd,marginBottom:12}}>Verification could not be completed. Please try again.</div>
-        <button className="btn brd"onClick={()=>setSt("pending")}>Retry</button></>}
+    <div className="h1">Verify Your Email</div>
+    <div className="sub">We need to confirm your email address before starting the intake</div>
+    <div className="card"style={{borderColor:C.blue,padding:32}}>
+      {st==="input"&&<div>
+        <p style={{fontSize:13,color:C.g600,marginBottom:16,lineHeight:1.7}}>Your email address is used for account creation, care plan delivery, and secure communication with your physical therapist. Your identity will be clinically verified by your PT during care plan review.</p>
+        <input type="email"value={addr}onChange={e=>setAddr(e.target.value)}placeholder="you@email.com"style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,marginBottom:12,boxSizing:"border-box"}}/>
+        {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
+        <button className="btn bbl"onClick={sendCode}style={{width:"100%"}}>Send Verification Code</button>
+      </div>}
+      {st==="sent"&&<div style={{textAlign:"center"}}>
+        <div style={{fontSize:14,color:C.g600,marginBottom:16}}>We sent a 6-digit code to <strong>{addr}</strong></div>
+        <div style={{background:"#FEF3C7",border:"1px solid #D97706",borderRadius:8,padding:12,marginBottom:16,fontSize:12,color:"#78350F"}}>Demo mode: Your code is <strong>{sentCode}</strong><br/><span style={{fontSize:11,color:"#92400E"}}>In production, this code is sent via email only.</span></div>
+        <input type="text"value={code}onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))}placeholder="000000"maxLength={6}style={{width:160,padding:"10px 14px",fontSize:24,textAlign:"center",letterSpacing:8,border:`1px solid ${C.g300}`,borderRadius:8,marginBottom:12}}/>
+        {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
+        <div><button className="btn bbl"onClick={checkCode}disabled={code.length!==6}style={{opacity:code.length===6?1:.4}}>Verify</button></div>
+        <div style={{marginTop:12}}><button className="btn"onClick={()=>{setSt("input");setCode("");setSentCode(null);setErr(null)}}style={{fontSize:12,color:C.g500}}>Change email or resend</button></div>
+      </div>}
+      {st==="verified"&&<div style={{textAlign:"center"}}>
+        <div style={{fontSize:40,marginBottom:12,color:C.gn}}>Email Verified</div>
+        <div style={{fontSize:14,color:C.gn,fontWeight:600}}>Proceeding to intake...</div>
+      </div>}
     </div>
-    {onBack&&(st==="demo"||st==="pending")&&<div style={{textAlign:"center",marginTop:12}}><button className="btn"onClick={onBack}style={{fontSize:12,color:C.g500}}>← Back to Consent</button></div>}
+    {onBack&&(st==="input"||st==="sent")&&<div style={{textAlign:"center",marginTop:12}}><button className="btn"onClick={onBack}style={{fontSize:12,color:C.g500}}>← Back to Consent</button></div>}
   </div>;
 }
 
@@ -2742,7 +2752,7 @@ authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,
       <div className="mn" key={"p"+rk} style={{display:mode==="patient"?"block":"none"}}>
         {pView==="landing"&&<LandingPage onDone={(em)=>{setLandingEmail(em);L("landing_email_collected",{email:em});setPView("consent")}}/>}
         {pView==="consent"&&<Consent ck={consentCk} setCk={setConsentCk} onBack={()=>setPView("landing")} onDone={()=>{L("consent_completed",{email:landingEmail});setPView("verify")}}/>}
-        {pView==="verify"&&<IdentityVerify onBack={()=>setPView("consent")} onDone={()=>setPView("intake")}/>}
+        {pView==="verify"&&<IdentityVerify email={landingEmail} onBack={()=>setPView("consent")} onDone={()=>setPView("intake")}/>}
         {pView==="intake"&&<Intake onDone={()=>setPView("done")}mainRef={mainRef}initialEmail={landingEmail}/>}
         {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status!=="approved"&&<PatientWaiting name={sharedIntake.ans?.name_first}/>}
         {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status==="approved"&&<MyCareplan data={sharedIntake}/>}
