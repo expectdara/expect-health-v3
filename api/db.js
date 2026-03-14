@@ -40,6 +40,8 @@ function generateSalt() {
   return Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+// QUERIES — read-only Convex functions (called via client.query)
+// NOTE: getPtUserByEmail is NOT exposed to clients — used server-side only for PT login
 const QUERIES = new Set([
   "functions:getSessionByToken",
   "functions:getPatientByUserId",
@@ -49,7 +51,6 @@ const QUERIES = new Set([
   "functions:listAuditEvents",
   "functions:listOutcomeRecords",
   "functions:listDemoPatients",
-  "functions:getPtUserByEmail",
   "functions:listPtUsers",
 ]);
 
@@ -67,8 +68,10 @@ const ALLOWED = new Set([
   "functions:createPtUser",
 ]);
 
-// PT/OAIP-only functions — require valid session token
+// Functions requiring a valid session token
 const AUTH_REQUIRED = new Set([
+  "functions:getPatientByUserId",
+  "functions:getPatientByEmail",
   "functions:listPatients",
   "functions:listPatientsByStatus",
   "functions:updatePatientPlan",
@@ -79,10 +82,37 @@ const AUTH_REQUIRED = new Set([
   "functions:completeOutcomeRecord",
   "functions:seedDemoPatient",
   "functions:listPtUsers",
+  "functions:upsertPatient",
+  "functions:insertAuditEvent",
+  "functions:insertOutcomeRecord",
 ]);
 
-// OAIP shared access code
-const OAIP_CODE = process.env.OAIP_ACCESS_CODE || "expect2026oaip";
+// Role-based access — which userId prefixes can call which functions
+const PT_ONLY = new Set([
+  "functions:listPatients",
+  "functions:listPatientsByStatus",
+  "functions:updatePatientPlan",
+  "functions:updatePatientWeek8",
+  "functions:completeOutcomeRecord",
+  "functions:seedDemoPatient",
+  "functions:listPtUsers",
+]);
+const OAIP_ONLY = new Set([
+  "functions:listAuditEvents",
+  "functions:listOutcomeRecords",
+  "functions:listDemoPatients",
+]);
+const PATIENT_SELF = new Set([
+  "functions:getPatientByUserId",
+  "functions:getPatientByEmail",
+  "functions:upsertPatient",
+  "functions:insertAuditEvent",
+  "functions:insertOutcomeRecord",
+]);
+
+// OAIP shared access code — fail closed if env var not set
+const OAIP_CODE = process.env.OAIP_ACCESS_CODE;
+if (!OAIP_CODE) console.warn("[SECURITY] OAIP_ACCESS_CODE env var not set — OAIP login will be rejected");
 
 export default async function handler(req, res) {
   const allowed = process.env.CORS_ORIGIN || "https://expecthealth.com";
@@ -105,7 +135,8 @@ export default async function handler(req, res) {
 
   const client = await getClient();
 
-  // Auth check for PT/OAIP-only functions
+  // Auth check + role-based authorization
+  let authenticatedSession = null;
   if (AUTH_REQUIRED.has(fn)) {
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
@@ -115,8 +146,31 @@ export default async function handler(req, res) {
       if (!session || session.expiresAt < Date.now()) {
         return res.status(401).json({ error: "Invalid or expired session" });
       }
+      authenticatedSession = session;
     } catch (e) {
       return res.status(401).json({ error: "Authentication failed" });
+    }
+
+    // Role-based authorization
+    const uid = authenticatedSession.userId || "";
+    const isPT = uid.startsWith("pt_");
+    const isOAIP = uid === "oaip_user";
+    const isPatient = uid.startsWith("usr_");
+
+    if (PT_ONLY.has(fn) && !isPT) {
+      return res.status(403).json({ error: "PT access required" });
+    }
+    if (OAIP_ONLY.has(fn) && !isOAIP && !isPT) {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
+    if (PATIENT_SELF.has(fn) && isPatient) {
+      // Patients can only access their own records
+      if (fn === "functions:getPatientByUserId" && args?.userId !== uid) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      if (fn === "functions:upsertPatient" && args?.userId !== uid) {
+        return res.status(403).json({ error: "Access denied" });
+      }
     }
   }
 
@@ -130,8 +184,8 @@ export default async function handler(req, res) {
     const { accessCode, email, password, ...sessionArgs } = args;
 
     if (sessionArgs.userId === "oaip_user") {
-      // OAIP: shared access code
-      if (!accessCode || accessCode !== OAIP_CODE) {
+      // OAIP: shared access code — fail closed if env var not configured
+      if (!OAIP_CODE || !accessCode || accessCode !== OAIP_CODE) {
         return res.status(403).json({ error: "Invalid access code" });
       }
     } else if (email && password) {
