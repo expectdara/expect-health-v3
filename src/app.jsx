@@ -844,7 +844,9 @@ function ConciergeSearch({ans,set}){
 
 // Shared state for intake data flowing to PT view
 let sharedIntake = null;
-const DEMO_MODE=true;
+// Identity verification bypass — injected at build time via esbuild --define
+// Set DEMO_MODE=true in Vercel env vars for testing; defaults to false (real verification required)
+const DEMO_MODE=typeof __DEMO_MODE__!=="undefined"?__DEMO_MODE__:false;
 let _flagVer=0;const flagListeners=new Set();
 function notifyFlagChange(){_flagVer++;flagListeners.forEach(fn=>fn(_flagVer))}
 function useFlagSync(){const[,setV]=useState(0);useEffect(()=>{flagListeners.add(setV);return()=>flagListeners.delete(setV)},[]);}

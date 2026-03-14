@@ -29,11 +29,14 @@ function checkRate(ip) {
   return entry.count <= RATE_LIMIT;
 }
 
-// Password hashing — SHA-256 + per-user salt via Web Crypto API
+// Password hashing — PBKDF2 with 600k iterations via Web Crypto API
+// NIST SP 800-132 compliant; 600k iterations per OWASP 2023 recommendation for SHA-256
+const PBKDF2_ITERATIONS = 600_000;
 async function hashPassword(password, salt) {
-  const data = new TextEncoder().encode(salt + password);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: enc.encode(salt), iterations: PBKDF2_ITERATIONS, hash: "SHA-256" }, keyMaterial, 256);
+  return Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
 function generateSalt() {
