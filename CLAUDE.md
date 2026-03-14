@@ -1,3 +1,6 @@
+<!-- THIS IS THE UTAH OAIP PILOT — regulatory constraints apply.
+Do not merge consumer platform features here without explicit approval. -->
+
 # Expect Health — Utah OAIP Pilot
 
 ## Project Overview

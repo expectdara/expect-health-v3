@@ -15,7 +15,7 @@ const log=[];let _lid=0;let authSession=null;let ptSessionToken=null;let ptIdent
 async function db(fn,args,opts){try{const hdrs={"Content-Type":"application/json"};const tok=ptSessionToken||authSession?.sessionToken;if(tok)hdrs["Authorization"]="Bearer "+tok;const r=await fetch("/api/db",{method:"POST",headers:hdrs,body:JSON.stringify({fn:"functions:"+fn,args:args||{}})});const d=await r.json();if(!r.ok)throw new Error(d.error);return d.result}catch(e){console.warn("[db]",fn,e.message);if(opts?.throw)throw e;return null}}
 function L(t,d){const uid=authSession?.userId||ptIdentity?.userId||null;const det=ptIdentity?{...d,ptEmail:ptIdentity.email,ptName:ptIdentity.name}:(d||{});const evt={id:`A${++_lid}`,ts:new Date().toISOString(),type:t,...d};log.unshift(evt);db("insertAuditEvent",{eventId:evt.id,ts:evt.ts,type:t,details:det,userId:uid})}
 // Shared audit event color map (used by PT AuditLog and OAIP audit stream)
-const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or,daily_adherence_entry:C.gn,checkin_week8_complete:C.blue,PT_ALERT_NO_ICIQ_PROGRESS:"#EA580C",BOWEL_REGRESSION:C.or,flutsex_improvement:C.gn,flutsex_regression:C.rd,RTM_setup_complete:C.purpL,phq2_resource_card_shown:C.or,FOLLOWUP_NONRESPONSE:"#DC2626",CLINICAL_ESCALATION:"#DC2626",surgical_avoidance_confirmed:C.gn,psi_referral:C.or,psi_referral_approved:C.gn,phq2_followup_email_queued:C.or,expansion_match:C.blueL,month12_checkin_complete:C.blue,CARE_PLAN_DOWNLOADED:C.blue,PRENATAL_PROTOCOL_APPLIED:C.gn,OUTCOME_RECORD_CREATED:C.purpL,OUTCOME_RECORD_COMPLETED:C.gn,account_created:C.gn,session_timeout:C.rd,identity_verified:C.blue,pt_login:C.purp,oaip_login:C.purp,landing_email_collected:C.blueL};
+const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or,daily_adherence_entry:C.gn,checkin_week8_complete:C.blue,PT_ALERT_NO_ICIQ_PROGRESS:"#EA580C",BOWEL_REGRESSION:C.or,flutsex_improvement:C.gn,flutsex_regression:C.rd,RTM_setup_complete:C.purpL,phq2_resource_card_shown:C.or,FOLLOWUP_NONRESPONSE:"#DC2626",CLINICAL_ESCALATION:"#DC2626",surgical_avoidance_confirmed:C.gn,psi_referral:C.or,psi_referral_approved:C.gn,phq2_followup_email_queued:C.or,expansion_match:C.blueL,month12_checkin_complete:C.blue,CARE_PLAN_DOWNLOADED:C.blue,PRENATAL_PROTOCOL_APPLIED:C.gn,OUTCOME_RECORD_CREATED:C.purpL,OUTCOME_RECORD_COMPLETED:C.gn,PT_PLAN_MODIFIED:C.or,account_created:C.gn,session_timeout:C.rd,identity_verified:C.blue,pt_login:C.purp,oaip_login:C.purp,landing_email_collected:C.blueL};
 // PHI-sensitive audit keys that must be masked in auditor mode
 const PHI_KEYS=["patient","name","email","dob","date_of_birth","phone","fax","ssn","mrn","address","city","zip","account","license","npi","ip","device","photo","identifier","name_first","name_last","physicianName","physicianFax","physicianNPI"];
 // Shared PHI masking utility (used by PT AuditLog and OAIP audit stream)
@@ -63,7 +63,7 @@ function buildOutcomeRecord(intake,plan,reviewTimeSec){
   const constip=(a.bowel_constipation??0)>=2||(a.bowel_frequency??3)<=1||(a.bristol_stool??4)<=2;
   const triggers=pain.triggers||[];
   const rec={id:`OR-${++_orid}-${Date.now()}`,created:new Date().toISOString(),
-    baseline:{iciq:{total:iciq.total,severity:iciq.severity,subtype:iciq.subtype},fluts:{F:fluts.F,V:fluts.V,I:fluts.I,total:fluts.total},fsex:{total:fsex.total},gupi:{total:gupi.total,pain:gupi.pain,urinary:gupi.urinary,qol:gupi.qol,severity:gupi.severity},pain:{composite:pain.composite,functional:pain.functional,severity:pain.severity},phq2,age_bracket:ageBracket(a.dob),pregnancy_status:a.pregnancy_status||"none",constipation_composite:constip,avoidance_count:avoid.length,cue_preference:a.cue_preference||"default",pudendal_flag:triggers.includes("sitting_long")&&pain.composite>6,med_modify:a.med_modify??0,prior_treatment:a.prior_treatment||[],symptom_triggers:(a.symptoms_trigger||[]).filter(x=>x!=="none"),subtype:iciq.subtype},
+    baseline:{iciq:{total:iciq.total,severity:iciq.severity,subtype:iciq.subtype},fluts:{F:fluts.F,V:fluts.V,I:fluts.I,total:fluts.total},fsex:{total:fsex.total},gupi:{total:gupi.total,pain:gupi.pain,urinary:gupi.urinary,qol:gupi.qol,severity:gupi.severity},pain:{composite:pain.composite,functional:pain.functional,severity:pain.severity},phq2,age_bracket:ageBracket(a.dob),pregnancy_status:a.pregnancy_status||"none",delivery_type:a.delivery_type||null,weeks_postpartum:a.delivery_date?Math.round((Date.now()-new Date(a.delivery_date).getTime())/(7*24*60*60*1000)):null,constipation_composite:constip,avoidance_count:avoid.length,cue_preference:a.cue_preference||"default",pudendal_flag:triggers.includes("sitting_long")&&pain.composite>6,med_modify:a.med_modify??0,prior_treatment:a.prior_treatment||[],symptom_triggers:(a.symptoms_trigger||[]).filter(x=>x!=="none"),subtype:iciq.subtype},
     treatment:{tier:iciq.total>=13?"Beginner":iciq.total>=6?"Moderate":"Advanced",exercise_ids:(plan.ex||[]).map(e=>e.n),exercise_count:(plan.ex||[]).length,adjunct_types:(plan.adjuncts||[]).map(x=>x.type),adjunct_count:(plan.adjuncts||[]).length,cue_type:a.cue_preference||"default",dx_codes:(plan.dx||[]).map(d=>d.c),risk_level:plan.risk||"green",prenatal_modified:!!plan.prenatal,pt_modified_exercises:false,pt_modified_adjuncts:false,pt_modified_goals:false,pt_rejection:false,review_time_seconds:reviewTimeSec||0},
     outcome:null};
   OUTCOME_RECORDS.push(rec);
@@ -108,6 +108,41 @@ function analyzePatterns(records){
     const strength=p<.01&&Math.abs(d)>=.5?"strong":p<.05&&Math.abs(d)>=.3?"emerging":"insufficient";
     return{biomarker_id:bm.id,name:bm.name,desc:bm.desc,cohort_size:match.length,comparison_size:comp.length,mean_match:Math.round(mM*100)/100,mean_comparison:Math.round(cM*100)/100,effect_size:Math.round(d*100)/100,p_estimate:Math.round(p*1000)/1000,signal_strength:strength==="strong"?"green":strength==="emerging"?"yellow":"gray",status:strength};
   })};
+}
+
+// ============================================================
+// PT EDIT DIFF CAPTURE — Tracks what PTs actually changed
+// ============================================================
+function computePtDiffs(initPlan,editExs,editAdj,editGoals){
+  const diffs={exercises:[],adjuncts:[],goals:[]};
+  const initEx=initPlan.ex||[],initAdj=initPlan.adjuncts||[],initG=initPlan.goals||[];
+  const initExMap=new Map(initEx.map(e=>[e.n,e]));
+  const editExMap=new Map(editExs.map(e=>[e.n,e]));
+  initEx.forEach(e=>{if(!editExMap.has(e.n))diffs.exercises.push({action:"removed",name:e.n})});
+  editExs.forEach(e=>{
+    if(!initExMap.has(e.n)){diffs.exercises.push({action:"added",name:e.n,detail:`${e.s}x${e.r}, hold ${e.h}, ${e.f}`});return}
+    const orig=initExMap.get(e.n);const ch=[];
+    if(String(e.s)!==String(orig.s))ch.push(`sets:${orig.s}→${e.s}`);if(String(e.r)!==String(orig.r))ch.push(`reps:${orig.r}→${e.r}`);
+    if(e.h!==orig.h)ch.push(`hold:${orig.h}→${e.h}`);if(e.f!==orig.f)ch.push(`freq:${orig.f}→${e.f}`);
+    if(ch.length)diffs.exercises.push({action:"modified",name:e.n,changes:ch});
+  });
+  const initAdjMap=new Map(initAdj.map(a=>[a.n,a]));
+  const editAdjMap=new Map(editAdj.map(a=>[a.n,a]));
+  initAdj.forEach(a=>{if(!editAdjMap.has(a.n))diffs.adjuncts.push({action:"removed",name:a.n,type:a.type})});
+  editAdj.forEach(a=>{
+    if(!initAdjMap.has(a.n)){diffs.adjuncts.push({action:"added",name:a.n,type:a.type});return}
+    const orig=initAdjMap.get(a.n);if(a.rx!==orig.rx||a.d!==orig.d)diffs.adjuncts.push({action:"modified",name:a.n,type:a.type});
+  });
+  const editG=editGoals.split("\n").filter(Boolean);
+  editG.filter(g=>!initG.includes(g)).forEach(g=>diffs.goals.push({action:"added",text:g}));
+  initG.filter(g=>!editG.includes(g)).forEach(g=>diffs.goals.push({action:"removed",text:g}));
+  return diffs;
+}
+// AI-PT Agreement Rate — % of plans approved without substantive modification
+function computeAgreementRate(records){
+  if(!records||records.length===0)return{rate:0,total:0,unmodified:0};
+  const unmod=records.filter(r=>!r.treatment.pt_modified_exercises&&!r.treatment.pt_modified_adjuncts&&!r.treatment.pt_modified_goals).length;
+  return{rate:Math.round(unmod/records.length*1000)/10,total:records.length,unmodified:unmod};
 }
 
 const ICIQ=[
@@ -1008,6 +1043,7 @@ function Intake({onDone,mainRef,initialEmail}){
     {id:"dob",text:"What is your date of birth?",type:"date"},
     {id:"pregnancy_status",text:"What is your current pregnancy status?",opts:[["Currently pregnant","pregnant"],["Postpartum (0–6 weeks)","pp_early"],["Postpartum (6 weeks – 6 months)","pp_mid"],["Postpartum (6+ months)","pp_late"],["Not recently pregnant","not_pregnant"]]},
     {id:"delivery_type",text:"What was your most recent type of delivery?",conditional:a=>a.pregnancy_status&&!["not_pregnant","pregnant"].includes(a.pregnancy_status),opts:[["Vaginal delivery","vaginal"],["Vaginal with forceps or vacuum","assisted"],["Planned C-section","csection_planned"],["Emergency C-section","csection_emergency"]]},
+    {id:"delivery_date",text:"Approximately when did you deliver?",type:"date",conditional:a=>a.pregnancy_status&&!["not_pregnant","pregnant"].includes(a.pregnancy_status)},
     {id:"num_deliveries",text:"How many total deliveries have you had? (Enter 0 if none)",type:"number",min:0,max:20},
     {id:"email",text:"What is your email address?",type:"email",ph:"email@example.com"},
     {id:"phone",text:"What is your phone number?",type:"phone",ph:"(801) 555-0100"},
@@ -1820,7 +1856,7 @@ function PTNewIntakeReview({data,onBack}){
     const avoidArr=ans.avoid_activities||[];const avoidCt=avoidArr.filter(x=>x!=="none").length;
     const tier=iciq.total>=13?"Beginner (12wk)":iciq.total>=6?"Moderate (8wk)":"Advanced (6wk)";
     const cueLbl={biologic:"Body function",imaginative:"Imaginative",breathing:"Breath-based",simple_contract:"Simple contraction",default:"Default"}[ans.cue_preference]||"Default";
-    return `${alertBlock}PHYSICAL THERAPY ENCOUNTER NOTE\nPatient: ${nm} | DOB: ${ans.dob||"—"}${ans.email?` | Email: ${ans.email}`:""}${ans.phone?` | Phone: ${ans.phone}`:""}\nDOS: ${new Date().toISOString().split("T")[0]} | POS: 10 (Telehealth) | Mod: GQ\n\nSUBJECTIVE:\nInitial evaluation. ICIQ-UI SF: ${iciq.total} (${iciq.severity}, ${iciq.subtype}). Tier: ${tier}. FLUTS: F${fluts.F}/V${fluts.V}/I${fluts.I}. GUPI: ${gupi.total} (${gupi.severity}). Pain: ${pain.composite}/10 (${pain.severity}). FLUTSsex: ${fsex.total}.\n${ans.patient_goal?`Patient goal: "${ans.patient_goal}"\n`:""}${ans.prior_treatment?`Prior treatment: ${Array.isArray(ans.prior_treatment)?ans.prior_treatment.join(", "):ans.prior_treatment}\n`:""}${ans.medications?`Medications: ${ans.medications}\n`:""}${avoidCt>0?`Activity avoidance: ${avoidArr.filter(x=>x!=="none").join(", ")} (${avoidCt} categories${avoidCt>=3?" — HIGH IMPACT":""})\n`:""}${(ans.med_modify??0)===1?`⚠ MEDICATION MODIFICATION: Patient reports changing prescribed medication due to urinary symptoms. Refer to prescribing provider.\n`:""}${ans._safety_answer_changed?`⚠ SAFETY ANSWER CHANGED: Patient initially indicated a safety flag but subsequently changed answer(s): ${(ans._safety_changes||[]).map(c=>c.id).join(", ")}.\n`:""}Cue preference: ${cueLbl}.\n\nOBJECTIVE:\nValidated instruments administered via AI-augmented telehealth. Red flags: ${REDFLAGS.some(r=>ans[r.id]==="yes")?"POSITIVE — see safety screening":"all negative"}${ans._safety_answer_changed?" (note: patient changed safety answer — flagged)":""}.\nStatus: ${ans.pregnancy_status?.replace(/_/g," ")||"N/A"}. Constipation: ${(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??3)<=1||(ans.bristol_stool??4)<=2?"Yes (straining: "+ans.bowel_constipation+"/4, frequency: "+(["<1x/wk","1-4x/wk","5-7x/wk","1-2x/day","3+/day"][ans.bowel_frequency??3])+", Bristol: "+(ans.bristol_stool??"-")+")":"No"}.${plan.prenatal?`\n** PRENATAL PELVIC FLOOR PROTOCOL: Patient is currently pregnant. Exercise modifications for supine positioning have been automatically applied. Review for trimester appropriateness.`:""}\n\nASSESSMENT:\n${dx}\n\nPLAN:\nExercises:\n${exList}\n\nAdjuncts/Devices:\n${adjList||"None"}\n\nGoals:\n${editGoals}\n\nPrecautions:\n${editPrec}\n\nProgression:\n${editProg}\n\nFrequency: ${plan.freq}. Duration: ${plan.dur}.\n\nCPT: ${plan.cpt.map(c=>`${c.c} — ${c.d} (${c.u}u)`).join(", ")}\nReview time: ${Math.floor(tSec/60)}m ${tSec%60}s${notes?`\n\nPT CLINICAL NOTES:\n${notes}`:""}\n\nATTESTATION:\nI have reviewed the AI-generated assessment, the patient's individual responses, and the treatment plan. ${notes?"Modifications noted. ":""}This reflects my independent clinical judgment.\n\nSigned: [PT Name, DPT] — ${new Date().toISOString()}`;
+    return `${alertBlock}PHYSICAL THERAPY ENCOUNTER NOTE\nPatient: ${nm} | DOB: ${ans.dob||"—"}${ans.email?` | Email: ${ans.email}`:""}${ans.phone?` | Phone: ${ans.phone}`:""}\nDOS: ${new Date().toISOString().split("T")[0]} | POS: 10 (Telehealth) | Mod: GQ\n\nSUBJECTIVE:\nInitial evaluation. ICIQ-UI SF: ${iciq.total} (${iciq.severity}, ${iciq.subtype}). Tier: ${tier}. FLUTS: F${fluts.F}/V${fluts.V}/I${fluts.I}. GUPI: ${gupi.total} (${gupi.severity}). Pain: ${pain.composite}/10 (${pain.severity}). FLUTSsex: ${fsex.total}.\n${ans.patient_goal?`Patient goal: "${ans.patient_goal}"\n`:""}${ans.prior_treatment?`Prior treatment: ${Array.isArray(ans.prior_treatment)?ans.prior_treatment.join(", "):ans.prior_treatment}\n`:""}${ans.medications?`Medications: ${ans.medications}\n`:""}${avoidCt>0?`Activity avoidance: ${avoidArr.filter(x=>x!=="none").join(", ")} (${avoidCt} categories${avoidCt>=3?" — HIGH IMPACT":""})\n`:""}${(ans.med_modify??0)===1?`⚠ MEDICATION MODIFICATION: Patient reports changing prescribed medication due to urinary symptoms. Refer to prescribing provider.\n`:""}${ans._safety_answer_changed?`⚠ SAFETY ANSWER CHANGED: Patient initially indicated a safety flag but subsequently changed answer(s): ${(ans._safety_changes||[]).map(c=>c.id).join(", ")}.\n`:""}Cue preference: ${cueLbl}.\n\nOBJECTIVE:\nValidated instruments administered via AI-augmented telehealth. Red flags: ${REDFLAGS.some(r=>ans[r.id]==="yes")?"POSITIVE — see safety screening":"all negative"}${ans._safety_answer_changed?" (note: patient changed safety answer — flagged)":""}.\nStatus: ${ans.pregnancy_status?.replace(/_/g," ")||"N/A"}${ans.delivery_date?`. Delivery: ${ans.delivery_date} (${Math.round((Date.now()-new Date(ans.delivery_date).getTime())/(7*24*60*60*1000))}wk postpartum)`:""}.${ans.delivery_type?` Delivery type: ${ans.delivery_type.replace(/_/g," ")}.`:""} Constipation: ${(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??3)<=1||(ans.bristol_stool??4)<=2?"Yes (straining: "+ans.bowel_constipation+"/4, frequency: "+(["<1x/wk","1-4x/wk","5-7x/wk","1-2x/day","3+/day"][ans.bowel_frequency??3])+", Bristol: "+(ans.bristol_stool??"-")+")":"No"}.${plan.prenatal?`\n** PRENATAL PELVIC FLOOR PROTOCOL: Patient is currently pregnant. Exercise modifications for supine positioning have been automatically applied. Review for trimester appropriateness.`:""}\n\nASSESSMENT:\n${dx}\n\nPLAN:\nExercises:\n${exList}\n\nAdjuncts/Devices:\n${adjList||"None"}\n\nGoals:\n${editGoals}\n\nPrecautions:\n${editPrec}\n\nProgression:\n${editProg}\n\nFrequency: ${plan.freq}. Duration: ${plan.dur}.\n\nCPT: ${plan.cpt.map(c=>`${c.c} — ${c.d} (${c.u}u)`).join(", ")}\nReview time: ${Math.floor(tSec/60)}m ${tSec%60}s${notes?`\n\nPT CLINICAL NOTES:\n${notes}`:""}\n\nATTESTATION:\nI have reviewed the AI-generated assessment, the patient's individual responses, and the treatment plan. ${notes?"Modifications noted. ":""}This reflects my independent clinical judgment.\n\nSigned: [PT Name, DPT] — ${new Date().toISOString()}`;
   };
   const genNote=()=>{setEditNote(buildNote());setNoteGenerated(true)};
 
@@ -1834,16 +1870,16 @@ function PTNewIntakeReview({data,onBack}){
   if(phq2>=2&&!psiRefer)guardrails.push({lvl:"info",msg:"PHQ-2 score "+phq2+"/6 — patient received support resources. Consider checking the PSI Utah referral box if appropriate."});
   if((ans.symptoms_trigger||[]).includes("sitting_long")&&pain.composite>6)guardrails.push({lvl:"alert",msg:"⚠ POTENTIAL PUDENDAL NEURALGIA: Patient reports pain while sitting for long periods with composite pain >6/10. Evaluate for pudendal nerve involvement."});
   if(iciq.severity==="Very Severe"&&editExs.length<4)guardrails.push({lvl:"warn",msg:"Very Severe ICIQ score but fewer than 4 exercises — consider whether prescription is sufficient."});
-  if(notes.trim().length===0&&editExs.some((e,i)=>JSON.stringify(e)!==JSON.stringify(initPlan.ex[i])))guardrails.push({lvl:"warn",msg:"You modified exercises but haven't added clinical rationale in the notes. CMS and OAIP require documented reasoning."});
+  if(notes.trim().length===0&&(editExs.length!==initPlan.ex.length||editExs.some((e,i)=>JSON.stringify(e)!==JSON.stringify(initPlan.ex[i]))))guardrails.push({lvl:"warn",msg:"You modified exercises but haven't added clinical rationale in the notes. CMS and OAIP require documented reasoning."});
   if(plan.prenatal)guardrails.push({lvl:"info",msg:"PRENATAL PROTOCOL: Supine exercises auto-modified to incline/side-lying. Verify modifications are appropriate for patient's current trimester."});
   if(!noteGenerated)guardrails.push({lvl:"info",msg:"Generate and review the encounter note before approving."});
 
   const tryApprove=()=>{if(guardrails.some(g=>g.lvl==="alert"||g.lvl==="warn"))setShowGuardrails(true);else doFinalApprove()};
   const doFinalApprove=()=>{setTRun(false);setApproved(true);setShowGuardrails(false);
     const approvedPlan={...plan,status:"approved",review_flags:sharedIntake?.plan?.review_flags||plan.review_flags||[],goals:editGoals.split("\n").filter(Boolean),prec:editPrec.split("\n").filter(Boolean),prog:editProg.split("\n").filter(Boolean),ex:editExs,adjuncts:editAdj};
-    setPlan(p=>approvedPlan);
+    setPlan(approvedPlan);
     if(sharedIntake)sharedIntake.plan=approvedPlan;
-    if(sharedIntake&&!sharedIntake.outcomeRecordId){const orec=buildOutcomeRecord(sharedIntake,approvedPlan,tSec);orec.treatment.pt_modified_exercises=JSON.stringify(editExs)!==JSON.stringify(initPlan.ex);orec.treatment.pt_modified_adjuncts=JSON.stringify(editAdj)!==JSON.stringify(initPlan.adjuncts);orec.treatment.pt_modified_goals=editGoals!==initPlan.goals.join("\n");sharedIntake.outcomeRecordId=orec.id;db("insertOutcomeRecord",{recordId:orec.id,baseline:orec.baseline,treatment:orec.treatment,createdAt:orec.created})}
+    if(sharedIntake&&!sharedIntake.outcomeRecordId){const orec=buildOutcomeRecord(sharedIntake,approvedPlan,tSec);const ptDiffs=computePtDiffs(initPlan,editExs,editAdj,editGoals);orec.treatment.pt_diffs=ptDiffs;orec.treatment.pt_modified_exercises=ptDiffs.exercises.length>0;orec.treatment.pt_modified_adjuncts=ptDiffs.adjuncts.length>0;orec.treatment.pt_modified_goals=ptDiffs.goals.length>0;if(ptDiffs.exercises.length||ptDiffs.adjuncts.length||ptDiffs.goals.length)L("PT_PLAN_MODIFIED",{recordId:orec.id,exerciseChanges:ptDiffs.exercises.length,adjunctChanges:ptDiffs.adjuncts.length,goalChanges:ptDiffs.goals.length});sharedIntake.outcomeRecordId=orec.id;db("insertOutcomeRecord",{recordId:orec.id,baseline:orec.baseline,treatment:orec.treatment,createdAt:orec.created})}
     L("plan_reviewed",{patient:nm,action:"approved",time:tSec});L("encounter_note",{patient:nm,cpt:plan.cpt.map(c=>c.c),time:tSec});L("RTM_setup_complete",{patient:nm,code:"98975",note:"RTM episode initiated — 98975 billable."});
     if(psiRefer)L("psi_referral_approved",{patient:nm,phq2Score:(ans.phq2_interest||0)+(ans.phq2_mood||0)});
     if(sharedIntake){sharedIntake.psiRefer=psiRefer;const uid=sharedIntake.userId;if(uid)db("updatePatientPlan",{userId:uid,plan:approvedPlan,status:"approved",outcomeRecordId:sharedIntake.outcomeRecordId,psiRefer:psiRefer||false})}};
@@ -1911,6 +1947,8 @@ function PTNewIntakeReview({data,onBack}){
         <AnsRow label="Date of birth" value={ans.dob}/>
         <AnsRow label="Pregnancy status" value={ans.pregnancy_status?.replace(/_/g," ")}/>
         <AnsRow label="Delivery type" value={ans.delivery_type?.replace(/_/g," ")}/>
+        {ans.delivery_date&&<AnsRow label="Delivery date" value={ans.delivery_date}/>}
+        {ans.delivery_date&&<AnsRow label="Weeks postpartum" value={Math.round((Date.now()-new Date(ans.delivery_date).getTime())/(7*24*60*60*1000))}/>}
         <AnsRow label="Total deliveries" value={ans.num_deliveries}/>
         <AnsRow label="Prior treatments" value={Array.isArray(ans.prior_treatment)?ans.prior_treatment.join(", "):ans.prior_treatment}/>
         <AnsRow label="Medications" value={ans.medications}/>
@@ -2287,7 +2325,7 @@ function OAIPView(){
   const checks=[
     {cat:"Consumer Protection",items:[{l:"Informed consent with AI disclosure",s:1},{l:"Right to opt out",s:1},{l:"100% PT review (Phase 1)",s:1},{l:"Corrective care commitment (scope-defined)",s:1},{l:"Malpractice + Tech E&O coverage",s:1}]},
     {cat:"Data Transparency",items:[{l:"OAIP monthly dashboard",s:1},{l:"Public anonymized dashboard",s:1},{l:"Researcher dataset (IRB)",s:1},{l:"External auditor access",s:1},{l:"FDA CDS exemption",s:1}]},
-    {cat:"Operational Metrics",items:[{l:"AI-PT agreement ≥95%",s:1,v:"97.3%"},{l:"Adverse events",s:1,v:"0"},{l:"PHI breaches",s:1,v:"0"},{l:"Complaint rate",s:1,v:"0%"},{l:"Audit log",s:1,v:`${log.length} entries`}]},
+    {cat:"Operational Metrics",items:[{l:"AI-PT agreement ≥95%",s:1,v:(()=>{const ar=computeAgreementRate(OUTCOME_RECORDS);return ar.total>0?ar.rate+"%":"N/A"})()},{l:"Adverse events",s:1,v:"0"},{l:"PHI breaches",s:1,v:"0"},{l:"Complaint rate",s:1,v:"0%"},{l:"Audit log",s:1,v:`${log.length} entries`}]},
     {cat:"Termination Triggers",items:[{l:"Adverse event → immediate pause",s:2},{l:"PHI breach → pause + notify",s:2},{l:"PT license action → removal",s:2},{l:"OAIP request → 48hr wind-down",s:2}]},
   ];
   const n=DPTS.length+(sharedIntake?1:0),aa=Math.round(DPTS.reduce((s,p)=>s+p.adh,0)/DPTS.length);
@@ -2561,6 +2599,25 @@ function OAIPView(){
             return<div key={t}className="sc"><div className="scl2">{t}</div><div className="scv2"style={{color:md>0?C.gn:C.or}}>{md>0?"+":""}{md}</div><div className="scs">n={tc.length}</div></div>})}
         </div>
       </div>}
+      {/* AI-PT Agreement Rate */}
+      {recs.length>0&&(()=>{const ar=computeAgreementRate(recs);const modRecs=recs.filter(r=>r.treatment.pt_diffs&&(r.treatment.pt_diffs.exercises.length||r.treatment.pt_diffs.adjuncts.length||r.treatment.pt_diffs.goals.length));
+        return<div className="card"style={{marginTop:16}}>
+        <div className="chd">AI-PT Agreement Rate</div>
+        <div className="three"style={{marginBottom:12}}>
+          <div className="sc"><div className="scl2">Agreement</div><div className="scv2"style={{color:ar.rate>=95?C.gn:ar.rate>=85?C.or:C.rd}}>{ar.rate}%</div><div className="scs">{ar.unmodified}/{ar.total} unmodified</div></div>
+          <div className="sc"><div className="scl2">Modified</div><div className="scv2"style={{color:C.or}}>{ar.total-ar.unmodified}</div></div>
+          <div className="sc"><div className="scl2">With Diffs</div><div className="scv2"style={{color:C.blue}}>{modRecs.length}</div><div className="scs">detailed tracking</div></div>
+        </div>
+        {modRecs.length>0&&<div style={{borderTop:`1px solid ${C.g200}`,paddingTop:12}}>
+          <div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:8}}>PT Modification Details</div>
+          {modRecs.map(r=><div key={r.id}style={{padding:"8px 12px",marginBottom:6,background:C.g50,borderRadius:8,fontSize:11}}>
+            <div style={{fontWeight:600,color:C.g700,marginBottom:4}}>{r.id.slice(0,12)} · {r.treatment.tier}</div>
+            {r.treatment.pt_diffs.exercises.map((d,i)=><div key={"e"+i}style={{color:d.action==="removed"?C.rd:d.action==="added"?C.gn:C.or}}>Exercise {d.action}: {d.name}{d.changes?" ("+d.changes.join(", ")+")":""}{d.detail?" — "+d.detail:""}</div>)}
+            {r.treatment.pt_diffs.adjuncts.map((d,i)=><div key={"a"+i}style={{color:d.action==="removed"?C.rd:d.action==="added"?C.gn:C.or}}>Adjunct {d.action}: {d.name}</div>)}
+            {r.treatment.pt_diffs.goals.map((d,i)=><div key={"g"+i}style={{color:d.action==="removed"?C.rd:C.gn}}>Goal {d.action}: {d.text}</div>)}
+          </div>)}
+        </div>}
+      </div>})()}
       {/* Research Signals — Biomarker Discovery */}
       <div className="card"style={{marginTop:16}}>
         <div className="chd">Research Signals (Biomarker Discovery)</div>
