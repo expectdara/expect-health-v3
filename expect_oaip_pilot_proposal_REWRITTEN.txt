@@ -95,7 +95,7 @@ Upon consent, the patient completes:
 Step 3: Clinical Intake Assessment
 The patient completes a guided assessment across 9 intake steps comprising demographics (including pregnancy status, delivery date for postpartum patients, and delivery type--if "Currently pregnant" is selected, a PRENATAL_FLAG is set and a gentle inline note appears: "We'll tailor your care plan with prenatal-safe modifications so you can safely support your pelvic floor throughout your pregnancy"), provider selection via NPI Registry lookup (verified against the CMS National Provider Identifier database with typo-tolerant matching), and five validated clinical instruments:
 - ICIQ-UI SF (4 questions): Bladder leakage severity and subtyping
-- ICIQ-FLUTS Leak Detail + Urinary Symptoms (12 + 10 questions): Filling, voiding, and incontinence subscales with bother scores
+- ICIQ-FLUTS Urinary Symptoms (12 questions): Filling and voiding subscales with bother scores
 - ICIQ-FLUTSsex (8 questions): Sexual health impact
 - GUPI-Female + Pain Assessment (23 questions): Pain locations, frequency, severity, functional impact, quality-of-life subscales, symptom triggers, and bladder pain questions. Pain intensity is assessed once using a single NRS scale and applied to both the GUPI pain subscale and the standalone pain composite score (measure-once-use-twice design), reducing patient burden while maintaining clinical validity across both instruments
 
@@ -110,7 +110,7 @@ This ensures HIPAA-compliant electronic communication and prevents accidental PH
 
 Step 5: AI Processing
 The AI processes the intake in six steps:
-1. Computes validated scores (ICIQ 0--21, FLUTS F/V/I subscales, GUPI 0--45, pain composite 0--10)
+1. Computes validated scores (ICIQ 0--21, FLUTS F/V subscales, GUPI 0--45, pain composite 0--10)
 2. Classifies incontinence subtype (stress/urge/mixed/continuous) and assigns a severity tier (Beginner/Moderate/Advanced per Klovning severity bands)
 3. Generates ICD-10 diagnoses, including pudendal neuralgia detection when sitting-related pain triggers are present with composite pain >6/10
 4. Risk-stratifies the patient (green/yellow)
@@ -356,7 +356,7 @@ The following vulnerable populations may use the platform, with specific protect
 Data Collected and Stored
 - Demographics: first name, last name, date of birth, pregnancy status, delivery date (postpartum patients), delivery type, delivery history
 - Clinical responses: all validated instrument answers, red-flag screening, symptom triggers, bowel function, pain locations, prior treatment history, medications, patient goals
-- Computed scores: ICIQ total/severity/subtype, FLUTS F/V/I, FLUTSsex, GUPI P/U/Q, pain composite/functional
+- Computed scores: ICIQ total/severity/subtype, FLUTS F/V, FLUTSsex, GUPI P/U/Q, pain composite/functional
 - Treatment plans: AI-generated and PT-modified versions, including exercises, adjuncts, diagnoses, CPT codes
 - Communication: secure messages between patient and PT
 - Behavioral data: exercise adherence, login frequency, symptom reports
@@ -560,7 +560,7 @@ The Expect platform comprises the following components. The patient-facing appli
 - Patient-Facing Web Application: React-based responsive application. 9-step guided intake (97+ questions), informed consent (10 checkboxes), 5-tab care plan viewer, MyChart/EHR export (client-side PDF), 6-pathway symptom reporting, secure messaging. See Section 1.4 for full walkthrough.
 - PT Provider Dashboard: Three-tab interface (Dashboard, Patients, Audit Log). 9 pre-approval guardrail checks, CMS-compliant encounter note with shorthand expansion (12 abbreviations), review timer. See Section 1.4, PT Provider Experience.
 - OAIP Compliance Dashboard: Six-tab interface (Compliance, Red Flags & Alerts, Follow-Up Schedule, Live Audit Stream, Interoperability / HIE, Outcome Research). 11 clinical signal types. Auditor Mode (see Section 4.3). See Section 1.4, OAIP Oversight Experience. The Outcome Research tab displays de-identified outcome records, live AI-PT agreement rate (computed from outcome records), tier-level outcome breakdowns, structured PT modification detail (exercise/adjunct/goal diffs), and biomarker discovery signals (see Section 5.3).
-- AI Scoring Engine: Deterministic algorithms for ICIQ-UI SF (0-21), FLUTS (F/V/I), FLUTSsex (0-12), GUPI-Female (P/U/Q, 0-45), pain composite (0-10). Incontinence subtype classification. PHQ-2 depression screening (threshold >=3/6).
+- AI Scoring Engine: Deterministic algorithms for ICIQ-UI SF (0-21), FLUTS (F/V, 0-24), FLUTSsex (0-12), GUPI-Female (P/U/Q, 0-45), pain composite (0-10). Incontinence subtype classification. PHQ-2 depression screening (threshold >=3/6).
 - AI Plan Generator: Rule-based plan generation: ICD-10 mapping (up to 5 codes including pudendal neuralgia), 3-tier exercise prescription (Beginner/Moderate/Advanced), adjunct engine (9 recommendation types), risk stratification (green/yellow), precautions, progression criteria, and prenatal exercise substitution (see Section 3.8).
 - Audit Log: 30+ event types, ISO 8601 timestamps. Auditor Mode de-identification (see Section 4.3). Persistent storage in Convex append-only table with function-level access controls; client-side log hydrated from server on session resume.
 - Fax Integration: Three-tier verification (NPI-verified, default, manual entry). Transmission hold for unverified concierge providers. See Section 1.4, Step 7.

@@ -63,7 +63,7 @@ function buildOutcomeRecord(intake,plan,reviewTimeSec){
   const constip=(a.bowel_constipation??0)>=2||(a.bowel_frequency??3)<=1||(a.bristol_stool??4)<=2;
   const triggers=pain.triggers||[];
   const rec={id:`OR-${++_orid}-${Date.now()}`,created:new Date().toISOString(),
-    baseline:{iciq:{total:iciq.total,severity:iciq.severity,subtype:iciq.subtype},fluts:{F:fluts.F,V:fluts.V,I:fluts.I,total:fluts.total},fsex:{total:fsex.total},gupi:{total:gupi.total,pain:gupi.pain,urinary:gupi.urinary,qol:gupi.qol,severity:gupi.severity},pain:{composite:pain.composite,functional:pain.functional,severity:pain.severity},phq2,age_bracket:ageBracket(a.dob),pregnancy_status:a.pregnancy_status||"none",delivery_type:a.delivery_type||null,weeks_postpartum:a.delivery_date?Math.round((Date.now()-new Date(a.delivery_date).getTime())/(7*24*60*60*1000)):null,constipation_composite:constip,avoidance_count:avoid.length,cue_preference:a.cue_preference||"default",pudendal_flag:triggers.includes("sitting_long")&&pain.composite>6,med_modify:a.med_modify??0,prior_treatment:a.prior_treatment||[],symptom_triggers:(a.symptoms_trigger||[]).filter(x=>x!=="none"),subtype:iciq.subtype,screener_pain:a.screen_pain==="yes",screener_sexual:a.screen_sexual==="yes",pelvic_history:(a.pelvic_history||[]).filter(x=>x!=="none")},
+    baseline:{iciq:{total:iciq.total,severity:iciq.severity,subtype:iciq.subtype},fluts:{F:fluts.F,V:fluts.V,total:fluts.total},fsex:{total:fsex.total},gupi:{total:gupi.total,pain:gupi.pain,urinary:gupi.urinary,qol:gupi.qol,severity:gupi.severity},pain:{composite:pain.composite,functional:pain.functional,severity:pain.severity},phq2,age_bracket:ageBracket(a.dob),pregnancy_status:a.pregnancy_status||"none",delivery_type:a.delivery_type||null,weeks_postpartum:a.delivery_date?Math.round((Date.now()-new Date(a.delivery_date).getTime())/(7*24*60*60*1000)):null,constipation_composite:constip,avoidance_count:avoid.length,cue_preference:a.cue_preference||"default",pudendal_flag:triggers.includes("sitting_long")&&pain.composite>6,med_modify:a.med_modify??0,prior_treatment:a.prior_treatment||[],symptom_triggers:(a.symptoms_trigger||[]).filter(x=>x!=="none"),subtype:iciq.subtype,screener_pain:a.screen_pain==="yes",screener_sexual:a.screen_sexual==="yes",pelvic_history:(a.pelvic_history||[]).filter(x=>x!=="none")},
     treatment:{tier:iciq.total>=13?"Beginner":iciq.total>=6?"Moderate":"Advanced",exercise_ids:(plan.ex||[]).map(e=>e.n),exercise_count:(plan.ex||[]).length,adjunct_types:(plan.adjuncts||[]).map(x=>x.type),adjunct_count:(plan.adjuncts||[]).length,cue_type:a.cue_preference||"default",dx_codes:(plan.dx||[]).map(d=>d.c),risk_level:plan.risk||"green",prenatal_modified:!!plan.prenatal,pt_modified_exercises:false,pt_modified_adjuncts:false,pt_modified_goals:false,pt_rejection:false,review_time_seconds:reviewTimeSec||0},
     outcome:null};
   OUTCOME_RECORDS.push(rec);
@@ -152,23 +152,10 @@ const ICIQ=[
 {id:"iciq4",text:"Under what circumstances does urine leak? Please select all that apply to you.",type:"multi",conditional:a=>a.iciq1!==undefined&&a.iciq1!==0,opts:[["Never — urine does not leak","never"],["Leaks before you can get to the toilet","urgency"],["Leaks when you cough or sneeze","stress_cough"],["Leaks when you are physically active or exercising","stress_exercise"],["Leaks when you have finished urinating and are dressed","post_void"],["Leaks when you are asleep","nocturnal"],["Leaks for no obvious reason","unknown"],["Leaks all the time","continuous"]]},
 ];
 
-// Bladder leakage detail questions (moved from FLUTS to group all leaking together)
-const LEAK_DETAIL=[
-{id:"fl10b",text:"How much does leaking urine bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal",conditional:a=>a.iciq1!==undefined&&a.iciq1!==0},
-{id:"fl9a",text:"Does urine leak before you can get to the toilet?",opts:[["Never",0],["Occasionally",1],["Sometimes",2],["Most of the time",3],["All of the time",4]]},
-{id:"fl9b",text:"How much does leaking before reaching the toilet bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal",conditional:a=>a.fl9a!==undefined&&a.fl9a!==0},
-{id:"fl11a",text:"Does urine leak when you are physically active, exert yourself, cough or sneeze?",opts:[["Never",0],["Occasionally",1],["Sometimes",2],["Most of the time",3],["All of the time",4]]},
-{id:"fl11b",text:"How much does leaking during physical activity bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal",conditional:a=>a.fl11a!==undefined&&a.fl11a!==0},
-{id:"fl12a",text:"Do you ever leak urine for no obvious reason and without feeling that you want to go?",opts:[["Never",0],["Occasionally",1],["Sometimes",2],["Most of the time",3],["All of the time",4]]},
-{id:"fl12b",text:"How much does unexplained leaking bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal",conditional:a=>a.fl12a!==undefined&&a.fl12a!==0},
+// FLUTS: Filling + Voiding only (FLUTS-I incontinence subscale dropped per Dugan — ICIQ is primary incontinence instrument)
+const FLUTS=[
 {id:"fl2a",text:"During the night, how many times do you have to get up to urinate, on average?",opts:[["None",0],["One",1],["Two",2],["Three",3],["Four or more",4]]},
 {id:"fl2b",text:"How much does getting up at night to urinate bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal",conditional:a=>a.fl2a!==undefined&&a.fl2a!==0},
-{id:"fl13a",text:"Do you leak urine when you are asleep?",opts:[["Never",0],["Occasionally",1],["Sometimes",2],["Most of the time",3],["All of the time",4]]},
-{id:"fl13b",text:"How much does leaking while asleep bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal",conditional:a=>a.fl13a!==undefined&&a.fl13a!==0},
-];
-
-// FLUTS: Urinary function questions (leak questions moved to LEAK_DETAIL on Bladder Leakage page)
-const FLUTS=[
 {id:"fl3a",text:"Do you have a sudden need to rush to the toilet to urinate?",opts:[["Never",0],["Occasionally",1],["Sometimes",2],["Most of the time",3],["All of the time",4]]},
 {id:"fl3b",text:"How much does that sudden urgency bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal",conditional:a=>a.fl3a!==undefined&&a.fl3a!==0},
 {id:"fl5a",text:"How often do you pass urine during the day?",opts:[["1 to 6 times",0],["7 to 8 times",1],["9 to 10 times",2],["11 to 12 times",3],["13 or more times",4]]},
@@ -202,8 +189,6 @@ const SCREENER=[
 ];
 // Pain & discomfort questions (gated by screen_pain)
 const GUPI_PAIN=[
-{id:"fl4a",text:"Do you have pain in your bladder?",opts:[["Never",0],["Occasionally",1],["Sometimes",2],["Most of the time",3],["All of the time",4]]},
-{id:"fl4b",text:"How much does the bladder pain bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal",conditional:a=>a.fl4a!==undefined&&a.fl4a!==0},
 {id:"gupi1_table",text:"In the last week, have you experienced any pain or discomfort in the following areas?",type:"yn_table",rows:[
   {id:"gupi1a",label:"Entrance to the vagina"},
   {id:"gupi1b",label:"Vagina"},
@@ -216,7 +201,7 @@ const GUPI_PAIN=[
   {id:"gupi2c",label:"Pain or discomfort as your bladder fills"},
   {id:"gupi2d",label:"Pain or discomfort relieved by voiding (went away or got better after urinating)"},
 ]},
-{id:"gupi3",text:"How often have you had pain or discomfort in any of the areas mentioned above — including the vaginal entrance, vagina, urethra, pubic area, or bladder — over the last week?",opts:[["Never",0],["Rarely",1],["Sometimes",2],["Often",3],["Usually",4],["Always",5]],conditional:a=>{const painYN=["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d"];const anyYes=painYN.some(k=>a[k]==="yes");const bladderPain=(a.fl4a??0)>0;return anyYes||bladderPain}},
+{id:"gupi3",text:"How often have you had pain or discomfort in any of the areas mentioned above — including the vaginal entrance, vagina, urethra, pubic area, or bladder — over the last week?",opts:[["Never",0],["Rarely",1],["Sometimes",2],["Often",3],["Usually",4],["Always",5]],conditional:a=>{const painYN=["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d"];return painYN.some(k=>a[k]==="yes")}},
 {id:"gupi4",text:"Which number best describes your AVERAGE pain or discomfort on the days you had it, over the last week? (0 = no pain, 10 = pain as bad as you can imagine)",type:"scale",min:0,max:10,lo:"No pain",hi:"Pain as bad as you can imagine",conditional:a=>a.gupi3!==undefined&&a.gupi3!==0},
 {id:"pain1",text:"What is your current pelvic pain level right now? (0 = no pain, 10 = worst pain imaginable)",type:"scale",min:0,max:10,lo:"No pain",hi:"Worst pain imaginable"},
 // pain2 removed — gupi4 ("average pain on days you had it, over the last week") serves as the
@@ -281,7 +266,7 @@ const EXCLUSIONS=[
 ];
 // SCORING (unchanged references — GUPI items still named gupiXX, pain items still painXX)
 function sICIQ(a){const t=(a.iciq1??0)+(a.iciq2??0)+(a.iciq3??0);const sv=t===0?"None":t<=5?"Slight":t<=12?"Moderate":t<=18?"Severe":"Very Severe";const ty=a.iciq4||[];const u=ty.includes("urgency"),s=ty.includes("stress_cough")||ty.includes("stress_exercise");const sub=u&&s?"Mixed UI":u?"Urge UI":s?"Stress UI":ty.includes("continuous")?"Continuous UI":"Unclassified";return{total:t,severity:sv,subtype:sub}}
-function sFLUTS(a){const F=(a.fl2a??0)+(a.fl3a??0)+(a.fl5a??0);const V=(a.fl6a??0)+(a.fl7a??0)+(a.fl8a??0);const fl10a_derived=Math.min(a.iciq1??0,4);const I=(a.fl9a??0)+fl10a_derived+(a.fl11a??0)+(a.fl12a??0)+(a.fl13a??0);return{F,V,I,total:F+V+I}}
+function sFLUTS(a){const F=(a.fl2a??0)+(a.fl3a??0)+(a.fl5a??0);const V=(a.fl6a??0)+(a.fl7a??0)+(a.fl8a??0);return{F,V,total:F+V}}
 function sFSEX(a){return{total:(a.fs2a??0)+(a.fs3a??0)+Math.min(a.fs4a??0,3)+Math.min(a.fs5a??0,3)}}
 function sGUPI(a){const p=(a.gupi1a==="yes"?1:0)+(a.gupi1b==="yes"?1:0)+(a.gupi1c==="yes"?1:0)+(a.gupi1d==="yes"?1:0)+(a.gupi2a==="yes"?1:0)+(a.gupi2b==="yes"?1:0)+(a.gupi2c==="yes"?1:0)+(a.gupi2d==="yes"?1:0)+(a.gupi3??0)+(a.gupi4??0);const u=(a.gupi5??0)+(a.gupi6??0);const q=(a.gupi7??0)+(a.gupi8??0)+(a.gupi9??0);const t=p+u+q;return{total:t,pain:p,urinary:u,qol:q,severity:t<=14?"Mild":t<=29?"Moderate":"Severe"}}
 // sPain: composite uses gupi4 (GUPI average pain) as the canonical "average pain" item — measure once, use twice
@@ -674,9 +659,6 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
 // Consistency Checker — flags contradictions in real-time
 function getInconsistencies(ans){
   const flags=[];
-  // ICIQ says "never leaks" but FLUTS says leaks sometimes
-  if(ans.iciq1===0&&(ans.fl9a>=1||ans.fl11a>=1||ans.fl12a>=1||ans.fl13a>=1))flags.push({field:"fl9a",msg:"You said you never leak urine, but reported leaking in a follow-up question. Please review your answers."});
-  if(ans.iciq1>=2&&ans.fl9a===0&&ans.fl11a===0&&ans.fl12a===0&&ans.fl13a===0)flags.push({field:"iciq1",msg:"You reported frequent leaking but said you never leak in all follow-up questions. Please review."});
   // Says "never leaks" in ICIQ but selects leak triggers
   if(ans.iciq1===0&&Array.isArray(ans.iciq4)&&ans.iciq4.length>0&&!ans.iciq4.includes("never"))flags.push({field:"iciq4",msg:"You said you never leak, but selected circumstances when urine leaks. Please review."});
   // Reports leaking (iciq1>0) but says "never" on circumstances
@@ -1038,7 +1020,7 @@ function Intake({onDone,mainRef,initialEmail}){
   const[safetyTriggered,setSafetyTriggered]=useState({});const[showSafetyModal,setShowSafetyModal]=useState(null);
   const[triedNext,setTriedNext]=useState(false);
   const[acctPw,setAcctPw]=useState("");const[acctPwC,setAcctPwC]=useState("");const[acctErr,setAcctErr]=useState(null);const doneRef=useRef(false);
-  const set=(k,v)=>{setAns(p=>{const next={...p,[k]:v};if(k==="pregnancy_status"){next.prenatal_flag=v==="pregnant";if(v==="pregnant")L("PRENATAL_PROTOCOL_APPLIED",{context:"PATIENT_INDICATED_ACTIVE_PREGNANCY"});if(v!=="pregnant"){delete next.ex_highrisk_preg;setRfs(r=>r.filter(f=>f.id!=="ex_highrisk_preg"));setSafetyTriggered(s=>{const n={...s};delete n.ex_highrisk_preg;return n})}}if(k==="screen_pain"&&v==="no"){["fl4a","fl4b","gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d","gupi3","gupi4","pain1","pain3","symptoms_location","symptoms_trigger"].forEach(key=>delete next[key])}if(k==="screen_sexual"&&v==="no"){["fs2a","fs2b","fs3a","fs3b","fs4a","fs4b","fs5a","fs5b"].forEach(key=>delete next[key])}return next})};
+  const set=(k,v)=>{setAns(p=>{const next={...p,[k]:v};if(k==="pregnancy_status"){next.prenatal_flag=v==="pregnant";if(v==="pregnant")L("PRENATAL_PROTOCOL_APPLIED",{context:"PATIENT_INDICATED_ACTIVE_PREGNANCY"});if(v!=="pregnant"){delete next.ex_highrisk_preg;setRfs(r=>r.filter(f=>f.id!=="ex_highrisk_preg"));setSafetyTriggered(s=>{const n={...s};delete n.ex_highrisk_preg;return n})}}if(k==="screen_pain"&&v==="no"){["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d","gupi3","gupi4","pain1","pain3","symptoms_location","symptoms_trigger"].forEach(key=>delete next[key])}if(k==="screen_sexual"&&v==="no"){["fs2a","fs2b","fs3a","fs3b","fs4a","fs4b","fs5a","fs5b"].forEach(key=>delete next[key])}return next})};
   const togM=(k,v)=>setAns(p=>{
     const cur=p[k]||[];
     if(cur.includes(v)){const next=cur.filter(x=>x!==v);
@@ -1070,7 +1052,7 @@ function Intake({onDone,mainRef,initialEmail}){
     {t:"Safety Check",s:"We need to make sure you're safe to proceed.",qs:REDFLAGS},
     {t:"Eligibility Screening",s:"A few questions to confirm this program is right for you.",qs:EXCLUSIONS},
     {t:"Symptom Screening",s:"A few quick questions to tailor your assessment.",qs:SCREENER},
-    {t:"Bladder Leakage",s:"ICIQ-UI Short Form — thinking about the past 4 weeks.",qs:[...ICIQ,...LEAK_DETAIL]},
+    {t:"Bladder Leakage",s:"ICIQ-UI Short Form — thinking about the past 4 weeks.",qs:[...ICIQ]},
     {t:"Urinary Symptoms",s:"ICIQ-FLUTS — how your urinary function has been over the past 4 weeks.",qs:[...FLUTS,...GUPI_URINARY]},
     {t:"Bowel Health",s:"A few questions about your bowel habits.",qs:BOWEL},
     {t:"Pain & Discomfort",s:"Genitourinary pain + current pain assessment. Over the past week.",qs:GUPI_PAIN,cond:a=>a.screen_pain==="yes"},
@@ -1591,7 +1573,7 @@ function MyCareplan({data}){
         </div>
         <div className="cp-rpt-section"><div className="cp-rpt-h">Clinical Scores</div>
           <div className="cp-rpt-row"><span className="cp-rl">ICIQ-UI SF</span><span className="cp-rv">{iciq.total}/21 — {iciq.severity}, {iciq.subtype}</span></div>
-          <div className="cp-rpt-row"><span className="cp-rl">FLUTS</span><span className="cp-rv">F: {fluts?.F||0}/{fluts?.F!==undefined?12:"?"} · V: {fluts?.V||0}/{fluts?.V!==undefined?12:"?"} · I: {fluts?.I||0}/{fluts?.I!==undefined?20:"?"}</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">FLUTS</span><span className="cp-rv">F: {fluts?.F||0}/12 · V: {fluts?.V||0}/12</span></div>
           <div className="cp-rpt-row"><span className="cp-rl">FLUTSsex</span><span className="cp-rv">{fsex?.total||0}/12</span></div>
           <div className="cp-rpt-row"><span className="cp-rl">GUPI</span><span className="cp-rv">{gupi.total}/45 — {gupi.severity} (P: {gupi.pain}, U: {gupi.urinary}, Q: {gupi.qol})</span></div>
           <div className="cp-rpt-row"><span className="cp-rl">Pain Composite</span><span className="cp-rv">{pain.composite}/10 — {pain.severity}</span></div>
@@ -1882,7 +1864,7 @@ function PTNewIntakeReview({data,onBack}){
     const cueLbl={biologic:"Body function",imaginative:"Imaginative",breathing:"Breath-based",simple_contract:"Simple contraction",default:"Default"}[ans.cue_preference]||"Default";
     const pelvHx=(ans.pelvic_history||[]).filter(x=>x!=="none");
     const screenLine=`Screening: Urinary=${ans.screen_urinary||"—"}, Bowel=${ans.screen_bowel||"—"}, Pain=${ans.screen_pain||"—"}, Sexual=${ans.screen_sexual||"—"}.${ans.screen_pain==="no"?" Pain section: SCREENED OUT.":""}${ans.screen_sexual==="no"?" Sexual section: SCREENED OUT.":""}`;
-    return `${alertBlock}PHYSICAL THERAPY ENCOUNTER NOTE\nPatient: ${nm} | DOB: ${ans.dob||"—"}${ans.email?` | Email: ${ans.email}`:""}${ans.phone?` | Phone: ${ans.phone}`:""}\nDOS: ${new Date().toISOString().split("T")[0]} | POS: 10 (Telehealth) | Mod: GQ\n\nSUBJECTIVE:\nInitial evaluation. ICIQ-UI SF: ${iciq.total} (${iciq.severity}, ${iciq.subtype}). Tier: ${tier}. FLUTS: F${fluts.F}/V${fluts.V}/I${fluts.I}. GUPI: ${gupi.total} (${gupi.severity}). Pain: ${pain.composite}/10 (${pain.severity}). FLUTSsex: ${fsex.total}.\n${screenLine}\n${pelvHx.length>0?`Pelvic Hx: ${pelvHx.map(x=>x.replace(/_/g," ")).join(", ")}.\n`:""}${ans.patient_goal?`Patient goal: "${ans.patient_goal}"\n`:""}${ans.catchall_pelvic?`Additional concerns: "${ans.catchall_pelvic}"\n`:""}${ans.prior_treatment?`Prior treatment: ${Array.isArray(ans.prior_treatment)?ans.prior_treatment.join(", "):ans.prior_treatment}\n`:""}${ans.medications?`Medications: ${ans.medications}\n`:""}${avoidCt>0?`Activity avoidance: ${avoidArr.filter(x=>x!=="none").join(", ")} (${avoidCt} categories${avoidCt>=3?" — HIGH IMPACT":""})\n`:""}${(ans.med_modify??0)===1?`⚠ MEDICATION MODIFICATION: Patient reports changing prescribed medication due to urinary symptoms. Refer to prescribing provider.\n`:""}${ans._safety_answer_changed?`⚠ SAFETY ANSWER CHANGED: Patient initially indicated a safety flag but subsequently changed answer(s): ${(ans._safety_changes||[]).map(c=>c.id).join(", ")}.\n`:""}Cue preference: ${cueLbl}.\n\nOBJECTIVE:\nValidated instruments administered via AI-augmented telehealth. Red flags: ${REDFLAGS.some(r=>ans[r.id]==="yes")?"POSITIVE — see safety screening":"all negative"}${ans._safety_answer_changed?" (note: patient changed safety answer — flagged)":""}.\nStatus: ${ans.pregnancy_status?.replace(/_/g," ")||"N/A"}${ans.delivery_date?`. Delivery: ${ans.delivery_date} (${Math.round((Date.now()-new Date(ans.delivery_date).getTime())/(7*24*60*60*1000))}wk postpartum)`:""}.${ans.delivery_type?` Delivery type: ${ans.delivery_type.replace(/_/g," ")}.`:""} Constipation: ${(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??3)<=1||(ans.bristol_stool??4)<=2?"Yes (straining: "+ans.bowel_constipation+"/4, frequency: "+(["<1x/wk","1-4x/wk","5-7x/wk","1-2x/day","3+/day"][ans.bowel_frequency??3])+", Bristol: "+(ans.bristol_stool??"-")+")":"No"}.${plan.prenatal?`\n** PRENATAL PELVIC FLOOR PROTOCOL: Patient is currently pregnant. Exercise modifications for supine positioning have been automatically applied. Review for trimester appropriateness.`:""}\n\nASSESSMENT:\n${dx}\n\nPLAN:\nExercises:\n${exList}\n\nAdjuncts/Devices:\n${adjList||"None"}\n\nGoals:\n${editGoals}\n\nPrecautions:\n${editPrec}\n\nProgression:\n${editProg}\n\nFrequency: ${plan.freq}. Duration: ${plan.dur}.\n\nCPT: ${plan.cpt.map(c=>`${c.c} — ${c.d} (${c.u}u)`).join(", ")}\nReview time: ${Math.floor(tSec/60)}m ${tSec%60}s${notes?`\n\nPT CLINICAL NOTES:\n${notes}`:""}\n\nATTESTATION:\nI have reviewed the AI-generated assessment, the patient's individual responses, and the treatment plan. ${notes?"Modifications noted. ":""}This reflects my independent clinical judgment.\n\nSigned: [PT Name, DPT] — ${new Date().toISOString()}`;
+    return `${alertBlock}PHYSICAL THERAPY ENCOUNTER NOTE\nPatient: ${nm} | DOB: ${ans.dob||"—"}${ans.email?` | Email: ${ans.email}`:""}${ans.phone?` | Phone: ${ans.phone}`:""}\nDOS: ${new Date().toISOString().split("T")[0]} | POS: 10 (Telehealth) | Mod: GQ\n\nSUBJECTIVE:\nInitial evaluation. ICIQ-UI SF: ${iciq.total} (${iciq.severity}, ${iciq.subtype}). Tier: ${tier}. FLUTS: F${fluts.F}/V${fluts.V}. GUPI: ${gupi.total} (${gupi.severity}). Pain: ${pain.composite}/10 (${pain.severity}). FLUTSsex: ${fsex.total}.\n${screenLine}\n${pelvHx.length>0?`Pelvic Hx: ${pelvHx.map(x=>x.replace(/_/g," ")).join(", ")}.\n`:""}${ans.patient_goal?`Patient goal: "${ans.patient_goal}"\n`:""}${ans.catchall_pelvic?`Additional concerns: "${ans.catchall_pelvic}"\n`:""}${ans.prior_treatment?`Prior treatment: ${Array.isArray(ans.prior_treatment)?ans.prior_treatment.join(", "):ans.prior_treatment}\n`:""}${ans.medications?`Medications: ${ans.medications}\n`:""}${avoidCt>0?`Activity avoidance: ${avoidArr.filter(x=>x!=="none").join(", ")} (${avoidCt} categories${avoidCt>=3?" — HIGH IMPACT":""})\n`:""}${(ans.med_modify??0)===1?`⚠ MEDICATION MODIFICATION: Patient reports changing prescribed medication due to urinary symptoms. Refer to prescribing provider.\n`:""}${ans._safety_answer_changed?`⚠ SAFETY ANSWER CHANGED: Patient initially indicated a safety flag but subsequently changed answer(s): ${(ans._safety_changes||[]).map(c=>c.id).join(", ")}.\n`:""}Cue preference: ${cueLbl}.\n\nOBJECTIVE:\nValidated instruments administered via AI-augmented telehealth. Red flags: ${REDFLAGS.some(r=>ans[r.id]==="yes")?"POSITIVE — see safety screening":"all negative"}${ans._safety_answer_changed?" (note: patient changed safety answer — flagged)":""}.\nStatus: ${ans.pregnancy_status?.replace(/_/g," ")||"N/A"}${ans.delivery_date?`. Delivery: ${ans.delivery_date} (${Math.round((Date.now()-new Date(ans.delivery_date).getTime())/(7*24*60*60*1000))}wk postpartum)`:""}.${ans.delivery_type?` Delivery type: ${ans.delivery_type.replace(/_/g," ")}.`:""} Constipation: ${(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??3)<=1||(ans.bristol_stool??4)<=2?"Yes (straining: "+ans.bowel_constipation+"/4, frequency: "+(["<1x/wk","1-4x/wk","5-7x/wk","1-2x/day","3+/day"][ans.bowel_frequency??3])+", Bristol: "+(ans.bristol_stool??"-")+")":"No"}.${plan.prenatal?`\n** PRENATAL PELVIC FLOOR PROTOCOL: Patient is currently pregnant. Exercise modifications for supine positioning have been automatically applied. Review for trimester appropriateness.`:""}\n\nASSESSMENT:\n${dx}\n\nPLAN:\nExercises:\n${exList}\n\nAdjuncts/Devices:\n${adjList||"None"}\n\nGoals:\n${editGoals}\n\nPrecautions:\n${editPrec}\n\nProgression:\n${editProg}\n\nFrequency: ${plan.freq}. Duration: ${plan.dur}.\n\nCPT: ${plan.cpt.map(c=>`${c.c} — ${c.d} (${c.u}u)`).join(", ")}\nReview time: ${Math.floor(tSec/60)}m ${tSec%60}s${notes?`\n\nPT CLINICAL NOTES:\n${notes}`:""}\n\nATTESTATION:\nI have reviewed the AI-generated assessment, the patient's individual responses, and the treatment plan. ${notes?"Modifications noted. ":""}This reflects my independent clinical judgment.\n\nSigned: [PT Name, DPT] — ${new Date().toISOString()}`;
   };
   const genNote=()=>{setEditNote(buildNote());setNoteGenerated(true)};
 
@@ -1944,7 +1926,7 @@ function PTNewIntakeReview({data,onBack}){
     {/* SCORE SUMMARY */}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:10,marginBottom:14}}>
       <div className="sc"><div className="scl2">ICIQ-UI SF</div><div className="scv2"style={{color:C.pink}}>{iciq.total}</div><Bdg sev={iciq.severity}/><div className="scs">{iciq.subtype} · 0–21</div></div>
-      <div className="sc"><div className="scl2">FLUTS</div><div className="scv2"style={{color:C.purp}}>{fluts.total}</div><div className="scs">F:{fluts.F}/12 V:{fluts.V}/12 I:{fluts.I}/20</div></div>
+      <div className="sc"><div className="scl2">FLUTS</div><div className="scv2"style={{color:C.purp}}>{fluts.total}</div><div className="scs">F:{fluts.F}/12 V:{fluts.V}/12</div></div>
       <div className="sc"><div className="scl2">FLUTSsex</div><div className="scv2"style={{color:C.purpL}}>{fsex.total}</div><div className="scs">Sexual symptom score</div></div>
       <div className="sc"><div className="scl2">GUPI-F</div><div className="scv2"style={{color:C.blue}}>{gupi.total}</div><Bdg sev={gupi.severity}/><div className="scs">P:{gupi.pain}/23 U:{gupi.urinary}/10 Q:{gupi.qol}/12</div></div>
       <div className="sc"><div className="scl2">Pain</div><div className="scv2"style={{color:C.or}}>{pain.composite}</div><Bdg sev={pain.severity}/><div className="scs">Fn: {["None","Mild","Mod","Sev","Cannot"][pain.functional]}</div></div>
@@ -2029,14 +2011,10 @@ function PTNewIntakeReview({data,onBack}){
         <div style={{marginTop:6,fontSize:11,color:C.blue,fontWeight:600}}>→ {iciq.subtype}</div>
       </Section>
       <Section title="ICIQ-FLUTS — Filling" tag={`F: ${fluts.F}/12`}>
-        {FLUTS.filter(q=>["fl3a","fl3b","fl5a","fl5b"].includes(q.id)).map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+"..."} value={getOptLabel(FLUTS,q.id,ans[q.id])} score={q.id.endsWith("a")?getOptScore(FLUTS,q.id,ans[q.id]):undefined}/>)}
-        {LEAK_DETAIL.filter(q=>["fl2a","fl2b"].includes(q.id)).map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+"..."} value={getOptLabel(LEAK_DETAIL,q.id,ans[q.id])} score={q.id.endsWith("a")?getOptScore(LEAK_DETAIL,q.id,ans[q.id]):undefined}/>)}
+        {FLUTS.filter(q=>["fl2a","fl2b","fl3a","fl3b","fl5a","fl5b"].includes(q.id)).map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+"..."} value={getOptLabel(FLUTS,q.id,ans[q.id])} score={q.id.endsWith("a")?getOptScore(FLUTS,q.id,ans[q.id]):undefined}/>)}
       </Section>
       <Section title="ICIQ-FLUTS — Voiding" tag={`V: ${fluts.V}/12`}>
         {FLUTS.filter(q=>["fl6a","fl6b","fl7a","fl7b","fl8a","fl8b"].includes(q.id)).map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+"..."} value={getOptLabel(FLUTS,q.id,ans[q.id])} score={q.id.endsWith("a")?getOptScore(FLUTS,q.id,ans[q.id]):undefined}/>)}
-      </Section>
-      <Section title="ICIQ-FLUTS — Incontinence (from Bladder Leakage page)" tag={`I: ${fluts.I}/20 (fl10a derived from ICIQ)`}>
-        {LEAK_DETAIL.map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+"..."} value={getOptLabel(LEAK_DETAIL,q.id,ans[q.id])} score={q.id.endsWith("a")?getOptScore(LEAK_DETAIL,q.id,ans[q.id]):undefined}/>)}
       </Section>
       <Section title="FLUTSsex" tag={`Score: ${fsex.total}`}>
         {FLUTSSEX.map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+"..."} value={getOptLabel(FLUTSSEX,q.id,ans[q.id])} score={q.id.endsWith("a")?getOptScore(FLUTSSEX,q.id,ans[q.id]):undefined}/>)}
