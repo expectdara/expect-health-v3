@@ -152,7 +152,7 @@ const ICIQ=[
 {id:"iciq4",text:"Under what circumstances does urine leak? Please select all that apply to you.",type:"multi",conditional:a=>a.iciq1!==undefined&&a.iciq1!==0,opts:[["Never — urine does not leak","never"],["Leaks before you can get to the toilet","urgency"],["Leaks when you cough or sneeze","stress_cough"],["Leaks when you are physically active or exercising","stress_exercise"],["Leaks when you have finished urinating and are dressed","post_void"],["Leaks when you are asleep","nocturnal"],["Leaks for no obvious reason","unknown"],["Leaks all the time","continuous"]]},
 ];
 
-// FLUTS: Filling + Voiding only (FLUTS-I incontinence subscale dropped per Dugan — ICIQ is primary incontinence instrument)
+// Selected FLUTS Filling + Voiding items (not the full ICIQ-FLUTS — Incontinence subscale dropped per Dugan, ICIQ-UI SF is primary incontinence instrument)
 const FLUTS=[
 {id:"fl2a",text:"During the night, how many times do you have to get up to urinate, on average?",opts:[["None",0],["One",1],["Two",2],["Three",3],["Four or more",4]]},
 {id:"fl2b",text:"How much does getting up at night to urinate bother you? (0 = not at all, 10 = a great deal)",type:"scale",min:0,max:10,lo:"Not at all",hi:"A great deal",conditional:a=>a.fl2a!==undefined&&a.fl2a!==0},
@@ -1111,7 +1111,7 @@ function Intake({onDone,mainRef,initialEmail}){
     {t:"Eligibility Screening",s:"A few questions to confirm this program is right for you.",qs:EXCLUSIONS},
     {t:"Symptom Screening",s:"A few quick questions to tailor your assessment.",qs:SCREENER},
     {t:"Bladder Leakage",s:"ICIQ-UI Short Form — thinking about the past 4 weeks.",qs:[...ICIQ]},
-    {t:"Urinary Symptoms",s:"ICIQ-FLUTS — how your urinary function has been over the past 4 weeks.",qs:[...FLUTS,...GUPI_URINARY]},
+    {t:"Urinary Symptoms",s:"How your urinary function has been over the past 4 weeks.",qs:[...FLUTS,...GUPI_URINARY]},
     {t:"Bowel Health",s:"A few questions about your bowel habits.",qs:BOWEL},
     {t:"Prolapse Screening",s:"POPDI-6 — pelvic organ prolapse symptom screening.",qs:POPDI},
     {t:"Pain & Discomfort",s:"Genitourinary pain + current pain assessment. Over the past week.",qs:GUPI_PAIN,cond:a=>a.screen_pain==="yes"},
@@ -2076,10 +2076,10 @@ function PTNewIntakeReview({data,onBack}){
         {ICIQ.map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+(q.text.length>80?"...":"")} value={getOptLabel(ICIQ,q.id,ans[q.id])} score={q.type!=="multi"?getOptScore(ICIQ,q.id,ans[q.id]):undefined}/>)}
         <div style={{marginTop:6,fontSize:11,color:C.blue,fontWeight:600}}>→ {iciq.subtype}</div>
       </Section>
-      <Section title="ICIQ-FLUTS — Filling" tag={`F: ${fluts.F}/12`}>
+      <Section title="FLUTS — Filling" tag={`F: ${fluts.F}/12`}>
         {FLUTS.filter(q=>["fl2a","fl2b","fl3a","fl3b","fl5a","fl5b"].includes(q.id)).map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+"..."} value={getOptLabel(FLUTS,q.id,ans[q.id])} score={q.id.endsWith("a")?getOptScore(FLUTS,q.id,ans[q.id]):undefined}/>)}
       </Section>
-      <Section title="ICIQ-FLUTS — Voiding" tag={`V: ${fluts.V}/12`}>
+      <Section title="FLUTS — Voiding" tag={`V: ${fluts.V}/12`}>
         {FLUTS.filter(q=>["fl6a","fl6b","fl7a","fl7b","fl8a","fl8b"].includes(q.id)).map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+"..."} value={getOptLabel(FLUTS,q.id,ans[q.id])} score={q.id.endsWith("a")?getOptScore(FLUTS,q.id,ans[q.id]):undefined}/>)}
       </Section>
       <Section title="POPDI-6 — Prolapse Screening" tag={`${popdi.positiveCount}/6 positive`}>

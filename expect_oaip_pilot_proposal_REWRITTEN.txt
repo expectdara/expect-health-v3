@@ -31,7 +31,7 @@ Proposed Solution: Expect uses AI to extend PT-grade pelvic floor care to unders
 
 Expect is an AI-augmented pelvic floor physical therapy (PF-PT) platform that delivers clinically validated assessment, AI-generated treatment planning, and ongoing care management to women experiencing pelvic floor dysfunction--primarily urinary incontinence, pelvic pain, and related postpartum conditions.
 
-The platform uses deterministic scoring algorithms and rule-based plan generation to analyze patient responses across five validated clinical instruments (ICIQ-UI SF, ICIQ-FLUTS, ICIQ-FLUTSsex, GUPI-Female, and a standardized Pain Assessment). It computes severity scores and diagnostic classifications, then generates an individualized treatment plan including ICD-10 diagnoses, exercise prescriptions, adjunct device/behavioral recommendations, precautions, and progression criteria.
+The platform uses deterministic scoring algorithms and rule-based plan generation to analyze patient responses across a custom clinical battery using the full ICIQ-UI SF plus selected FLUTS Filling/Voiding items, ICIQ-FLUTSsex, GUPI-Female, PHQ-2, Bristol Stool Scale, and POPDI-6. It computes severity scores and diagnostic classifications, then generates an individualized treatment plan including ICD-10 diagnoses, exercise prescriptions, adjunct device/behavioral recommendations, precautions, and progression criteria.
 
 Expect follows a graduated autonomy model, consistent with the approved Doctronic pilot. During the initial calibration phase, 100% of AI-augmented plans are reviewed, edited, and approved by a licensed Physical Therapist before any treatment recommendation reaches the patient. As the AI demonstrates statistical reliability across 250+ cases per diagnosis subtype, low-risk plans may be auto-approved with ongoing 10% human audit. High-risk, complex, and first-time patients always receive full PT review. The PT retains full authority to modify, reject, or augment any AI output at any phase. This "earned autonomy" model ensures AI augments the clinician, never replaces them--consistent with the Utah legislature's "doctor, not device" principle.
 
@@ -93,11 +93,14 @@ Upon consent, the patient completes:
 - Depression screening (PHQ-2): Two-question validated screen for depression. Positive scores (>=3 out of 6) trigger an inline clinical consistency warning and flag the case for the reviewing PT to verify capacity to consent. The depression flag is logged as a depression_screen_positive audit event with severity classification (MODERATE for scores 3-4, HIGH for scores 5-6) and surfaced in the OAIP Red Flags dashboard.
 
 Step 3: Clinical Intake Assessment
-The patient completes a guided assessment across 9 intake steps comprising demographics (including pregnancy status, delivery date for postpartum patients, and delivery type--if "Currently pregnant" is selected, a PRENATAL_FLAG is set and a gentle inline note appears: "We'll tailor your care plan with prenatal-safe modifications so you can safely support your pelvic floor throughout your pregnancy"), provider selection via NPI Registry lookup (verified against the CMS National Provider Identifier database with typo-tolerant matching), and five validated clinical instruments:
-- ICIQ-UI SF (4 questions): Bladder leakage severity and subtyping
-- ICIQ-FLUTS Urinary Symptoms (12 questions): Filling and voiding subscales with bother scores
-- ICIQ-FLUTSsex (8 questions): Sexual health impact
+The patient completes a guided assessment across 10 intake steps comprising demographics (including pregnancy status, delivery date for postpartum patients, and delivery type--if "Currently pregnant" is selected, a PRENATAL_FLAG is set and a gentle inline note appears: "We'll tailor your care plan with prenatal-safe modifications so you can safely support your pelvic floor throughout your pregnancy"), provider selection via NPI Registry lookup (verified against the CMS National Provider Identifier database with typo-tolerant matching), and a custom clinical battery built from validated instruments:
+- ICIQ-UI SF (4 questions): Bladder leakage severity and subtyping (full standard instrument)
+- Selected FLUTS Filling/Voiding items (12 questions): Nocturia, urgency, daytime frequency (Filling subscale) and hesitancy, straining, intermittency (Voiding subscale) with bother scores. These are selected items from the ICIQ-FLUTS; the FLUTS Incontinence subscale is omitted because the ICIQ-UI SF already captures incontinence severity and subtype
+- ICIQ-FLUTSsex (8 questions): Sexual health impact (full standard instrument)
 - GUPI-Female + Pain Assessment (23 questions): Pain locations, frequency, severity, functional impact, quality-of-life subscales, symptom triggers, and bladder pain questions. Pain intensity is assessed once using a single NRS scale and applied to both the GUPI pain subscale and the standalone pain composite score (measure-once-use-twice design), reducing patient burden while maintaining clinical validity across both instruments
+- PHQ-2 (2 questions): Validated two-item depression screen (threshold >=3/6)
+- Bristol Stool Scale + bowel function (3 questions): Stool form, straining frequency, bowel frequency
+- POPDI-6 (6 questions): Pelvic Organ Prolapse Distress Inventory, short form. Yes/no with conditional bother scale for symptom-based prolapse screening
 
 The patient also answers questions about caffeine/alcohol/water intake, bowel function, symptom triggers, activity avoidance, current medications, prior treatment history, cueing preference, and personal goals. Throughout the intake, a real-time consistency checker (9 cross-instrument rules) detects contradictory answers and displays inline warnings. Input validation includes DOB age guardrails (18--120) and auto-formatted phone numbers.
 
@@ -447,7 +450,7 @@ Academic Literature
 - Pelvic floor muscle training (PFMT) is the first-line treatment for stress urinary incontinence (Cochrane Review, 2018; NICE guidelines CG171)
 - Telehealth-delivered PF-PT shows equivalent outcomes to in-person care for urinary incontinence (Sjostrom et al., 2021; Bernard et al., 2022)
 - AI clinical decision support improves diagnostic accuracy and reduces clinical variability in physical therapy (Knott et al., 2023)
-- The ICIQ-UI SF, ICIQ-FLUTS, ICIQ-FLUTSsex, and GUPI-Female are validated, widely-used instruments with established psychometric properties and published scoring manuals
+- The ICIQ-UI SF, ICIQ-FLUTSsex, GUPI-Female, PHQ-2, and POPDI-6 are validated, widely-used instruments with established psychometric properties and published scoring manuals. The FLUTS Filling/Voiding items used in this battery are drawn from the validated ICIQ-FLUTS instrument
 - Patient-reported outcome measures (PROMs) are the standard of care for PF dysfunction assessment (ICS/IUGA joint report, 2022)
 
 Pre-Deployment Testing
@@ -495,7 +498,7 @@ The platform includes a statistical analysis engine designed to discover novel m
 
 Each hypothesis is evaluated using inline Welch's t-test with Cohen's d effect size calculation, requiring no external statistical libraries. A minimum of 30 completed outcome records is required before any signal analysis is performed. Biomarker signals are classified as "strong" (p < 0.01, |d| >= 0.5), "emerging" (p < 0.05, |d| >= 0.3), or "insufficient data."
 
-The biomarker discovery engine's innovation is the systematic application of cross-instrument correlation analysis to pelvic floor treatment outcomes -- a combination that has not been explored in the published literature. The five validated instruments used in this platform (ICIQ-UI SF, ICIQ-FLUTS, ICIQ-FLUTSsex, GUPI-Female, and PHQ-2) have never been administered together in a structured digital workflow that enables automated pattern discovery across their combined score space.
+The biomarker discovery engine's innovation is the systematic application of cross-instrument correlation analysis to pelvic floor treatment outcomes -- a combination that has not been explored in the published literature. The custom clinical battery used in this platform (ICIQ-UI SF, selected FLUTS Filling/Voiding items, ICIQ-FLUTSsex, GUPI-Female, PHQ-2, Bristol Stool Scale, and POPDI-6) has never been administered together in a structured digital workflow that enables automated pattern discovery across its combined score space.
 
 All biomarker signals are exploratory hypotheses generated from pilot data. Full validation requires IRB-approved analysis with appropriate sample sizes and pre-registered protocols. The OAIP Outcome Research dashboard displays biomarker signals for transparency.
 
@@ -557,10 +560,10 @@ APPENDIX A: Platform Technical Architecture
 
 The Expect platform comprises the following components. The patient-facing application and OAIP dashboard are described in detail in Section 1.4. This appendix provides the technical reference.
 
-- Patient-Facing Web Application: React-based responsive application. 9-step guided intake (97+ questions), informed consent (10 checkboxes), 5-tab care plan viewer, MyChart/EHR export (client-side PDF), 6-pathway symptom reporting, secure messaging. See Section 1.4 for full walkthrough.
+- Patient-Facing Web Application: React-based responsive application. 10-step guided intake (100+ questions), informed consent (10 checkboxes), 5-tab care plan viewer, MyChart/EHR export (client-side PDF), 6-pathway symptom reporting, secure messaging. See Section 1.4 for full walkthrough.
 - PT Provider Dashboard: Three-tab interface (Dashboard, Patients, Audit Log). 9 pre-approval guardrail checks, CMS-compliant encounter note with shorthand expansion (12 abbreviations), review timer. See Section 1.4, PT Provider Experience.
 - OAIP Compliance Dashboard: Six-tab interface (Compliance, Red Flags & Alerts, Follow-Up Schedule, Live Audit Stream, Interoperability / HIE, Outcome Research). 11 clinical signal types. Auditor Mode (see Section 4.3). See Section 1.4, OAIP Oversight Experience. The Outcome Research tab displays de-identified outcome records, live AI-PT agreement rate (computed from outcome records), tier-level outcome breakdowns, structured PT modification detail (exercise/adjunct/goal diffs), and biomarker discovery signals (see Section 5.3).
-- AI Scoring Engine: Deterministic algorithms for ICIQ-UI SF (0-21), FLUTS (F/V, 0-24), FLUTSsex (0-12), GUPI-Female (P/U/Q, 0-45), pain composite (0-10). Incontinence subtype classification. PHQ-2 depression screening (threshold >=3/6).
+- AI Scoring Engine: Deterministic algorithms for ICIQ-UI SF (0-21), selected FLUTS F/V items (0-24), FLUTSsex (0-12), GUPI-Female (P/U/Q, 0-45), pain composite (0-10), POPDI-6 (0-100 distress score + symptom flags). Incontinence subtype classification. PHQ-2 depression screening (threshold >=3/6). Bristol Stool Scale + bowel function composite.
 - AI Plan Generator: Rule-based plan generation: ICD-10 mapping (up to 5 codes including pudendal neuralgia), 3-tier exercise prescription (Beginner/Moderate/Advanced), adjunct engine (9 recommendation types), risk stratification (green/yellow), precautions, progression criteria, and prenatal exercise substitution (see Section 3.8).
 - Audit Log: 30+ event types, ISO 8601 timestamps. Auditor Mode de-identification (see Section 4.3). Persistent storage in Convex append-only table with function-level access controls; client-side log hydrated from server on session resume.
 - Fax Integration: Three-tier verification (NPI-verified, default, manual entry). Transmission hold for unverified concierge providers. See Section 1.4, Step 7.
@@ -570,7 +573,7 @@ The Expect platform comprises the following components. The patient-facing appli
 - FHIR R4 Preview: FHIR R4 Bundle with US Core profiles. See Section 4.3, EHR Interface.
 - Outcome Record Engine: PHI-free structured outcome records linking baseline clinical profiles to treatment parameters and Week 8 outcomes. De-identified at creation (age brackets, no PII). Records include weeks_postpartum (computed from delivery date) for confound control, and structured PT modification diffs capturing exercise adds/removes/parameter changes, adjunct changes, and goal modifications. See Section 5.3.
 - Biomarker Discovery Engine: Inline statistical analysis (Welch's t-test, Cohen's d effect size) for 5 biomarker hypotheses across multi-instrument score space. Minimum 30 completed records required for signal analysis. See Section 5.3.
-- Review Flags System: Automated risk classification with 5 always-review flags (HIGH_SEVERITY_ICIQ, DEPRESSION_RISK, PRENATAL, SAFETY_ANSWER_CHANGED, PUDENDAL_SUSPECTED) and 4 triggered flags (CLINICAL_REGRESSION, PHQ2_WORSENING, ADHERENCE_CONCERN, ADVERSE_EVENT). Phase 1: informational only. Phase 2: routes high-risk plans to mandatory PT review.
+- Review Flags System: Automated risk classification with 7 always-review flags (HIGH_SEVERITY_ICIQ, DEPRESSION_RISK, PRENATAL, SAFETY_ANSWER_CHANGED, PUDENDAL_SUSPECTED, PROLAPSE_REVIEW, PROLAPSE_MILD) and 4 triggered flags (CLINICAL_REGRESSION, PHQ2_WORSENING, ADHERENCE_CONCERN, ADVERSE_EVENT). Phase 1: informational only. Phase 2: routes high-risk plans to mandatory PT review.
 
 
 APPENDIX B: Patient Safety, Clinical Oversight, and Remediation Framework
@@ -692,7 +695,7 @@ This appendix describes how Expect collects, stores, de-identifies, and shares d
 
 2. Data Collected
 The platform collects the following categories of data during the pilot:
-- Clinical intake data: Responses to validated instruments (ICIQ-UI SF, FLUTS, GUPI, NRS pain scales), symptom history, medication history, activity avoidance, cue preference, pregnancy status, delivery date and delivery type (for postpartum patients, used to compute weeks postpartum for confound control), bowel function, and patient goals. All self-reported.
+- Clinical intake data: Responses to validated instruments (ICIQ-UI SF, selected FLUTS Filling/Voiding items, ICIQ-FLUTSsex, GUPI-Female, PHQ-2, Bristol Stool Scale, POPDI-6, and NRS pain scales), symptom history, medication history, activity avoidance, cue preference, pregnancy status, delivery date and delivery type (for postpartum patients, used to compute weeks postpartum for confound control), bowel function, and patient goals. All self-reported.
 - Demographic data: Name, date of birth, contact information (for clinical communication only), referring provider.
 - Treatment plan data: AI-generated draft plans, clinician-reviewed final plans, exercise prescriptions, adjunct recommendations, diagnostic codes, CPT codes.
 - Clinical governance data: Clinician review timestamps, review duration, structured PT modification diffs (exercise adds/removes/parameter changes, adjunct changes, goal modifications), approval/rejection decisions, clinical notes.
@@ -854,9 +857,12 @@ As described in Section 1.3, Utah has approximately 7 pelvic floor PT specialist
 The Expect protocol uses validated clinical instruments, peer-reviewed evidence, and a licensed clinician review layer.
 
 2a. Validated Instruments
-- ICIQ-UI SF (International Consultation on Incontinence Questionnaire, Short Form): The gold standard for measuring urinary incontinence severity. Validated, widely used in clinical trials and clinical practice globally.
-- FLUTS (Female Lower Urinary Tract Symptoms): Comprehensive symptom assessment instrument.
-- GUPI (Genitourinary Pain Index): Validated pain assessment for pelvic pain conditions.
+- ICIQ-UI SF (International Consultation on Incontinence Questionnaire, Short Form): The gold standard for measuring urinary incontinence severity. Validated, widely used in clinical trials and clinical practice globally. Administered in full.
+- FLUTS Filling/Voiding items (selected from ICIQ-FLUTS): Nocturia, urgency, daytime frequency (Filling) and hesitancy, straining, intermittency (Voiding) with bother scores. The FLUTS Incontinence subscale is omitted because the ICIQ-UI SF already captures incontinence severity and subtype.
+- ICIQ-FLUTSsex: Sexual health impact assessment. Administered in full.
+- GUPI-Female (Genitourinary Pain Index): Validated pain assessment for pelvic pain conditions.
+- PHQ-2: Two-item validated depression screen.
+- POPDI-6 (Pelvic Organ Prolapse Distress Inventory, short form): Six-item symptom-based prolapse screening with conditional bother scale.
 
 2b. Evidence-Based Exercise Selection
 The specific exercises in the Expect protocol (Bridge Lift, Quick Squeeze Kegels, Long Hold Kegels, Diaphragmatic Breathing) are directly linked to ICIQ score reduction through pelvic floor strengthening. Prenatal patients receive pregnancy-safe exercise substitutions (see Section 3.8). The protocol uses the validated "Imaginative Cueing" framework from Crane, Dugan et al. (2025), co-authored by Expect's Doctor of Physical Therapy. This paper is one of the most downloaded in the history of the Journal of Women's & Pelvic Health Physical Therapy. The framework statistically improves neuromuscular recruitment (P < .001).
