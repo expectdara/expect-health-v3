@@ -57,13 +57,13 @@ function PsiResourceCard({compact}){
 const OUTCOME_RECORDS=[];let _orid=0;
 function ageBracket(dob){if(!dob)return"unknown";const d=new Date(dob);if(isNaN(d))return"unknown";const y=new Date().getFullYear()-d.getFullYear();return y<18?"under18":y<30?"18-29":y<40?"30-39":y<50?"40-49":y<60?"50-59":"60+"}
 function buildOutcomeRecord(intake,plan,reviewTimeSec){
-  const a=intake.ans,iciq=intake.iciq,pain=intake.pain,gupi=intake.gupi,fluts=intake.fluts,fsex=intake.fsex;
+  const a=intake.ans,iciq=intake.iciq,pain=intake.pain,gupi=intake.gupi,fluts=intake.fluts,fsex=intake.fsex,popdi=intake.popdi||sPOPDI(a);
   const phq2=calcPHQ2(a);
   const avoid=(a.avoid_activities||[]).filter(x=>x!=="none");
   const constip=(a.bowel_constipation??0)>=2||(a.bowel_frequency??3)<=1||(a.bristol_stool??4)<=2;
   const triggers=pain.triggers||[];
   const rec={id:`OR-${++_orid}-${Date.now()}`,created:new Date().toISOString(),
-    baseline:{iciq:{total:iciq.total,severity:iciq.severity,subtype:iciq.subtype},fluts:{F:fluts.F,V:fluts.V,total:fluts.total},fsex:{total:fsex.total},gupi:{total:gupi.total,pain:gupi.pain,urinary:gupi.urinary,qol:gupi.qol,severity:gupi.severity},pain:{composite:pain.composite,functional:pain.functional,severity:pain.severity},phq2,age_bracket:ageBracket(a.dob),pregnancy_status:a.pregnancy_status||"none",delivery_type:a.delivery_type||null,weeks_postpartum:a.delivery_date?Math.round((Date.now()-new Date(a.delivery_date).getTime())/(7*24*60*60*1000)):null,constipation_composite:constip,avoidance_count:avoid.length,cue_preference:a.cue_preference||"default",pudendal_flag:triggers.includes("sitting_long")&&pain.composite>6,med_modify:a.med_modify??0,prior_treatment:a.prior_treatment||[],symptom_triggers:(a.symptoms_trigger||[]).filter(x=>x!=="none"),subtype:iciq.subtype,screener_pain:a.screen_pain==="yes",screener_sexual:a.screen_sexual==="yes",pelvic_history:(a.pelvic_history||[]).filter(x=>x!=="none")},
+    baseline:{iciq:{total:iciq.total,severity:iciq.severity,subtype:iciq.subtype},fluts:{F:fluts.F,V:fluts.V,total:fluts.total},fsex:{total:fsex.total},gupi:{total:gupi.total,pain:gupi.pain,urinary:gupi.urinary,qol:gupi.qol,severity:gupi.severity},pain:{composite:pain.composite,functional:pain.functional,severity:pain.severity},phq2,age_bracket:ageBracket(a.dob),pregnancy_status:a.pregnancy_status||"none",delivery_type:a.delivery_type||null,weeks_postpartum:a.delivery_date?Math.round((Date.now()-new Date(a.delivery_date).getTime())/(7*24*60*60*1000)):null,constipation_composite:constip,avoidance_count:avoid.length,cue_preference:a.cue_preference||"default",pudendal_flag:triggers.includes("sitting_long")&&pain.composite>6,med_modify:a.med_modify??0,prior_treatment:a.prior_treatment||[],symptom_triggers:(a.symptoms_trigger||[]).filter(x=>x!=="none"),subtype:iciq.subtype,screener_pain:a.screen_pain==="yes",screener_sexual:a.screen_sexual==="yes",pelvic_history:(a.pelvic_history||[]).filter(x=>x!=="none"),popdi:{score:popdi.score,positiveCount:popdi.positiveCount,bulge:popdi.bulge,highBother:popdi.highBother}},
     treatment:{tier:iciq.total>=13?"Beginner":iciq.total>=6?"Moderate":"Advanced",exercise_ids:(plan.ex||[]).map(e=>e.n),exercise_count:(plan.ex||[]).length,adjunct_types:(plan.adjuncts||[]).map(x=>x.type),adjunct_count:(plan.adjuncts||[]).length,cue_type:a.cue_preference||"default",dx_codes:(plan.dx||[]).map(d=>d.c),risk_level:plan.risk||"green",prenatal_modified:!!plan.prenatal,pt_modified_exercises:false,pt_modified_adjuncts:false,pt_modified_goals:false,pt_rejection:false,review_time_seconds:reviewTimeSec||0},
     outcome:null};
   OUTCOME_RECORDS.push(rec);
@@ -228,6 +228,19 @@ const QOL_IMPACT=[
 {id:"gupi9",text:"If you were to spend the rest of your life with your symptoms just the way they have been during the last week, how would you feel about that?",opts:[["Pleased",1],["Mostly satisfied",2],["Mixed — about equally satisfied and dissatisfied",3],["Mostly dissatisfied",4],["Unhappy",5],["Terrible",6]]},
 ];
 
+// POPDI-6: Pelvic Organ Prolapse Distress Inventory (screener, not diagnostic)
+const POPDI=[
+{id:"popdi_table",text:"Pelvic Organ Prolapse Distress Inventory (POPDI-6)",type:"yn_bother_table",
+ botherOpts:[["Not at all",1],["Somewhat",2],["Moderately",3],["Quite a bit",4]],
+ rows:[
+  {id:"popdi1",label:"Do you usually experience pressure in the lower abdomen?"},
+  {id:"popdi2",label:"Do you usually experience heaviness or dullness in the pelvic area?"},
+  {id:"popdi3",label:"Do you usually have a bulge or something falling out that you can see or feel in the vaginal area?"},
+  {id:"popdi4",label:"Do you usually have to push on the vagina or around the rectum to have or complete a bowel movement?"},
+  {id:"popdi5",label:"Do you usually experience a feeling of incomplete bladder emptying?"},
+  {id:"popdi6",label:"Do you ever have to push up on a bulge in the vaginal area to start or complete urination?"},
+]}];
+
 // Additional clinical intake
 const CLINICAL_EXTRA=[
 {id:"caffeine_intake",text:"How many caffeinated drinks (coffee, tea, soda, energy drinks) do you have per day on average?",opts:[["None",0],["1 per day",1],["2-3 per day",2],["4 or more per day",3]]},
@@ -271,6 +284,8 @@ function sFSEX(a){return{total:(a.fs2a??0)+(a.fs3a??0)+Math.min(a.fs4a??0,3)+Mat
 function sGUPI(a){const p=(a.gupi1a==="yes"?1:0)+(a.gupi1b==="yes"?1:0)+(a.gupi1c==="yes"?1:0)+(a.gupi1d==="yes"?1:0)+(a.gupi2a==="yes"?1:0)+(a.gupi2b==="yes"?1:0)+(a.gupi2c==="yes"?1:0)+(a.gupi2d==="yes"?1:0)+(a.gupi3??0)+(a.gupi4??0);const u=(a.gupi5??0)+(a.gupi6??0);const q=(a.gupi7??0)+(a.gupi8??0)+(a.gupi9??0);const t=p+u+q;return{total:t,pain:p,urinary:u,qol:q,severity:t<=14?"Mild":t<=29?"Moderate":"Severe"}}
 // sPain: composite uses gupi4 (GUPI average pain) as the canonical "average pain" item — measure once, use twice
 function sPain(a){const c=a.pain1??0,v=a.gupi4??0,f=a.pain3??0;const cm=v>0?Math.round((c+v)/2*10)/10:c;const locs=(a.symptoms_location||[]).filter(x=>x!=="none");const trigs=(a.symptoms_trigger||[]).filter(x=>x!=="none");return{current:c,average:v,composite:cm,functional:f,severity:cm===0?"None":cm<=3?"Mild":cm<=6?"Moderate":"Severe",locations:locs,triggers:trigs}}
+// sPOPDI: Pelvic Organ Prolapse Distress Inventory — symptom screener (not diagnostic)
+function sPOPDI(a){const ids=["popdi1","popdi2","popdi3","popdi4","popdi5","popdi6"];const pos=ids.filter(k=>a[k]==="yes");const bothers=pos.map(k=>a[k+"_bother"]??0).filter(b=>b>0);const mean=bothers.length>0?bothers.reduce((s,v)=>s+v,0)/bothers.length:0;const score=Math.round(mean*25);return{score,positiveCount:pos.length,bulge:a.popdi3==="yes"||a.popdi6==="yes",highBother:bothers.some(b=>b>=3)}}
 
 // Expansion Library — shorthand-to-patient-friendly mappings (per MyCareplan Feature Spec §1.4)
 const EXPANSION_LIB={
@@ -406,6 +421,20 @@ function genPlan(iciq,pain,gupi,intake){
   if(intake.prenatal_flag){p.review_flags.push({id:"PRENATAL",type:"always",label:"Prenatal"});p.risk="yellow"}
   if(intake._safety_answer_changed){p.review_flags.push({id:"SAFETY_ANSWER_CHANGED",type:"always",label:"Safety Answer Changed"});p.risk="yellow"}
   if(pudendalFlag)p.review_flags.push({id:"PUDENDAL_SUSPECTED",type:"always",label:"Pudendal Suspected"});
+  // PROLAPSE SCREENING — POPDI-6
+  const popdi=sPOPDI(intake);
+  if(popdi.positiveCount>0){
+    p.dx.push({c:"N81.9",d:"Pelvic organ prolapse, unspecified (suspected — exam confirmation recommended)"});
+    if(popdi.bulge||popdi.highBother){
+      p.risk="yellow";
+      p.review_flags.push({id:"PROLAPSE_REVIEW",type:"always",label:"Prolapse — Clinician Review"});
+      p.prec.push("Suspected symptomatic prolapse — pelvic exam recommended for staging. Consider pessary evaluation.");
+      if(popdi.bulge&&popdi.highBother){p.prec.push("Vaginal bulge/protrusion with significant bother — consider expedited urogynecology referral.")}
+    } else {
+      p.review_flags.push({id:"PROLAPSE_MILD",type:"always",label:"Prolapse — Mild Symptoms"});
+    }
+    if(!p.adjuncts.some(x=>x.n.includes("Pessary")))p.adjuncts.push({type:"device",n:"Pessary Evaluation",d:"Consider vaginal pessary for symptomatic prolapse support.",rx:"Discuss with PT at review. Refer to urogynecology if symptoms persist or worsen."});
+  }
   L("plan_generated",{planId:p.id,risk:p.risk,iciq:iciq.total,tier,prenatal:!!intake.prenatal_flag,review_flags:p.review_flags.map(f=>f.id)});return p;
 }
 
@@ -635,6 +664,35 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
         </td>)}
       </tr>)}</tbody>
     </table></div>;
+  if(q.type==="yn_bother_table"){const hs={textAlign:"left",padding:"8px 12px",borderBottom:`2px solid ${C.g200}`,color:C.g500,fontWeight:600,fontSize:12};const cs={padding:"10px 12px",borderBottom:`1px solid ${C.g100}`,color:C.g700};const rs={width:24,height:24,borderRadius:12,border:`2px solid ${C.g300}`,background:"white",cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",transition:"all .15s"};return<div className="qc fi"><div className="qt">{q.text}</div>
+    <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+      <thead><tr><th style={{width:28,...hs}}>#</th><th style={hs}>Symptom</th><th style={{width:120,textAlign:"center",...hs}}>Response</th></tr></thead>
+      <tbody>{q.rows.map((row,ri)=>{const isYes=ans[row.id]==="yes";return<React.Fragment key={row.id}>
+        <tr style={{background:ri%2?"#FAFAFA":"white"}}>
+          <td style={{...cs,textAlign:"center",fontWeight:600,color:C.g400}}>{ri+1}</td>
+          <td style={{...cs,lineHeight:1.5}}>{row.label}</td>
+          <td style={{...cs,textAlign:"center"}}>
+            <div style={{display:"flex",gap:8,justifyContent:"center",alignItems:"center"}}>
+              {["No","Yes"].map(v=><div key={v}style={{display:"flex",alignItems:"center",gap:4,cursor:"pointer"}}onClick={()=>set(row.id,v.toLowerCase())}>
+                <div style={{...rs,borderColor:ans[row.id]===v.toLowerCase()?(v==="Yes"?C.pink:C.g400):C.g300,background:ans[row.id]===v.toLowerCase()?(v==="Yes"?C.pink:C.g400):"white"}}>
+                  {ans[row.id]===v.toLowerCase()&&<div style={{width:8,height:8,borderRadius:4,background:"white"}}/>}
+                </div>
+                <span style={{fontSize:12,color:ans[row.id]===v.toLowerCase()?C.g700:C.g400}}>{v}</span>
+              </div>)}
+            </div>
+          </td>
+        </tr>
+        {isYes&&<tr style={{background:ri%2?"#FAFAFA":"white"}}>
+          <td/>
+          <td colSpan={2}style={{padding:"4px 12px 10px",borderBottom:`1px solid ${C.g100}`}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+              <span style={{fontSize:11,fontWeight:600,color:C.purp}}>Bother:</span>
+              {q.botherOpts.map(([l,v])=><div key={v}onClick={()=>set(row.id+"_bother",v)}style={{padding:"4px 10px",borderRadius:16,cursor:"pointer",transition:"all .15s",fontSize:12,border:`1.5px solid ${ans[row.id+"_bother"]===v?C.pink:C.g200}`,background:ans[row.id+"_bother"]===v?"rgba(252,34,138,.06)":"white",color:ans[row.id+"_bother"]===v?C.pink:C.g600,fontWeight:ans[row.id+"_bother"]===v?600:400}}>{l}</div>)}
+            </div>
+          </td>
+        </tr>}
+      </React.Fragment>})}</tbody>
+    </table></div>}
   if(q.type==="yn")return<div className="qc fi"><div className="qt">{q.text}</div><div style={{display:"flex",gap:8}}>{["No","Yes"].map(o=><button key={o}className={`ob ${ans[q.id]===o.toLowerCase()?"s":""}`}style={{flex:1,textAlign:"center"}}onClick={()=>{
     if(q.rf&&o==="No"&&safetyTriggered[q.id]){setShowSafetyModal(q.id);return}
     set(q.id,o.toLowerCase());
@@ -1020,7 +1078,7 @@ function Intake({onDone,mainRef,initialEmail}){
   const[safetyTriggered,setSafetyTriggered]=useState({});const[showSafetyModal,setShowSafetyModal]=useState(null);
   const[triedNext,setTriedNext]=useState(false);
   const[acctPw,setAcctPw]=useState("");const[acctPwC,setAcctPwC]=useState("");const[acctErr,setAcctErr]=useState(null);const doneRef=useRef(false);
-  const set=(k,v)=>{setAns(p=>{const next={...p,[k]:v};if(k==="pregnancy_status"){next.prenatal_flag=v==="pregnant";if(v==="pregnant")L("PRENATAL_PROTOCOL_APPLIED",{context:"PATIENT_INDICATED_ACTIVE_PREGNANCY"});if(v!=="pregnant"){delete next.ex_highrisk_preg;setRfs(r=>r.filter(f=>f.id!=="ex_highrisk_preg"));setSafetyTriggered(s=>{const n={...s};delete n.ex_highrisk_preg;return n})}}if(k==="screen_pain"&&v==="no"){["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d","gupi3","gupi4","pain1","pain3","symptoms_location","symptoms_trigger"].forEach(key=>delete next[key])}if(k==="screen_sexual"&&v==="no"){["fs2a","fs2b","fs3a","fs3b","fs4a","fs4b","fs5a","fs5b"].forEach(key=>delete next[key])}return next})};
+  const set=(k,v)=>{setAns(p=>{const next={...p,[k]:v};if(k==="pregnancy_status"){next.prenatal_flag=v==="pregnant";if(v==="pregnant")L("PRENATAL_PROTOCOL_APPLIED",{context:"PATIENT_INDICATED_ACTIVE_PREGNANCY"});if(v!=="pregnant"){delete next.ex_highrisk_preg;setRfs(r=>r.filter(f=>f.id!=="ex_highrisk_preg"));setSafetyTriggered(s=>{const n={...s};delete n.ex_highrisk_preg;return n})}}if(k==="screen_pain"&&v==="no"){["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d","gupi3","gupi4","pain1","pain3","symptoms_location","symptoms_trigger"].forEach(key=>delete next[key])}if(k==="screen_sexual"&&v==="no"){["fs2a","fs2b","fs3a","fs3b","fs4a","fs4b","fs5a","fs5b"].forEach(key=>delete next[key])}if(k.startsWith("popdi")&&!k.includes("_bother")&&v==="no"){delete next[k+"_bother"]}return next})};
   const togM=(k,v)=>setAns(p=>{
     const cur=p[k]||[];
     if(cur.includes(v)){const next=cur.filter(x=>x!==v);
@@ -1055,6 +1113,7 @@ function Intake({onDone,mainRef,initialEmail}){
     {t:"Bladder Leakage",s:"ICIQ-UI Short Form — thinking about the past 4 weeks.",qs:[...ICIQ]},
     {t:"Urinary Symptoms",s:"ICIQ-FLUTS — how your urinary function has been over the past 4 weeks.",qs:[...FLUTS,...GUPI_URINARY]},
     {t:"Bowel Health",s:"A few questions about your bowel habits.",qs:BOWEL},
+    {t:"Prolapse Screening",s:"POPDI-6 — pelvic organ prolapse symptom screening.",qs:POPDI},
     {t:"Pain & Discomfort",s:"Genitourinary pain + current pain assessment. Over the past week.",qs:GUPI_PAIN,cond:a=>a.screen_pain==="yes"},
     {t:"Sexual Health",s:"ICIQ-FLUTSsex — over the past 4 weeks. All answers are confidential.",qs:FLUTSSEX,cond:a=>a.screen_sexual==="yes"},
     {t:"Quality of Life",s:"How your symptoms have affected your life over the past week.",qs:QOL_IMPACT},
@@ -1083,17 +1142,19 @@ function Intake({onDone,mainRef,initialEmail}){
   const page1Incomplete=step===0&&(!ans.name_first||!ans.name_last||!ans.dob||!ans.pregnancy_status||!ans.insurance_type||!ans.email);
   // Block on screener step: require all 4 screener answers
   const screenerIncomplete=step===3&&(!ans.screen_urinary||!ans.screen_bowel||!ans.screen_pain||!ans.screen_sexual);
+  // Block on POPDI-6 step: require all 6 yes/no answers + bother for each "yes"
+  const popdiIncomplete=steps[step]?.qs===POPDI&&(POPDI[0].rows.some(r=>ans[r.id]===undefined)||POPDI[0].rows.some(r=>ans[r.id]==="yes"&&ans[r.id+"_bother"]===undefined));
   // Block on safety (step 1) for ANY red flag, block on exclusions (step 2) for ANY exclusion
-  const blocked=(step===0&&(isUnder18||page1Incomplete))||(step===1&&hasAnyRF)||(step===2&&hasExclusion)||screenerIncomplete;
+  const blocked=(step===0&&(isUnder18||page1Incomplete))||(step===1&&hasAnyRF)||(step===2&&hasExclusion)||screenerIncomplete||popdiIncomplete;
   useEffect(()=>{
     if(step!==steps.length||doneRef.current)return;doneRef.current=true;
-    const iciq=sICIQ(ans),pain=sPain(ans),gupi=sGUPI(ans),fluts=sFLUTS(ans),fsex=sFSEX(ans),plan=genPlan(iciq,pain,gupi,ans);
+    const iciq=sICIQ(ans),pain=sPain(ans),gupi=sGUPI(ans),fluts=sFLUTS(ans),fsex=sFSEX(ans),popdi=sPOPDI(ans),plan=genPlan(iciq,pain,gupi,ans);
     L("intake_done",{iciq:iciq.total,pain:pain.composite,gupi:gupi.total});
     const phq2Total=calcPHQ2(ans);
     const depressionFlag=phq2Total>=3?{positive:true,score:phq2Total,maxScore:6,interest:ans.phq2_interest||0,mood:ans.phq2_mood||0,threshold:3,recommendation:"PHQ-9 full screening recommended. Consider mental health resource referral.",oaip_report:{flagType:"DEPRESSION_RISK",severity:phq2Total>=5?"HIGH":"MODERATE",score:phq2Total,maxScore:6,timestamp:new Date().toISOString()}}:{positive:false,score:phq2Total};
-    sharedIntake={ans,iciq,pain,gupi,fluts,fsex,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,name:(ans.name_first||"")+" "+(ans.name_last||""),physicianName:ans.physician_name,physicianFax:ans.physician_fax,physicianNPI:ans.physician_npi_id,safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],userId:authSession?.userId,screeners:{urinary:ans.screen_urinary,bowel:ans.screen_bowel,pain:ans.screen_pain,sexual:ans.screen_sexual},pelvicHistory:ans.pelvic_history||[]};
+    sharedIntake={ans,iciq,pain,gupi,fluts,fsex,popdi,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,name:(ans.name_first||"")+" "+(ans.name_last||""),physicianName:ans.physician_name,physicianFax:ans.physician_fax,physicianNPI:ans.physician_npi_id,safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],userId:authSession?.userId,screeners:{urinary:ans.screen_urinary,bowel:ans.screen_bowel,pain:ans.screen_pain,sexual:ans.screen_sexual},pelvicHistory:ans.pelvic_history||[]};
     if(depressionFlag.positive)L("depression_screen_positive",{score:phq2Total,severity:phq2Total>=5?"HIGH":"MODERATE",patient:(ans.name_first||"")+" "+(ans.name_last||"")});
-    if(authSession){db("upsertPatient",{userId:authSession.userId,email:authSession.email,name:sharedIntake.name,ans,iciq,pain,gupi,fluts,fsex,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,physicianName:ans.physician_name||"",physicianFax:ans.physician_fax||"",physicianNPI:ans.physician_npi_id||"",safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],status:"pending_review",createdAt:new Date().toISOString()})}
+    if(authSession){db("upsertPatient",{userId:authSession.userId,email:authSession.email,name:sharedIntake.name,ans,iciq,pain,gupi,fluts,fsex,popdi,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,physicianName:ans.physician_name||"",physicianFax:ans.physician_fax||"",physicianNPI:ans.physician_npi_id||"",safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],status:"pending_review",createdAt:new Date().toISOString()})}
     if(onDone)onDone();
   },[step]);
   if(step===steps.length)return null;
@@ -1326,7 +1387,7 @@ function Month12CheckIn(){
 }
 
 function MyCareplan({data}){
-  const{ans,iciq,pain,gupi,fluts,fsex,plan}=data;
+  const{ans,iciq,pain,gupi,fluts,fsex,popdi:_popdiC,plan}=data;const popdi=_popdiC||sPOPDI(ans);
   const[tab,setTab]=useState("scores");
   const[expanded,setExpanded]=useState({});
   const toggle=(id)=>setExpanded(p=>({...p,[id]:!p[id]}));
@@ -1574,6 +1635,7 @@ function MyCareplan({data}){
         <div className="cp-rpt-section"><div className="cp-rpt-h">Clinical Scores</div>
           <div className="cp-rpt-row"><span className="cp-rl">ICIQ-UI SF</span><span className="cp-rv">{iciq.total}/21 — {iciq.severity}, {iciq.subtype}</span></div>
           <div className="cp-rpt-row"><span className="cp-rl">FLUTS</span><span className="cp-rv">F: {fluts?.F||0}/12 · V: {fluts?.V||0}/12</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">POPDI-6</span><span className="cp-rv">{popdi.positiveCount}/6 positive{popdi.positiveCount>0?` (score: ${popdi.score}/100)${popdi.bulge?" — BULGE SYMPTOMS":""}`:""}</span></div>
           <div className="cp-rpt-row"><span className="cp-rl">FLUTSsex</span><span className="cp-rv">{fsex?.total||0}/12</span></div>
           <div className="cp-rpt-row"><span className="cp-rl">GUPI</span><span className="cp-rv">{gupi.total}/45 — {gupi.severity} (P: {gupi.pain}, U: {gupi.urinary}, Q: {gupi.qol})</span></div>
           <div className="cp-rpt-row"><span className="cp-rl">Pain Composite</span><span className="cp-rv">{pain.composite}/10 — {pain.severity}</span></div>
@@ -1826,7 +1888,7 @@ function PTReview(){
 }
 
 function PTNewIntakeReview({data,onBack}){
-  const{ans,iciq,pain,gupi,fluts,fsex,plan:initPlan}=data;
+  const{ans,iciq,pain,gupi,fluts,fsex,popdi:_popdi,plan:initPlan}=data;const popdi=_popdi||sPOPDI(ans);
   // Editable state for iterative review
   const[plan,setPlan]=useState(JSON.parse(JSON.stringify(initPlan)));
   const[editGoals,setEditGoals]=useState(initPlan.goals.join("\n"));
@@ -1864,7 +1926,7 @@ function PTNewIntakeReview({data,onBack}){
     const cueLbl={biologic:"Body function",imaginative:"Imaginative",breathing:"Breath-based",simple_contract:"Simple contraction",default:"Default"}[ans.cue_preference]||"Default";
     const pelvHx=(ans.pelvic_history||[]).filter(x=>x!=="none");
     const screenLine=`Screening: Urinary=${ans.screen_urinary||"—"}, Bowel=${ans.screen_bowel||"—"}, Pain=${ans.screen_pain||"—"}, Sexual=${ans.screen_sexual||"—"}.${ans.screen_pain==="no"?" Pain section: SCREENED OUT.":""}${ans.screen_sexual==="no"?" Sexual section: SCREENED OUT.":""}`;
-    return `${alertBlock}PHYSICAL THERAPY ENCOUNTER NOTE\nPatient: ${nm} | DOB: ${ans.dob||"—"}${ans.email?` | Email: ${ans.email}`:""}${ans.phone?` | Phone: ${ans.phone}`:""}\nDOS: ${new Date().toISOString().split("T")[0]} | POS: 10 (Telehealth) | Mod: GQ\n\nSUBJECTIVE:\nInitial evaluation. ICIQ-UI SF: ${iciq.total} (${iciq.severity}, ${iciq.subtype}). Tier: ${tier}. FLUTS: F${fluts.F}/V${fluts.V}. GUPI: ${gupi.total} (${gupi.severity}). Pain: ${pain.composite}/10 (${pain.severity}). FLUTSsex: ${fsex.total}.\n${screenLine}\n${pelvHx.length>0?`Pelvic Hx: ${pelvHx.map(x=>x.replace(/_/g," ")).join(", ")}.\n`:""}${ans.patient_goal?`Patient goal: "${ans.patient_goal}"\n`:""}${ans.catchall_pelvic?`Additional concerns: "${ans.catchall_pelvic}"\n`:""}${ans.prior_treatment?`Prior treatment: ${Array.isArray(ans.prior_treatment)?ans.prior_treatment.join(", "):ans.prior_treatment}\n`:""}${ans.medications?`Medications: ${ans.medications}\n`:""}${avoidCt>0?`Activity avoidance: ${avoidArr.filter(x=>x!=="none").join(", ")} (${avoidCt} categories${avoidCt>=3?" — HIGH IMPACT":""})\n`:""}${(ans.med_modify??0)===1?`⚠ MEDICATION MODIFICATION: Patient reports changing prescribed medication due to urinary symptoms. Refer to prescribing provider.\n`:""}${ans._safety_answer_changed?`⚠ SAFETY ANSWER CHANGED: Patient initially indicated a safety flag but subsequently changed answer(s): ${(ans._safety_changes||[]).map(c=>c.id).join(", ")}.\n`:""}Cue preference: ${cueLbl}.\n\nOBJECTIVE:\nValidated instruments administered via AI-augmented telehealth. Red flags: ${REDFLAGS.some(r=>ans[r.id]==="yes")?"POSITIVE — see safety screening":"all negative"}${ans._safety_answer_changed?" (note: patient changed safety answer — flagged)":""}.\nStatus: ${ans.pregnancy_status?.replace(/_/g," ")||"N/A"}${ans.delivery_date?`. Delivery: ${ans.delivery_date} (${Math.round((Date.now()-new Date(ans.delivery_date).getTime())/(7*24*60*60*1000))}wk postpartum)`:""}.${ans.delivery_type?` Delivery type: ${ans.delivery_type.replace(/_/g," ")}.`:""} Constipation: ${(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??3)<=1||(ans.bristol_stool??4)<=2?"Yes (straining: "+ans.bowel_constipation+"/4, frequency: "+(["<1x/wk","1-4x/wk","5-7x/wk","1-2x/day","3+/day"][ans.bowel_frequency??3])+", Bristol: "+(ans.bristol_stool??"-")+")":"No"}.${plan.prenatal?`\n** PRENATAL PELVIC FLOOR PROTOCOL: Patient is currently pregnant. Exercise modifications for supine positioning have been automatically applied. Review for trimester appropriateness.`:""}\n\nASSESSMENT:\n${dx}\n\nPLAN:\nExercises:\n${exList}\n\nAdjuncts/Devices:\n${adjList||"None"}\n\nGoals:\n${editGoals}\n\nPrecautions:\n${editPrec}\n\nProgression:\n${editProg}\n\nFrequency: ${plan.freq}. Duration: ${plan.dur}.\n\nCPT: ${plan.cpt.map(c=>`${c.c} — ${c.d} (${c.u}u)`).join(", ")}\nReview time: ${Math.floor(tSec/60)}m ${tSec%60}s${notes?`\n\nPT CLINICAL NOTES:\n${notes}`:""}\n\nATTESTATION:\nI have reviewed the AI-generated assessment, the patient's individual responses, and the treatment plan. ${notes?"Modifications noted. ":""}This reflects my independent clinical judgment.\n\nSigned: [PT Name, DPT] — ${new Date().toISOString()}`;
+    return `${alertBlock}PHYSICAL THERAPY ENCOUNTER NOTE\nPatient: ${nm} | DOB: ${ans.dob||"—"}${ans.email?` | Email: ${ans.email}`:""}${ans.phone?` | Phone: ${ans.phone}`:""}\nDOS: ${new Date().toISOString().split("T")[0]} | POS: 10 (Telehealth) | Mod: GQ\n\nSUBJECTIVE:\nInitial evaluation. ICIQ-UI SF: ${iciq.total} (${iciq.severity}, ${iciq.subtype}). Tier: ${tier}. FLUTS: F${fluts.F}/V${fluts.V}. GUPI: ${gupi.total} (${gupi.severity}). Pain: ${pain.composite}/10 (${pain.severity}). FLUTSsex: ${fsex.total}.\n${popdi.positiveCount>0?`POPDI-6: ${popdi.positiveCount}/6 positive (score: ${popdi.score}/100).${popdi.bulge?" BULGE/PROTRUSION SYMPTOMS REPORTED.":""}${popdi.highBother?" High bother noted.":""}\n`:"POPDI-6: 0/6 — no prolapse symptoms.\n"}${screenLine}\n${pelvHx.length>0?`Pelvic Hx: ${pelvHx.map(x=>x.replace(/_/g," ")).join(", ")}.\n`:""}${ans.patient_goal?`Patient goal: "${ans.patient_goal}"\n`:""}${ans.catchall_pelvic?`Additional concerns: "${ans.catchall_pelvic}"\n`:""}${ans.prior_treatment?`Prior treatment: ${Array.isArray(ans.prior_treatment)?ans.prior_treatment.join(", "):ans.prior_treatment}\n`:""}${ans.medications?`Medications: ${ans.medications}\n`:""}${avoidCt>0?`Activity avoidance: ${avoidArr.filter(x=>x!=="none").join(", ")} (${avoidCt} categories${avoidCt>=3?" — HIGH IMPACT":""})\n`:""}${(ans.med_modify??0)===1?`⚠ MEDICATION MODIFICATION: Patient reports changing prescribed medication due to urinary symptoms. Refer to prescribing provider.\n`:""}${ans._safety_answer_changed?`⚠ SAFETY ANSWER CHANGED: Patient initially indicated a safety flag but subsequently changed answer(s): ${(ans._safety_changes||[]).map(c=>c.id).join(", ")}.\n`:""}Cue preference: ${cueLbl}.\n\nOBJECTIVE:\nValidated instruments administered via AI-augmented telehealth. Red flags: ${REDFLAGS.some(r=>ans[r.id]==="yes")?"POSITIVE — see safety screening":"all negative"}${ans._safety_answer_changed?" (note: patient changed safety answer — flagged)":""}.\nStatus: ${ans.pregnancy_status?.replace(/_/g," ")||"N/A"}${ans.delivery_date?`. Delivery: ${ans.delivery_date} (${Math.round((Date.now()-new Date(ans.delivery_date).getTime())/(7*24*60*60*1000))}wk postpartum)`:""}.${ans.delivery_type?` Delivery type: ${ans.delivery_type.replace(/_/g," ")}.`:""} Constipation: ${(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??3)<=1||(ans.bristol_stool??4)<=2?"Yes (straining: "+ans.bowel_constipation+"/4, frequency: "+(["<1x/wk","1-4x/wk","5-7x/wk","1-2x/day","3+/day"][ans.bowel_frequency??3])+", Bristol: "+(ans.bristol_stool??"-")+")":"No"}.${plan.prenatal?`\n** PRENATAL PELVIC FLOOR PROTOCOL: Patient is currently pregnant. Exercise modifications for supine positioning have been automatically applied. Review for trimester appropriateness.`:""}\n\nASSESSMENT:\n${dx}\n\nPLAN:\nExercises:\n${exList}\n\nAdjuncts/Devices:\n${adjList||"None"}\n\nGoals:\n${editGoals}\n\nPrecautions:\n${editPrec}\n\nProgression:\n${editProg}\n\nFrequency: ${plan.freq}. Duration: ${plan.dur}.\n\nCPT: ${plan.cpt.map(c=>`${c.c} — ${c.d} (${c.u}u)`).join(", ")}\nReview time: ${Math.floor(tSec/60)}m ${tSec%60}s${notes?`\n\nPT CLINICAL NOTES:\n${notes}`:""}\n\nATTESTATION:\nI have reviewed the AI-generated assessment, the patient's individual responses, and the treatment plan. ${notes?"Modifications noted. ":""}This reflects my independent clinical judgment.\n\nSigned: [PT Name, DPT] — ${new Date().toISOString()}`;
   };
   const genNote=()=>{setEditNote(buildNote());setNoteGenerated(true)};
 
@@ -1880,6 +1942,7 @@ function PTNewIntakeReview({data,onBack}){
   if(iciq.severity==="Very Severe"&&editExs.length<4)guardrails.push({lvl:"warn",msg:"Very Severe ICIQ score but fewer than 4 exercises — consider whether prescription is sufficient."});
   if(notes.trim().length===0&&(editExs.length!==initPlan.ex.length||editExs.some((e,i)=>JSON.stringify(e)!==JSON.stringify(initPlan.ex[i]))))guardrails.push({lvl:"warn",msg:"You modified exercises but haven't added clinical rationale in the notes. CMS and OAIP require documented reasoning."});
   if(plan.prenatal)guardrails.push({lvl:"info",msg:"PRENATAL PROTOCOL: Supine exercises auto-modified to incline/side-lying. Verify modifications are appropriate for patient's current trimester."});
+  if(sharedIntake?.plan?.review_flags?.some(f=>f.id==="PROLAPSE_REVIEW"))guardrails.push({lvl:"alert",msg:"PROLAPSE SUSPECTED: Patient reported bulge/protrusion or significant bother on POPDI-6. Pelvic exam recommended for staging. Consider pessary evaluation or urogynecology referral."});
   if(!noteGenerated)guardrails.push({lvl:"info",msg:"Generate and review the encounter note before approving."});
 
   const tryApprove=()=>{if(guardrails.some(g=>g.lvl==="alert"||g.lvl==="warn"))setShowGuardrails(true);else doFinalApprove()};
@@ -1916,6 +1979,8 @@ function PTNewIntakeReview({data,onBack}){
       if((ans.med_modify??0)===1)alerts.push({sev:"warn",msg:"⚠ MEDICATION MODIFICATION: Patient reports changing prescribed medication."});
       if(ans._safety_answer_changed)alerts.push({sev:"alert",msg:`⚠ SAFETY ANSWER CHANGED: Patient changed safety answer(s) during intake.`});
       const phq2A=(ans.phq2_interest||0)+(ans.phq2_mood||0);if(phq2A>=3)alerts.push({sev:phq2A>=5?"alert":"warn",msg:`🚨 PHQ-2 Positive (${phq2A}/6) — depression risk. Full PHQ-9 recommended.`});
+      if(popdi.positiveCount>0&&(popdi.bulge||popdi.highBother))alerts.push({sev:"alert",msg:`POPDI-6: ${popdi.bulge?"Bulge/protrusion symptoms reported":"High bother noted"} (${popdi.positiveCount}/6 positive, score ${popdi.score}/100). Pelvic exam recommended for prolapse staging.`});
+      else if(popdi.positiveCount>0)alerts.push({sev:"info",msg:`POPDI-6: ${popdi.positiveCount}/6 positive (score ${popdi.score}/100). Mild prolapse symptoms — conservative management appropriate.`});
       if(alerts.length===0)return null;
       return<div style={{marginBottom:14}}>
         <div style={{fontSize:12,fontWeight:700,color:C.rd,marginBottom:6}}>CLINICAL ALERTS — Review before approving</div>
@@ -1924,9 +1989,10 @@ function PTNewIntakeReview({data,onBack}){
     })()}
 
     {/* SCORE SUMMARY */}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:10,marginBottom:14}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr 1fr",gap:10,marginBottom:14}}>
       <div className="sc"><div className="scl2">ICIQ-UI SF</div><div className="scv2"style={{color:C.pink}}>{iciq.total}</div><Bdg sev={iciq.severity}/><div className="scs">{iciq.subtype} · 0–21</div></div>
       <div className="sc"><div className="scl2">FLUTS</div><div className="scv2"style={{color:C.purp}}>{fluts.total}</div><div className="scs">F:{fluts.F}/12 V:{fluts.V}/12</div></div>
+      <div className="sc"><div className="scl2">POPDI-6</div><div className="scv2"style={{color:popdi.positiveCount>0?C.or:C.gn}}>{popdi.positiveCount}/6</div><div className="scs">{popdi.positiveCount>0?(popdi.bulge?"Bulge":"Positive"):"Negative"}</div></div>
       <div className="sc"><div className="scl2">FLUTSsex</div><div className="scv2"style={{color:C.purpL}}>{fsex.total}</div><div className="scs">Sexual symptom score</div></div>
       <div className="sc"><div className="scl2">GUPI-F</div><div className="scv2"style={{color:C.blue}}>{gupi.total}</div><Bdg sev={gupi.severity}/><div className="scs">P:{gupi.pain}/23 U:{gupi.urinary}/10 Q:{gupi.qol}/12</div></div>
       <div className="sc"><div className="scl2">Pain</div><div className="scv2"style={{color:C.or}}>{pain.composite}</div><Bdg sev={pain.severity}/><div className="scs">Fn: {["None","Mild","Mod","Sev","Cannot"][pain.functional]}</div></div>
@@ -2015,6 +2081,10 @@ function PTNewIntakeReview({data,onBack}){
       </Section>
       <Section title="ICIQ-FLUTS — Voiding" tag={`V: ${fluts.V}/12`}>
         {FLUTS.filter(q=>["fl6a","fl6b","fl7a","fl7b","fl8a","fl8b"].includes(q.id)).map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+"..."} value={getOptLabel(FLUTS,q.id,ans[q.id])} score={q.id.endsWith("a")?getOptScore(FLUTS,q.id,ans[q.id]):undefined}/>)}
+      </Section>
+      <Section title="POPDI-6 — Prolapse Screening" tag={`${popdi.positiveCount}/6 positive`}>
+        {POPDI[0].rows.map(row=>{const bl={1:"Not at all",2:"Somewhat",3:"Moderately",4:"Quite a bit"};return<AnsRow key={row.id} label={row.label.slice(0,100)+(row.label.length>100?"...":"")} value={ans[row.id]==="yes"?`Yes (bother: ${bl[ans[row.id+"_bother"]]||"—"})`:(ans[row.id]==="no"?"No":"—")}/>})}
+        {popdi.bulge&&<div style={{fontSize:11,color:C.rd,fontWeight:600,marginTop:4}}>Bulge/protrusion symptoms reported — pelvic exam recommended</div>}
       </Section>
       <Section title="FLUTSsex" tag={`Score: ${fsex.total}`}>
         {FLUTSSEX.map(q=><AnsRow key={q.id} label={q.text.slice(0,80)+"..."} value={getOptLabel(FLUTSSEX,q.id,ans[q.id])} score={q.id.endsWith("a")?getOptScore(FLUTSSEX,q.id,ans[q.id]):undefined}/>)}
