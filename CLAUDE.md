@@ -116,3 +116,41 @@ Two user types: **patients** (intake flow) and **physical therapists** (review p
 - NEVER use python-docx to rewrite the document - it strips images and formatting
 - Preserve all screenshots, images, and formatting in every edit
 - Only change the specific paragraphs requested - touch nothing else
+
+## DOCX Editing Rules (CRITICAL)
+
+This project contains a regulatory proposal document (`expect_oaip_pilot_proposal_FINAL.docx`).
+When editing this or any .docx file, follow these rules exactly:
+
+### Never regenerate the document
+- NEVER use python-docx, docx-js, pandoc, or any library to read and rewrite the .docx
+- NEVER create a new document and copy content into it
+- These approaches destroy formatting, fonts, spacing, styles, and images
+
+### Use the unpack-edit-repack workflow
+1. **Unpack**: `unzip document.docx -d unpacked/`
+2. **Find the text**: Search `unpacked/word/document.xml` for the exact text to change
+3. **Edit ONLY the text content** inside `<w:t>` tags using precise string replacement
+4. **Never touch XML tags or attributes** — no changes to `<w:rPr>`, `<w:pPr>`, `<w:tblPr>`, styles, fonts, spacing, or any formatting elements
+5. **Repack**: `cd unpacked && zip -r ../output.docx . -x ".*" && cd ..`
+
+### Scope discipline
+- ONLY modify the exact text I ask you to change
+- NEVER modify the Executive Summary unless I explicitly say to
+- NEVER modify sections, paragraphs, or sentences I didn't mention
+- NEVER "improve" or "clean up" nearby text
+- NEVER add or remove paragraphs unless I explicitly ask
+- If you're unsure whether something should change, ask me first
+
+### When inserting new content
+- Copy the XML structure (paragraph element with formatting properties) from an adjacent bullet or paragraph in the same section
+- Preserve the exact same `<w:rPr>` (run properties) and `<w:pPr>` (paragraph properties) as siblings
+- Use XML entities for smart quotes: `&#x2019;` for apostrophes, `&#x201C;` / `&#x201D;` for double quotes
+
+### Verification
+- After repacking, unzip again and grep for your changes to confirm they landed
+- Check that the file size is roughly the same (not drastically smaller, which means content was lost)
+
+## File Notes
+- The canonical proposal is `expect_oaip_pilot_proposal_FINAL.docx` (or whichever I specify as the base)
+- The `~ prefixed files are Word lock files — ignore them
