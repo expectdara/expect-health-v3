@@ -73,7 +73,7 @@ function buildOutcomeRecord(intake,plan,reviewTimeSec){
 function completeOutcomeRecord(recordId,baseline,week8){
   const rec=OUTCOME_RECORDS.find(r=>r.id===recordId);if(!rec)return null;
   const iciqD=baseline.iciq-(week8.iciq??baseline.iciq),painD=baseline.pain-(week8.pain??baseline.pain),fsexD=baseline.fsex-(week8.fsex??baseline.fsex),phq2D=baseline.phq2-(week8.phq2??baseline.phq2);
-  rec.outcome={iciq_delta:iciqD,pain_delta:painD,fsex_delta:fsexD,phq2_delta:phq2D,bowel_change:week8.bowel||"same",nps:week8.nps??0,activities_resumed:week8.activities_status||"no",adherence_rate:week8.adherence_rate??0,dropout:false,adverse_event:false,clinically_meaningful:iciqD>=3};
+  rec.outcome={iciq_delta:iciqD,pain_delta:painD,fsex_delta:fsexD,phq2_delta:phq2D,bowel_change:week8.bowel||"same",prolapse_followup:week8.prolapse_followup||null,nps:week8.nps??0,activities_resumed:week8.activities_status||"no",adherence_rate:week8.adherence_rate??0,dropout:false,adverse_event:false,clinically_meaningful:iciqD>=3};
   L("OUTCOME_RECORD_COMPLETED",{recordId:rec.id,iciq_delta:iciqD,clinically_meaningful:rec.outcome.clinically_meaningful});
   return rec;
 }
@@ -1228,7 +1228,9 @@ function Week8CheckIn({baseline,onComplete}){
   if(baseline.fsex>0)steps.push({id:"fsex",title:"Sexual Symptom Check-In",qs:FLUTSSEX.filter(q=>q.id.endsWith("a")).map(q=>({...q,id:"c8_"+q.id}))});
   // Step 4: Bowel (conditional)
   if(baseline.constipation)steps.push({id:"bowel",title:"Bowel Symptom Check-In",qs:[{id:"c8_bowel",text:"Have your bowel symptoms changed since starting the program?",opts:[["Better","better"],["About the same","same"],["Worse","worse"]]}]});
-  // Step 5: Avoided activities
+  // Step 5: Prolapse follow-up (conditional on positive POPDI-6 at intake)
+  if(baseline.popdi_positive)steps.push({id:"prolapse",title:"Prolapse Follow-Up",qs:[{id:"c8_prolapse_followup",text:"At your intake, you reported prolapse symptoms. Did you follow up with a provider for a pelvic exam or pessary evaluation?",opts:[["Yes","yes"],["Not yet","not_yet"],["Not applicable","na"]]}]});
+  // Step 6: Avoided activities
   if(baseline.avoid&&baseline.avoid.length>0)steps.push({id:"activities",title:"Return to Activities",custom:true});
   // Step 6: NPS
   steps.push({id:"nps",title:"Program Satisfaction",qs:[{id:"c8_nps",text:"How likely are you to recommend this program to a friend or family member?",type:"scale",min:0,max:10,lo:"Not at all likely",hi:"Extremely likely"}]});
@@ -1245,13 +1247,14 @@ function Week8CheckIn({baseline,onComplete}){
 
   const finish=()=>{
     const iciqScore=c8ICIQ(ans);const painScore=c8Pain(ans);const phq2Score=c8PHQ2(ans);const fsexScore=c8FSEX(ans);
-    const results={iciq:iciqScore,pain:painScore,phq2:phq2Score,fsex:fsexScore,bowel:ans.c8_bowel,nps:ans.c8_nps,activities_status:ans.c8_activities_status,activities_note:ans.c8_activities_note,date:new Date().toLocaleDateString("en-US",{month:"2-digit",day:"2-digit"}),submitted:true};
+    const results={iciq:iciqScore,pain:painScore,phq2:phq2Score,fsex:fsexScore,bowel:ans.c8_bowel,prolapse_followup:ans.c8_prolapse_followup,nps:ans.c8_nps,activities_status:ans.c8_activities_status,activities_note:ans.c8_activities_note,date:new Date().toLocaleDateString("en-US",{month:"2-digit",day:"2-digit"}),submitted:true};
     // Audit events
     L("checkin_week8_complete",{iciq_intake:baseline.iciq,iciq_week8:iciqScore,iciq_delta:baseline.iciq-iciqScore,phq2:phq2Score,nps:ans.c8_nps});
     if(baseline.iciq-iciqScore<1)L("PT_ALERT_NO_ICIQ_PROGRESS",{iciq_intake:baseline.iciq,iciq_week8:iciqScore,note:"ICIQ improvement <1 point at Week 8"});
     if(phq2Score>=3)L("depression_screen_positive",{score:phq2Score,severity:phq2Score>=5?"HIGH":"MODERATE",context:"week8_checkin"});
     if(baseline.pain>0&&painScore-baseline.pain>=2)L("CLINICAL_REGRESSION_FLAG",{symptomType:"pain_worsened",intake:baseline.pain,week8:painScore,delta:painScore-baseline.pain});
     if(ans.c8_bowel==="worse")L("BOWEL_REGRESSION",{note:"Patient reports bowel symptoms worse at Week 8"});
+    if(ans.c8_prolapse_followup)L("prolapse_followup_week8",{status:ans.c8_prolapse_followup,note:ans.c8_prolapse_followup==="yes"?"Patient followed up with provider for prolapse evaluation":ans.c8_prolapse_followup==="not_yet"?"Patient has not yet followed up for prolapse evaluation":"Patient reports prolapse follow-up not applicable"});
     if(baseline.fsex>0){const fDelta=baseline.fsex-fsexScore;if(fDelta>0)L("flutsex_improvement",{intake:baseline.fsex,week8:fsexScore,delta:fDelta});else if(fDelta<0)L("flutsex_regression",{intake:baseline.fsex,week8:fsexScore,delta:fDelta})}
     if(baseline.avoid&&baseline.avoid.length>0){results.avoid_resumed=ans.c8_activities_status==="yes"||ans.c8_activities_status==="partially"?baseline.avoid:[];results.avoid_resumed_status=ans.c8_activities_status;results.avoid_resumed_note=ans.c8_activities_note||""}
     // Triggered review flags (Phase 2: discretionary PT review)
@@ -1309,6 +1312,10 @@ function Week8CheckIn({baseline,onComplete}){
             {ans.c8_bowel&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
               <span style={{fontSize:13,color:C.g600}}>Bowel Symptoms</span>
               <span style={{fontSize:13,fontWeight:700,color:ans.c8_bowel==="better"?C.gn:ans.c8_bowel==="worse"?C.rd:C.or}}>{ans.c8_bowel.charAt(0).toUpperCase()+ans.c8_bowel.slice(1)}</span>
+            </div>}
+            {ans.c8_prolapse_followup&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
+              <span style={{fontSize:13,color:C.g600}}>Prolapse Follow-Up</span>
+              <span style={{fontSize:13,fontWeight:700,color:ans.c8_prolapse_followup==="yes"?C.gn:ans.c8_prolapse_followup==="not_yet"?C.or:C.g400}}>{ans.c8_prolapse_followup==="yes"?"Yes — saw provider":ans.c8_prolapse_followup==="not_yet"?"Not yet":"N/A"}</span>
             </div>}
             {ans.c8_nps!==undefined&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0"}}>
               <span style={{fontSize:13,color:C.g600}}>NPS Score</span>
@@ -1421,7 +1428,7 @@ function MyCareplan({data}){
   // Month adherence days
   const monthDays=adherenceLog.filter(e=>{const d=new Date(e.date);const now=new Date();return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()}).length;
   // Baseline for Week 8
-  const baseline={iciq:iciq.total,pain:pain.composite,phq2,fsex:fsex.total,constipation:(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??3)<=1||(ans.bristol_stool??4)<=2,avoid:avF};
+  const baseline={iciq:iciq.total,pain:pain.composite,phq2,fsex:fsex.total,constipation:(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??3)<=1||(ans.bristol_stool??4)<=2,avoid:avF,popdi_positive:(popdi?.positiveCount||0)>0};
   const onCheckinComplete=(results)=>{setWeek8Results(results);setShowCheckin(false);if(sharedIntake){sharedIntake.week8=results;if(sharedIntake.userId)db("updatePatientWeek8",{userId:sharedIntake.userId,week8:results});if(sharedIntake.outcomeRecordId){const adhRate=adherenceLog.length>0?Math.round(adherenceLog.filter(e=>e.status==="yes").length/adherenceLog.length*100):0;const orec=completeOutcomeRecord(sharedIntake.outcomeRecordId,baseline,{...results,adherence_rate:adhRate});if(orec&&orec.outcome)db("completeOutcomeRecord",{recordId:sharedIntake.outcomeRecordId,outcome:orec.outcome})}}};
   // Polished care plan CSS (from sample-patient-care-plan design)
   const cpCSS=`
@@ -2296,7 +2303,7 @@ function PTPatientDetail({pt,onBack}){
           </div>
         </div>
       </div>
-      {w8.bowel&&<div style={{marginTop:10,fontSize:12,color:w8.bowel==="better"?C.gn:w8.bowel==="worse"?C.rd:C.or}}>Bowel: {w8.bowel} · NPS: {w8.nps}/10 · Activities resumed: {(w8.avoid_resumed||[]).join(", ")||"None"}</div>}
+      {w8.bowel&&<div style={{marginTop:10,fontSize:12,color:w8.bowel==="better"?C.gn:w8.bowel==="worse"?C.rd:C.or}}>Bowel: {w8.bowel} · NPS: {w8.nps}/10 · Activities resumed: {(w8.avoid_resumed||[]).join(", ")||"None"}{w8.prolapse_followup?` · Prolapse f/u: ${w8.prolapse_followup}`:""}</div>}
     </div>}
     {/* Week 8 Encounter Note */}
     {w8&&intake&&<div className="card"style={{marginBottom:14}}>
@@ -2309,7 +2316,7 @@ SCORE DELTAS:
 ICIQ: ${intake.iciq} → ${w8.iciq} (${intake.iciq-w8.iciq>0?"-":""}${intake.iciq-w8.iciq} pts)
 Pain: ${intake.pain} → ${w8.pain} (${intake.pain-w8.pain>0?"-":""}${intake.pain-w8.pain})
 PHQ-2: ${intake.phq2} → ${w8.phq2} (${w8.phq2>=3?"POSITIVE":"Negative"})
-${intake.fsex>0?`FLUTSsex: ${intake.fsex} → ${w8.fsex}\n`:""}Bowel: ${w8.bowel||"N/A"}
+${intake.fsex>0?`FLUTSsex: ${intake.fsex} → ${w8.fsex}\n`:""}Bowel: ${w8.bowel||"N/A"}${w8.prolapse_followup?`\nProlapse follow-up: ${w8.prolapse_followup==="yes"?"Patient saw provider for pelvic exam/pessary evaluation":w8.prolapse_followup==="not_yet"?"Patient has not yet followed up":"N/A"}`:""}
 NPS: ${w8.nps}/10
 
 STATUS: ${status?status.label:"—"}
