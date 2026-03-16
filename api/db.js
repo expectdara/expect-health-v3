@@ -96,6 +96,7 @@ const PT_ONLY = new Set([
   "functions:listPatientsByStatus",
   "functions:updatePatientPlan",
   "functions:updatePatientWeek8",
+  "functions:insertOutcomeRecord",
   "functions:completeOutcomeRecord",
   "functions:seedDemoPatient",
   "functions:listPtUsers",
@@ -110,7 +111,6 @@ const PATIENT_SELF = new Set([
   "functions:getPatientByEmail",
   "functions:upsertPatient",
   "functions:insertAuditEvent",
-  "functions:insertOutcomeRecord",
 ]);
 
 // OAIP shared access code — fail closed if env var not set
@@ -132,6 +132,11 @@ export default async function handler(req, res) {
   if (!checkRate(ip)) return res.status(429).json({ error: "Too many requests" });
 
   if (!process.env.CONVEX_URL) return res.status(503).json({ error: "Database not configured" });
+
+  // Payload validation
+  if (!req.body || typeof req.body !== "object") return res.status(400).json({ error: "Missing request body" });
+  const bodyStr = JSON.stringify(req.body);
+  if (bodyStr.length > 500_000) return res.status(413).json({ error: "Payload too large" });
 
   let { fn, args } = req.body;
   if (!fn || !ALLOWED.has(fn)) return res.status(400).json({ error: "Invalid function" });
@@ -171,8 +176,17 @@ export default async function handler(req, res) {
       if (fn === "functions:getPatientByUserId" && args?.userId !== uid) {
         return res.status(403).json({ error: "Access denied" });
       }
+      if (fn === "functions:getPatientByEmail" && args?.email !== authenticatedSession.email) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       if (fn === "functions:upsertPatient" && args?.userId !== uid) {
         return res.status(403).json({ error: "Access denied" });
+      }
+      if (fn === "functions:insertAuditEvent") {
+        // Enforce userId matches session — reject if missing or mismatched
+        if (!args?.userId || args.userId !== uid) {
+          return res.status(403).json({ error: "Access denied" });
+        }
       }
     }
   }
