@@ -37,19 +37,22 @@ Two user types: **patients** (intake flow) and **physical therapists** (review p
 - Deployed on Vercel with `/api/npi` serverless proxy for NPI lookups.
 - Logo assets in `public/`: `Expect_Logo_WhiteTM.png`, `Exepect_Submark_White.png`.
 
-### Clinical Instruments
-- **ICIQ-UI Short Form** (0-21) — incontinence severity + subtype classification
-- **ICIQ-FLUTS** (0-44) — filling, voiding, incontinence subscales
-- **ICIQ-FLUTSsex** (0-12) — sexual symptom burden
+### Clinical Instruments (Custom Clinical Battery)
+This is NOT the full standard ICIQ-FLUTS. Per Dr. Dugan, the intake uses a custom clinical battery:
+- **ICIQ-UI Short Form** (0-21) — incontinence severity + subtype classification (full standard instrument)
+- **Selected FLUTS Filling/Voiding items** (F/V, 0-24) — nocturia, urgency, daytime frequency (Filling) + hesitancy, straining, intermittency (Voiding). FLUTS-I incontinence subscale omitted (ICIQ-UI SF is the primary incontinence instrument)
+- **ICIQ-FLUTSsex** (0-12) — sexual symptom burden (full standard instrument)
 - **GUPI-F** (0-45) — genitourinary pain index (pain + urinary + QOL)
 - **PHQ-2** (0-6) — depression screening (validated wording, do NOT modify)
 - **Bristol Stool Scale** (types 1-7) — bowel form assessment
+- **POPDI-6** (0-100 distress score) — pelvic organ prolapse symptom screening. Yes/no + conditional bother. Any positive → suspected prolapse; bulge/highBother → clinician review
 - Pain composite (custom) + bowel frequency + straining
 
 ### Key Clinical Logic
 - **3-tier exercise system**: Beginner (ICIQ 13-21, 12wk), Moderate (6-12, 8wk), Advanced (1-5, 6wk)
 - **Constipation composite**: straining >= 2 OR frequency < 3x/wk OR Bristol 1-2
 - **Pudendal neuralgia flag**: sitting_long trigger + pain composite > 6 → G57.91 dx
+- **Prolapse routing**: POPDI-6 any positive → N81.9 dx; bulge (popdi3/popdi6) or highBother (≥3) → yellow risk + PROLAPSE_REVIEW; pessary adjunct for all positive
 - **Depression flag**: PHQ-2 >= 3 → OAIP red flag (MODERATE 3-4, HIGH 5-6)
 - **Prenatal protocol**: pregnancy flag → exercise substitutions + vena cava precaution
 
@@ -61,7 +64,7 @@ Two user types: **patients** (intake flow) and **physical therapists** (review p
 
 ### When editing `src/app.jsx`:
 - This is the platform source. After editing, run `npm run build` to compile to `public/app.js`.
-- All scoring functions: `sICIQ()`, `sFLUTS()`, `sFSEX()`, `sGUPI()`, `sPain()` — deterministic, no side effects.
+- All scoring functions: `sICIQ()`, `sFLUTS()`, `sFSEX()`, `sGUPI()`, `sPain()`, `sPOPDI()` — deterministic, no side effects.
 - `genPlan()` is the care plan generator — all adjunct/dx/exercise logic lives here.
 - `EXPANSION_LIB` is the adjunct library — 3+ char match triggers smart phrase auto-population.
 - `L()` is the audit logger — call it for any clinically significant event.
