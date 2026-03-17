@@ -55,6 +55,8 @@ const QUERIES = new Set([
   "functions:listOutcomeRecords",
   "functions:listDemoPatients",
   "functions:listPtUsers",
+  "functions:getAdherenceByUserId",
+  "functions:listActivePushSubscriptions",
 ]);
 
 const ALLOWED = new Set([
@@ -69,6 +71,9 @@ const ALLOWED = new Set([
   "functions:completeOutcomeRecord",
   "functions:seedDemoPatient",
   "functions:createPtUser",
+  "functions:logAdherenceEntry",
+  "functions:savePushSubscription",
+  "functions:deletePushSubscription",
 ]);
 
 // Functions requiring a valid session token
@@ -88,6 +93,10 @@ const AUTH_REQUIRED = new Set([
   "functions:upsertPatient",
   "functions:insertAuditEvent",
   "functions:insertOutcomeRecord",
+  "functions:getAdherenceByUserId",
+  "functions:logAdherenceEntry",
+  "functions:savePushSubscription",
+  "functions:deletePushSubscription",
 ]);
 
 // Role-based access — which userId prefixes can call which functions
@@ -111,6 +120,10 @@ const PATIENT_SELF = new Set([
   "functions:getPatientByEmail",
   "functions:upsertPatient",
   "functions:insertAuditEvent",
+  "functions:getAdherenceByUserId",
+  "functions:logAdherenceEntry",
+  "functions:savePushSubscription",
+  "functions:deletePushSubscription",
 ]);
 
 // OAIP shared access code — fail closed if env var not set
@@ -188,6 +201,18 @@ export default async function handler(req, res) {
           return res.status(403).json({ error: "Access denied" });
         }
       }
+      if (fn === "functions:getAdherenceByUserId" && args?.userId !== uid) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      if (fn === "functions:logAdherenceEntry" && args?.userId !== uid) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      if (fn === "functions:savePushSubscription" && args?.userId !== uid) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      if (fn === "functions:deletePushSubscription" && args?.userId !== uid) {
+        return res.status(403).json({ error: "Access denied" });
+      }
     }
   }
 
@@ -205,6 +230,7 @@ export default async function handler(req, res) {
       if (!OAIP_CODE || !accessCode || accessCode !== OAIP_CODE) {
         return res.status(403).json({ error: "Invalid access code" });
       }
+      sessionArgs.email = email || "oaip@expect.care";
     } else if (email && password) {
       // PT: individual email + password login
       try {

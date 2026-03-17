@@ -275,3 +275,80 @@ export const listPtUsers = query({
     return await ctx.db.query("ptUsers").collect();
   },
 });
+
+// ===== ADHERENCE LOGS =====
+
+export const logAdherenceEntry = mutation({
+  args: {
+    userId: v.string(),
+    date: v.string(),
+    status: v.string(),
+    note: v.optional(v.string()),
+    createdAt: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("adherenceLogs")
+      .withIndex("by_userId_date", (q) =>
+        q.eq("userId", args.userId).eq("date", args.date)
+      )
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        status: args.status,
+        note: args.note,
+      });
+      return existing._id;
+    }
+    return await ctx.db.insert("adherenceLogs", args);
+  },
+});
+
+export const getAdherenceByUserId = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("adherenceLogs")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .collect();
+  },
+});
+
+// ===== PUSH SUBSCRIPTIONS =====
+
+export const savePushSubscription = mutation({
+  args: {
+    userId: v.string(),
+    subscription: v.any(),
+    createdAt: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("pushSubscriptions")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, { subscription: args.subscription });
+      return existing._id;
+    }
+    return await ctx.db.insert("pushSubscriptions", args);
+  },
+});
+
+export const deletePushSubscription = mutation({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("pushSubscriptions")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .first();
+    if (existing) await ctx.db.delete(existing._id);
+  },
+});
+
+export const listActivePushSubscriptions = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("pushSubscriptions").collect();
+  },
+});

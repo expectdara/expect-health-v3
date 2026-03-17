@@ -1265,6 +1265,7 @@ function Week8CheckIn({baseline,onComplete}){
   const c8Pain=(a)=>Math.round(((a.c8_pain1??0)+(a.c8_pain2??0))/2*10)/10;
   const c8PHQ2=(a)=>(a.c8_phq2_interest??0)+(a.c8_phq2_mood??0);
   const c8FSEX=(a)=>(a.c8_fs2a??0)+(a.c8_fs3a??0)+Math.min(a.c8_fs4a??0,3)+Math.min(a.c8_fs5a??0,3);
+  const c8POPDI=(a)=>{const ids=["popdi1","popdi2","popdi3","popdi4","popdi5","popdi6"];const pos=ids.filter(k=>a["c8_"+k]==="yes");const bothers=pos.map(k=>a["c8_"+k+"_bother"]??0).filter(b=>b>0);const mean=bothers.length>0?bothers.reduce((s,v)=>s+v,0)/bothers.length:0;const score=Math.round(mean*25);return{score,positiveCount:pos.length,bulge:a.c8_popdi3==="yes"||a.c8_popdi6==="yes",highBother:bothers.some(b=>b>=3)}};
 
   // Build conditional steps
   const steps=[];
@@ -1285,8 +1286,11 @@ function Week8CheckIn({baseline,onComplete}){
   if(baseline.fsex>0)steps.push({id:"fsex",title:"Sexual Symptom Check-In",qs:FLUTSSEX.filter(q=>q.id.endsWith("a")).map(q=>({...q,id:"c8_"+q.id}))});
   // Step 4: Bowel (conditional)
   if(baseline.constipation)steps.push({id:"bowel",title:"Bowel Symptom Check-In",qs:[{id:"c8_bowel",text:"Have your bowel symptoms changed since starting the program?",opts:[["Better","better"],["About the same","same"],["Worse","worse"]]}]});
-  // Step 5: Prolapse follow-up (conditional on positive POPDI-6 at intake)
-  if(baseline.popdi_positive)steps.push({id:"prolapse",title:"Prolapse Follow-Up",qs:[{id:"c8_prolapse_followup",text:"At your intake, you reported prolapse symptoms. Did you follow up with a provider for a pelvic exam or pessary evaluation?",opts:[["Yes","yes"],["Not yet","not_yet"],["Not applicable","na"]]}]});
+  // Step 5: Prolapse re-assessment (conditional on positive POPDI-6 at intake)
+  if(baseline.popdi_positive){
+    steps.push({id:"popdi_recheck",title:"Prolapse Symptom Re-Assessment",qs:POPDI.map(q=>{if(q.type==="yn_bother_table")return{...q,id:"c8_"+q.id,rows:q.rows.map(r=>({...r,id:"c8_"+r.id}))};return{...q,id:"c8_"+q.id}})});
+    steps.push({id:"prolapse",title:"Prolapse Follow-Up",qs:[{id:"c8_prolapse_followup",text:"At your intake, you reported prolapse symptoms. Did you follow up with a provider for a pelvic exam or pessary evaluation?",opts:[["Yes","yes"],["Not yet","not_yet"],["Not applicable","na"]]}]});
+  }
   // Step 6: Avoided activities
   if(baseline.avoid&&baseline.avoid.length>0)steps.push({id:"activities",title:"Return to Activities",custom:true});
   // Step 6: NPS
@@ -1296,6 +1300,10 @@ function Week8CheckIn({baseline,onComplete}){
   const canNext=()=>{
     if(!curStep)return false;
     if(curStep.custom)return ans.c8_activities_status!==undefined;
+    if(curStep.id==="popdi_recheck"){
+      const rows=curStep.qs[0]?.rows||[];
+      return rows.every(r=>ans[r.id]!==undefined)&&rows.every(r=>ans[r.id]!=="yes"||ans[r.id+"_bother"]!==undefined);
+    }
     return curStep.qs.every(q=>{
       if(q.conditional&&!q.conditional(ans))return true;
       return ans[q.id]!==undefined;
@@ -1304,21 +1312,43 @@ function Week8CheckIn({baseline,onComplete}){
 
   const finish=()=>{
     const iciqScore=c8ICIQ(ans);const painScore=c8Pain(ans);const phq2Score=c8PHQ2(ans);const fsexScore=c8FSEX(ans);
-    const results={iciq:iciqScore,pain:painScore,phq2:phq2Score,fsex:fsexScore,bowel:ans.c8_bowel,prolapse_followup:ans.c8_prolapse_followup,nps:ans.c8_nps,activities_status:ans.c8_activities_status,activities_note:ans.c8_activities_note,date:new Date().toLocaleDateString("en-US",{month:"2-digit",day:"2-digit"}),submitted:true};
+    const popdiW8=baseline.popdi_positive?c8POPDI(ans):null;
+    const results={iciq:iciqScore,pain:painScore,phq2:phq2Score,fsex:fsexScore,bowel:ans.c8_bowel,prolapse_followup:ans.c8_prolapse_followup,popdi:popdiW8,nps:ans.c8_nps,activities_status:ans.c8_activities_status,activities_note:ans.c8_activities_note,date:new Date().toLocaleDateString("en-US",{month:"2-digit",day:"2-digit"}),submitted:true};
+    // Worsening detection
+    const painWorsened=baseline.pain>0&&painScore-baseline.pain>=2;
+    const bowelWorsened=ans.c8_bowel==="worse";
+    const popdiWorsened=popdiW8&&baseline.popdi_score!==undefined&&popdiW8.score>baseline.popdi_score;
+    const prolapseNoFollowup=ans.c8_prolapse_followup==="not_yet";
+    const iciqWorsened=baseline.iciq-iciqScore<=-3;
+    const phq2Worsened=phq2Score>(baseline.phq2||0);
+    const phq2High=phq2Score>=5&&phq2Worsened;
+    const painSevere=painWorsened&&(painScore-baseline.pain>=4||painScore>=8);
+    const prolapseSevere=popdiW8&&popdiW8.bulge&&popdiW8.highBother;
+    // Tiered concern level
+    let concern="none";
+    if(prolapseNoFollowup&&!popdiWorsened&&!painWorsened&&!bowelWorsened)concern="mild";
+    if(popdiWorsened||bowelWorsened||painWorsened||(prolapseNoFollowup&&(popdiWorsened||painWorsened||bowelWorsened)))concern="moderate";
+    if(painSevere||prolapseSevere||phq2High)concern="high";
+    results.concern=concern;
     // Audit events
-    L("checkin_week8_complete",{iciq_intake:baseline.iciq,iciq_week8:iciqScore,iciq_delta:baseline.iciq-iciqScore,phq2:phq2Score,nps:ans.c8_nps});
+    L("checkin_week8_complete",{iciq_intake:baseline.iciq,iciq_week8:iciqScore,iciq_delta:baseline.iciq-iciqScore,phq2:phq2Score,nps:ans.c8_nps,concern});
     if(baseline.iciq-iciqScore<1)L("PT_ALERT_NO_ICIQ_PROGRESS",{iciq_intake:baseline.iciq,iciq_week8:iciqScore,note:"ICIQ improvement <1 point at Week 8"});
     if(phq2Score>=3)L("depression_screen_positive",{score:phq2Score,severity:phq2Score>=5?"HIGH":"MODERATE",context:"week8_checkin"});
-    if(baseline.pain>0&&painScore-baseline.pain>=2)L("CLINICAL_REGRESSION_FLAG",{symptomType:"pain_worsened",intake:baseline.pain,week8:painScore,delta:painScore-baseline.pain});
-    if(ans.c8_bowel==="worse")L("BOWEL_REGRESSION",{note:"Patient reports bowel symptoms worse at Week 8"});
+    if(painWorsened)L("CLINICAL_REGRESSION_FLAG",{symptomType:"pain_worsened",intake:baseline.pain,week8:painScore,delta:painScore-baseline.pain});
+    if(bowelWorsened)L("BOWEL_REGRESSION",{note:"Patient reports bowel symptoms worse at Week 8"});
     if(ans.c8_prolapse_followup)L("prolapse_followup_week8",{status:ans.c8_prolapse_followup,note:ans.c8_prolapse_followup==="yes"?"Patient followed up with provider for prolapse evaluation":ans.c8_prolapse_followup==="not_yet"?"Patient has not yet followed up for prolapse evaluation":"Patient reports prolapse follow-up not applicable"});
+    if(popdiW8)L("popdi_week8",{baseline_score:baseline.popdi_score,week8_score:popdiW8.score,positiveCount:popdiW8.positiveCount,bulge:popdiW8.bulge,worsened:popdiWorsened});
     if(baseline.fsex>0){const fDelta=baseline.fsex-fsexScore;if(fDelta>0)L("flutsex_improvement",{intake:baseline.fsex,week8:fsexScore,delta:fDelta});else if(fDelta<0)L("flutsex_regression",{intake:baseline.fsex,week8:fsexScore,delta:fDelta})}
     if(baseline.avoid&&baseline.avoid.length>0){results.avoid_resumed=ans.c8_activities_status==="yes"||ans.c8_activities_status==="partially"?baseline.avoid:[];results.avoid_resumed_status=ans.c8_activities_status;results.avoid_resumed_note=ans.c8_activities_note||""}
-    // Triggered review flags (Phase 2: discretionary PT review)
-    if(sharedIntake?.plan?.review_flags){
-      if(baseline.iciq-iciqScore<=-3&&!sharedIntake.plan.review_flags.some(f=>f.id==="CLINICAL_REGRESSION")){sharedIntake.plan.review_flags.push({id:"CLINICAL_REGRESSION",type:"triggered",label:"ICIQ Worsened \u22653"});notifyFlagChange()}
-      if(phq2Score>(baseline.phq2||0)&&!sharedIntake.plan.review_flags.some(f=>f.id==="PHQ2_WORSENING")){sharedIntake.plan.review_flags.push({id:"PHQ2_WORSENING",type:"triggered",label:"PHQ-2 Worsened"});notifyFlagChange()}
-    }
+    // Triggered review flags — ALL worsening types create visible PT flags
+    const addFlag=(id,label)=>{if(sharedIntake?.plan?.review_flags&&!sharedIntake.plan.review_flags.some(f=>f.id===id)){sharedIntake.plan.review_flags.push({id,type:"triggered",label});notifyFlagChange()}};
+    if(iciqWorsened)addFlag("CLINICAL_REGRESSION","ICIQ Worsened \u22653");
+    if(phq2Worsened)addFlag("PHQ2_WORSENING","PHQ-2 Worsened");
+    if(painWorsened)addFlag("PAIN_WORSENED","Pain Worsened \u22652");
+    if(bowelWorsened)addFlag("BOWEL_WORSENED","Bowel Symptoms Worsened");
+    if(popdiWorsened)addFlag("PROLAPSE_WORSENED","Prolapse Symptoms Worsened");
+    if(prolapseNoFollowup)addFlag("PROLAPSE_FOLLOWUP_NEEDED","Prolapse: No Provider Follow-Up");
+    if(concern==="high")addFlag("URGENT_REVIEW","Urgent Clinical Review Required");
     setDone(true);onComplete(results);
   };
 
@@ -1339,10 +1369,16 @@ function Week8CheckIn({baseline,onComplete}){
 
   if(done){
     const iciqDelta=baseline.iciq-c8ICIQ(ans);const painDelta=baseline.pain-c8Pain(ans);const phq2Score=c8PHQ2(ans);const fsexDelta=baseline.fsex-(baseline.fsex>0?c8FSEX(ans):0);
+    const popdiW8Done=baseline.popdi_positive?c8POPDI(ans):null;
+    const popdiDelta=popdiW8Done?(baseline.popdi_score||0)-popdiW8Done.score:0;
+    const painW8=c8Pain(ans);const painUp=baseline.pain>0&&painW8-baseline.pain>=2;
+    const bowelUp=ans.c8_bowel==="worse";const prolapseUp=popdiW8Done&&popdiW8Done.score>(baseline.popdi_score||0);
+    const anyWorsening=painUp||bowelUp||prolapseUp||iciqDelta<=-3;
+    const concern=painUp&&(painW8-baseline.pain>=4||painW8>=8)?"high":prolapseUp&&popdiW8Done.bulge&&popdiW8Done.highBother?"high":phq2Score>=5&&phq2Score>(baseline.phq2||0)?"high":(painUp||bowelUp||prolapseUp)?"moderate":ans.c8_prolapse_followup==="not_yet"?"mild":"none";
     const deltaColor=(d)=>d>0?C.gn:d<0?C.rd:C.or;
-    const deltaArrow=(d)=>d>0?"↓":d<0?"↑":"→";
+    const deltaArrow=(d)=>d>0?"\u2193":d<0?"\u2191":"\u2192";
     return<div className="fi"style={{textAlign:"center",paddingTop:40}}>
-      <div style={{fontSize:48,marginBottom:16}}>🎉</div>
+      <div style={{fontSize:48,marginBottom:16}}>{concern==="high"?"\u26A0\uFE0F":"\uD83C\uDF89"}</div>
       <div className="h1"style={{fontSize:24,marginBottom:8}}>Week 8 Check-In Complete</div>
       <p style={{fontSize:14,color:C.g500,maxWidth:500,margin:"0 auto 24px",lineHeight:1.6}}>Thank you for completing your check-in! Your PT will review your progress.</p>
       <div style={{maxWidth:500,margin:"0 auto",textAlign:"left"}}>
@@ -1351,28 +1387,32 @@ function Week8CheckIn({baseline,onComplete}){
           <div style={{display:"grid",gap:10}}>
             <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
               <span style={{fontSize:13,color:C.g600}}>ICIQ Score</span>
-              <span style={{fontSize:13,fontWeight:700,color:deltaColor(iciqDelta)}}>{baseline.iciq} → {c8ICIQ(ans)} <span>{deltaArrow(iciqDelta)} {Math.abs(iciqDelta)} pts</span></span>
+              <span style={{fontSize:13,fontWeight:700,color:deltaColor(iciqDelta)}}>{baseline.iciq} {"\u2192"} {c8ICIQ(ans)} <span>{deltaArrow(iciqDelta)} {Math.abs(iciqDelta)} pts</span></span>
             </div>
             {iciqDelta>=3&&<div style={{background:"#D1FAE5",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#065F46",fontWeight:600}}>This level of improvement is clinically significant.</div>}
             {baseline.pain>0&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
               <span style={{fontSize:13,color:C.g600}}>Pain Composite</span>
-              <span style={{fontSize:13,fontWeight:700,color:deltaColor(painDelta)}}>{baseline.pain} → {c8Pain(ans)} <span>{deltaArrow(painDelta)}</span></span>
+              <span style={{fontSize:13,fontWeight:700,color:deltaColor(painDelta)}}>{baseline.pain} {"\u2192"} {c8Pain(ans)} <span>{deltaArrow(painDelta)}</span></span>
             </div>}
             <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
               <span style={{fontSize:13,color:C.g600}}>PHQ-2</span>
-              <span style={{fontSize:13,fontWeight:700,color:phq2Score>=3?C.rd:C.gn}}>{phq2Score}/6 {phq2Score>=3?"— Positive":"— Negative"}</span>
+              <span style={{fontSize:13,fontWeight:700,color:phq2Score>=3?C.rd:C.gn}}>{phq2Score}/6 {phq2Score>=3?"\u2014 Positive":"\u2014 Negative"}</span>
             </div>
             {baseline.fsex>0&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
               <span style={{fontSize:13,color:C.g600}}>FLUTSsex</span>
-              <span style={{fontSize:13,fontWeight:700,color:deltaColor(fsexDelta)}}>{baseline.fsex} → {c8FSEX(ans)} <span>{deltaArrow(fsexDelta)}</span></span>
+              <span style={{fontSize:13,fontWeight:700,color:deltaColor(fsexDelta)}}>{baseline.fsex} {"\u2192"} {c8FSEX(ans)} <span>{deltaArrow(fsexDelta)}</span></span>
             </div>}
             {ans.c8_bowel&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
               <span style={{fontSize:13,color:C.g600}}>Bowel Symptoms</span>
               <span style={{fontSize:13,fontWeight:700,color:ans.c8_bowel==="better"?C.gn:ans.c8_bowel==="worse"?C.rd:C.or}}>{ans.c8_bowel.charAt(0).toUpperCase()+ans.c8_bowel.slice(1)}</span>
             </div>}
+            {popdiW8Done&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
+              <span style={{fontSize:13,color:C.g600}}>POPDI-6 (Prolapse)</span>
+              <span style={{fontSize:13,fontWeight:700,color:deltaColor(popdiDelta)}}>{baseline.popdi_score||0} {"\u2192"} {popdiW8Done.score}/100 <span>{popdiW8Done.positiveCount}/6 positive</span></span>
+            </div>}
             {ans.c8_prolapse_followup&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
               <span style={{fontSize:13,color:C.g600}}>Prolapse Follow-Up</span>
-              <span style={{fontSize:13,fontWeight:700,color:ans.c8_prolapse_followup==="yes"?C.gn:ans.c8_prolapse_followup==="not_yet"?C.or:C.g400}}>{ans.c8_prolapse_followup==="yes"?"Yes — saw provider":ans.c8_prolapse_followup==="not_yet"?"Not yet":"N/A"}</span>
+              <span style={{fontSize:13,fontWeight:700,color:ans.c8_prolapse_followup==="yes"?C.gn:ans.c8_prolapse_followup==="not_yet"?C.or:C.g400}}>{ans.c8_prolapse_followup==="yes"?"Yes \u2014 saw provider":ans.c8_prolapse_followup==="not_yet"?"Not yet":"N/A"}</span>
             </div>}
             {ans.c8_nps!==undefined&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0"}}>
               <span style={{fontSize:13,color:C.g600}}>NPS Score</span>
@@ -1380,11 +1420,24 @@ function Week8CheckIn({baseline,onComplete}){
             </div>}
           </div>
         </div>
+        {/* Patient-facing worsening guidance */}
+        {ans.c8_prolapse_followup==="not_yet"&&<div className="card"style={{borderLeft:"4px solid #D97706",background:"#FFFBEB"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#92400E",marginBottom:6}}>Prolapse Follow-Up Recommended</div>
+          <div style={{fontSize:12,color:"#78350F",lineHeight:1.6}}>Because you reported prolapse-type symptoms, an in-person pelvic exam or pessary evaluation may help clarify the cause and next steps. Please arrange follow-up with your provider if you have not already.</div>
+        </div>}
+        {anyWorsening&&concern!=="high"&&<div className="card"style={{borderLeft:`4px solid ${C.or}`,background:"#FFF7ED"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#9A3412",marginBottom:6}}>Your PT Will Review This</div>
+          <div style={{fontSize:12,color:"#78350F",lineHeight:1.6}}>Your responses suggest some symptoms may be worsening. Your PT will review this and may reach out with updated recommendations.</div>
+        </div>}
+        {concern==="high"&&<div className="card"style={{borderLeft:"4px solid #DC2626",background:"#FEF2F2"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#991B1B",marginBottom:6}}>Please Contact Your Provider</div>
+          <div style={{fontSize:12,color:"#7F1D1D",lineHeight:1.6}}>Your responses indicate significant symptom changes that should be evaluated promptly. Please contact your provider sooner if you have a bulge that is worsening, trouble emptying your bladder or bowels, bleeding, or significant pain. Your PT has been notified and will follow up.</div>
+        </div>}
         {phq2Score>=2&&<div className="card"style={{borderLeft:"4px solid #D97706",background:"#FFFBEB"}}>
           <div style={{fontSize:13,fontWeight:700,color:"#92400E",marginBottom:8}}>Support Resources</div>
           <div style={{fontSize:12,color:"#78350F",marginBottom:6}}>Based on your responses, we want to make sure you have access to these resources:</div>
-          {PSI_RESOURCES.crisis.map((r,i)=><div key={i}style={{fontSize:12,color:"#7F1D1D",marginBottom:4}}><strong>{r.name}:</strong> <a href={"tel:"+r.phone.replace(/[^0-9]/g,"")}style={{color:"#DC2626"}}>{r.phone}</a> — {r.desc}</div>)}
-          {PSI_RESOURCES.support.map((r,i)=><div key={i}style={{fontSize:12,color:"#4B5563",marginBottom:4}}><strong>{r.name}</strong>{r.phone?" — "+r.phone:""}{r.url?<span> — <a href={r.url}target="_blank"rel="noopener noreferrer"style={{color:"#6D28D9"}}>{r.url.replace(/https?:\/\/(www\.)?/,"")}</a></span>:null}</div>)}
+          {PSI_RESOURCES.crisis.map((r,i)=><div key={i}style={{fontSize:12,color:"#7F1D1D",marginBottom:4}}><strong>{r.name}:</strong> <a href={"tel:"+r.phone.replace(/[^0-9]/g,"")}style={{color:"#DC2626"}}>{r.phone}</a> {"\u2014"} {r.desc}</div>)}
+          {PSI_RESOURCES.support.map((r,i)=><div key={i}style={{fontSize:12,color:"#4B5563",marginBottom:4}}><strong>{r.name}</strong>{r.phone?" \u2014 "+r.phone:""}{r.url?<span> {"\u2014"} <a href={r.url}target="_blank"rel="noopener noreferrer"style={{color:"#6D28D9"}}>{r.url.replace(/https?:\/\/(www\.)?/,"")}</a></span>:null}</div>)}
         </div>}
       </div>
     </div>;
@@ -1402,6 +1455,18 @@ function Week8CheckIn({baseline,onComplete}){
         <div className="qt">At intake, you told us you were avoiding <strong>{baseline.avoid.join(", ")}</strong> because of your symptoms. Are you able to do any of these now?</div>
         {[["Yes, I've resumed these activities","yes"],["Partially — some but not all","partially"],["Not yet","no"]].map(([l,v])=><button key={v}className={`ob ${ans.c8_activities_status===v?"s":""}`}onClick={()=>set("c8_activities_status",v)}>{l}</button>)}
         <div style={{marginTop:10}}><div className="il">Tell us more (optional)</div><textarea className="inp"value={ans.c8_activities_note||""}onChange={e=>set("c8_activities_note",e.target.value)}placeholder="Which activities have you resumed? Any challenges?"/></div>
+      </div>:curStep.id==="popdi_recheck"?<div>
+        <div className="qt" style={{marginBottom:12}}>Please answer these questions about your current prolapse symptoms so we can compare with your intake.</div>
+        {curStep.qs[0]?.rows?.map((row,ri)=>{const isYes=ans[row.id]==="yes";return<div key={row.id}style={{padding:"10px 0",borderBottom:`1px solid ${C.g100}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:13,color:C.g700,flex:1}}>{row.label}</span>
+            <div style={{display:"flex",gap:8}}>{["No","Yes"].map(v=><button key={v}className={`btn bsm`}style={{background:ans[row.id]===v.toLowerCase()?(v==="Yes"?C.pink:C.g400):"white",color:ans[row.id]===v.toLowerCase()?"white":C.g600,border:`1.5px solid ${ans[row.id]===v.toLowerCase()?(v==="Yes"?C.pink:C.g400):C.g200}`,minWidth:50}}onClick={()=>set(row.id,v.toLowerCase())}>{v}</button>)}</div>
+          </div>
+          {isYes&&<div style={{marginTop:8,paddingLeft:8}}>
+            <div style={{fontSize:12,color:C.g500,marginBottom:4}}>How much does this bother you?</div>
+            <div style={{display:"flex",gap:6}}>{[[1,"Not at all"],[2,"Somewhat"],[3,"Moderately"],[4,"Quite a bit"]].map(([v,l])=><button key={v}className="btn bsm"style={{background:ans[row.id+"_bother"]===v?"#6D28D9":"white",color:ans[row.id+"_bother"]===v?"white":C.g600,border:`1.5px solid ${ans[row.id+"_bother"]===v?"#6D28D9":C.g200}`,fontSize:11}}onClick={()=>set(row.id+"_bother",v)}>{l}</button>)}</div>
+          </div>}
+        </div>})}
       </div>:curStep.qs.map(q=>renderQ(q))}
       {curStep.id==="phq2"&&c8PHQ2(ans)>=2&&ans.c8_phq2_interest!==undefined&&ans.c8_phq2_mood!==undefined&&<PsiResourceCard compact/>}
       {baseline.pain===0&&curStep.id==="pain"&&<div style={{marginTop:10,padding:"10px 14px",background:"#F0FDF4",borderRadius:8,fontSize:12,color:"#065F46"}}>You reported no pain at intake — if that has changed, please message your PT.</div>}
@@ -1462,14 +1527,35 @@ function MyCareplan({data}){
   const avF=(ans.avoid_activities||[]).filter(x=>x!=="none");
   const phq2=calcPHQ2(ans);
   const dateStr=new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
-  // Adherence state
-  const[adherenceLog,setAdherenceLog]=useState(DEMO_ADHERENCE_LOG);
+  // Adherence state — load from DB, fallback to empty
+  const[adherenceLog,setAdherenceLog]=useState([]);
+  const[adhLoading,setAdhLoading]=useState(true);
   const[todayLogged,setTodayLogged]=useState(false);
   const[adhStatus,setAdhStatus]=useState(null);
   const[adhNote,setAdhNote]=useState("");
   const[showCheckin,setShowCheckin]=useState(false);
   const[showExport,setShowExport]=useState(false);
   const[exportDone,setExportDone]=useState(false);
+  // Push notification state
+  const[pushEnabled,setPushEnabled]=useState(false);
+  const[pushPromptDismissed,setPushPromptDismissed]=useState(false);
+  useEffect(()=>{
+    const uid=data.userId||sharedIntake?.userId||authSession?.userId;
+    if(!uid)return void setAdhLoading(false);
+    (async()=>{try{
+      const entries=await db("getAdherenceByUserId",{userId:uid});
+      if(entries&&entries.length>0){
+        const sorted=entries.sort((a,b)=>a.date.localeCompare(b.date));
+        setAdherenceLog(sorted);
+        const today=new Date().toISOString().split("T")[0];
+        if(sorted.some(e=>e.date===today))setTodayLogged(true);
+      }
+    }catch(e){}finally{setAdhLoading(false)}})();
+    // Check push subscription status
+    if("serviceWorker"in navigator&&"PushManager"in window){
+      navigator.serviceWorker.ready.then(reg=>reg.pushManager.getSubscription()).then(sub=>{if(sub)setPushEnabled(true)}).catch(()=>{});
+    }
+  },[]);
   const cpRef=useRef(null);
   useEffect(()=>{document.body.style.overflow=showExport?"hidden":"";return()=>{document.body.style.overflow=""}},[showExport]);
   useEffect(()=>{if(exportDone){const t=setTimeout(()=>setExportDone(false),8000);return()=>clearTimeout(t)}},[exportDone]);
@@ -1479,13 +1565,15 @@ function MyCareplan({data}){
     const entry={date:new Date().toISOString().split("T")[0],status:adhStatus,note:adhNote||undefined};
     setAdherenceLog(p=>{const updated=[...p,entry];const recent=updated.slice(-14);if(recent.length>=14){const yesCount=recent.filter(e=>e.status==="yes").length;if(yesCount/recent.length<0.5&&sharedIntake?.plan?.review_flags&&!sharedIntake.plan.review_flags.some(f=>f.id==="ADHERENCE_CONCERN"))sharedIntake.plan.review_flags.push({id:"ADHERENCE_CONCERN",type:"triggered",label:"Adherence <50%"});notifyFlagChange()}return updated});setTodayLogged(true);setAdhStatus(null);setAdhNote("");
     L("daily_adherence_entry",{date:entry.date,status:entry.status,note:entry.note});
+    const uid=data.userId||sharedIntake?.userId||authSession?.userId;
+    if(uid)db("logAdherenceEntry",{userId:uid,date:entry.date,status:entry.status,note:entry.note||undefined,createdAt:new Date().toISOString()});
   };
   // Streak calculation
   const streak=(()=>{let c=0;for(let i=adherenceLog.length-1;i>=0;i--){if(adherenceLog[i].status==="yes")c++;else break}return c})();
   // Month adherence days
   const monthDays=adherenceLog.filter(e=>{const d=new Date(e.date);const now=new Date();return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()}).length;
   // Baseline for Week 8
-  const baseline={iciq:iciq.total,pain:pain.composite,phq2,fsex:fsex.total,constipation:(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??3)<=1||(ans.bristol_stool??4)<=2,avoid:avF,popdi_positive:(popdi?.positiveCount||0)>0};
+  const baseline={iciq:iciq.total,pain:pain.composite,phq2,fsex:fsex.total,constipation:(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??3)<=1||(ans.bristol_stool??4)<=2,avoid:avF,popdi_positive:(popdi?.positiveCount||0)>0,popdi_score:popdi?.score??0};
   const onCheckinComplete=(results)=>{setWeek8Results(results);setShowCheckin(false);if(sharedIntake){sharedIntake.week8=results;if(sharedIntake.userId)db("updatePatientWeek8",{userId:sharedIntake.userId,week8:results});if(sharedIntake.outcomeRecordId){const adhRate=adherenceLog.length>0?Math.round(adherenceLog.filter(e=>e.status==="yes").length/adherenceLog.length*100):0;const orec=completeOutcomeRecord(sharedIntake.outcomeRecordId,baseline,{...results,adherence_rate:adhRate});if(orec&&orec.outcome)db("completeOutcomeRecord",{recordId:sharedIntake.outcomeRecordId,outcome:orec.outcome})}}};
   // Polished care plan CSS (from sample-patient-care-plan design)
   const cpCSS=`
@@ -1783,6 +1871,14 @@ function MyCareplan({data}){
         <div style={{fontSize:11,color:monthDays>=16?"#065F46":"#6B7280"}}>Days this month</div>
       </div>
     </div>
+    {!pushEnabled&&!pushPromptDismissed&&"Notification"in window&&<div style={{marginTop:12,background:"#EDE9FE",borderRadius:8,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div><div style={{fontSize:13,fontWeight:600,color:"#4C1D95"}}>Daily exercise reminders</div><div style={{fontSize:11,color:"#6D28D9"}}>Get a notification each evening to log your exercises</div></div>
+      <div style={{display:"flex",gap:6}}>
+        <button className="btn bsm"style={{background:"#4C2C84",color:"white",fontSize:11}}onClick={async()=>{try{const perm=await Notification.requestPermission();if(perm==="granted"&&"serviceWorker"in navigator){const reg=await navigator.serviceWorker.ready;const vapidKey=window.__VAPID_PUBLIC_KEY;if(!vapidKey)return;const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:vapidKey});const uid=data.userId||sharedIntake?.userId||authSession?.userId;if(uid)await db("savePushSubscription",{userId:uid,subscription:JSON.parse(JSON.stringify(sub)),createdAt:new Date().toISOString()});setPushEnabled(true)}}catch(e){console.warn("[push]",e)}}}>Turn On</button>
+        <button className="btn bsm"style={{background:"transparent",color:"#6B7280",border:"1px solid #D1D5DB",fontSize:11}}onClick={()=>setPushPromptDismissed(true)}>Not now</button>
+      </div>
+    </div>}
+    {pushEnabled&&<div style={{marginTop:12,fontSize:12,color:"#059669",display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:16}}>&#x1F514;</span> Daily reminders are on</div>}
   </div>;
 
   return<div className="fi">
@@ -1808,6 +1904,12 @@ function MyCareplan({data}){
       {tab==="strategies"&&<StrategiesTab/>}
       {tab==="report"&&<ReportTab/>}
       {tab==="week8results"&&<Week8Tab/>}
+
+      {/* Prolapse guidance note */}
+      {(popdi?.positiveCount||0)>0&&<div className="cp-card"style={{borderLeft:"4px solid #D97706",background:"#FFFBEB",marginTop:16}}>
+        <div style={{fontSize:14,fontWeight:700,color:"#92400E",marginBottom:6}}>Prolapse Follow-Up Recommended</div>
+        <div style={{fontSize:13,color:"#78350F",lineHeight:1.6}}>Because you reported prolapse-type symptoms, an in-person pelvic exam or pessary evaluation may help clarify the cause and next steps. Please arrange follow-up with your provider if you have not already.</div>
+      </div>}
 
       {/* Collapsible Program Progress */}
       <div style={{margin:"20px 0",border:"1px solid #E5E7EB",borderRadius:12,overflow:"hidden"}}>
@@ -2336,7 +2438,9 @@ function PTPatientDetail({pt,onBack}){
   const send=()=>{if(!draft.trim())return;setMsgs(p=>[...p,{fr:"pt",tx:draft,t:new Date().toLocaleString()}]);L("msg_sent",{to:pt.id});setDraft("")};
   const li=pt.iciq[pt.iciq.length-1].s,lp=pt.pain[pt.pain.length-1].s;
   const w8=pt.week8;const intake=pt.intake;
-  const adhDays=pt.id==="P001"?DEMO_ADHERENCE_LOG.filter(e=>{const d=new Date(e.date);const n=new Date();return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear()}).length:0;
+  const[ptAdherenceLogs,setPtAdherenceLogs]=useState([]);
+  useEffect(()=>{if(pt.userId){(async()=>{try{const entries=await db("getAdherenceByUserId",{userId:pt.userId});if(entries)setPtAdherenceLogs(entries)}catch(e){}})()}},[pt.userId]);
+  const adhDays=(ptAdherenceLogs.length>0?ptAdherenceLogs:pt.id==="P001"?DEMO_ADHERENCE_LOG:[]).filter(e=>{const d=new Date(e.date);const n=new Date();return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear()}).length;
   // Status badge
   const getStatus=()=>{if(!w8||!intake)return null;const iciqDelta=intake.iciq-w8.iciq;if(iciqDelta>=3)return{label:"On Track",color:C.gn,bg:"#D1FAE5"};if(iciqDelta>=1)return{label:"Monitor",color:C.or,bg:"#FEF3C7"};return{label:"Clinical Review Required",color:C.rd,bg:"#FEE2E2"}};
   const status=getStatus();

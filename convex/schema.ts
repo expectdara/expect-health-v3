@@ -75,4 +75,20 @@ export default defineSchema({
     demoId: v.string(),
     data: v.any(),
   }).index("by_demoId", ["demoId"]),
+
+  adherenceLogs: defineTable({
+    userId: v.string(),
+    date: v.string(),
+    status: v.string(),
+    note: v.optional(v.string()),
+    createdAt: v.string(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_date", ["userId", "date"]),
+
+  pushSubscriptions: defineTable({
+    userId: v.string(),
+    subscription: v.any(),
+    createdAt: v.string(),
+  }).index("by_userId", ["userId"]),
 });
