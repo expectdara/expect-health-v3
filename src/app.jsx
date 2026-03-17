@@ -1101,10 +1101,12 @@ function Intake({onDone,mainRef,initialEmail}){
     return{...p,[k]:[...cur.filter(x=>x!=="never"&&x!=="none"),v]};
   });
   const goStep=(s)=>{setStep(s);setTriedNext(false);if(mainRef?.current)mainRef.current.scrollTop=0};
+  const isMale=ans.sex_at_birth==="male";
   const demo=[
     {id:"name",text:"What is your name?",type:"twotext"},
     {id:"dob",text:"What is your date of birth?",type:"date"},
-    {id:"pregnancy_status",text:"What is your current pregnancy status?",opts:[["Currently pregnant","pregnant"],["Postpartum (0–6 weeks)","pp_early"],["Postpartum (6 weeks – 6 months)","pp_mid"],["Postpartum (6+ months)","pp_late"],["Not recently pregnant","not_pregnant"]]},
+    {id:"sex_at_birth",text:"What is your sex assigned at birth?",opts:[["Female","female"],["Male","male"]]},
+    {id:"pregnancy_status",text:"What is your current pregnancy status?",conditional:a=>a.sex_at_birth==="female",opts:[["Currently pregnant","pregnant"],["Postpartum (0–6 weeks)","pp_early"],["Postpartum (6 weeks – 6 months)","pp_mid"],["Postpartum (6+ months)","pp_late"],["Not recently pregnant","not_pregnant"]]},
     {id:"delivery_type",text:"What was your most recent type of delivery?",conditional:a=>a.pregnancy_status&&!["not_pregnant","pregnant"].includes(a.pregnancy_status),opts:[["Vaginal delivery","vaginal"],["Vaginal with forceps or vacuum","assisted"],["Planned C-section","csection_planned"],["Emergency C-section","csection_emergency"]]},
     {id:"delivery_date",text:"Approximately when did you deliver?",type:"date",conditional:a=>a.pregnancy_status&&!["not_pregnant","pregnant"].includes(a.pregnancy_status)},
     {id:"num_deliveries",text:"How many total deliveries have you had? (Enter 0 if none)",type:"number",min:0,max:20},
@@ -1150,13 +1152,13 @@ function Intake({onDone,mainRef,initialEmail}){
   const visibleSteps=steps.map((_,i)=>i).filter(i=>isStepVisible(i));
   const visibleIdx=visibleSteps.indexOf(step);
   // Block on demographics (step 0): under 18 OR required fields incomplete
-  const page1Incomplete=step===0&&(!ans.name_first||!ans.name_last||!ans.dob||!ans.pregnancy_status||!ans.insurance_type||!ans.email);
+  const page1Incomplete=step===0&&(!ans.name_first||!ans.name_last||!ans.dob||!ans.sex_at_birth||(!isMale&&!ans.pregnancy_status)||!ans.insurance_type||!ans.email);
   // Block on screener step: require all 4 screener answers
   const screenerIncomplete=step===3&&(!ans.screen_urinary||!ans.screen_bowel||!ans.screen_pain||!ans.screen_sexual);
   // Block on POPDI-6 step: require all 6 yes/no answers + bother for each "yes"
   const popdiIncomplete=steps[step]?.qs===POPDI&&(POPDI[0].rows.some(r=>ans[r.id]===undefined)||POPDI[0].rows.some(r=>ans[r.id]==="yes"&&ans[r.id+"_bother"]===undefined));
   // Block on safety (step 1) for ANY red flag, block on exclusions (step 2) for ANY exclusion
-  const blocked=(step===0&&(isUnder18||page1Incomplete))||(step===1&&hasAnyRF)||(step===2&&hasExclusion)||screenerIncomplete||popdiIncomplete;
+  const blocked=(step===0&&(isUnder18||isMale||page1Incomplete))||(step===1&&hasAnyRF)||(step===2&&hasExclusion)||screenerIncomplete||popdiIncomplete;
   useEffect(()=>{
     if(step!==steps.length||doneRef.current)return;doneRef.current=true;
     const iciq=sICIQ(ans),pain=sPain(ans),gupi=sGUPI(ans),fluts=sFLUTS(ans),fsex=sFSEX(ans),popdi=sPOPDI(ans),plan=genPlan(iciq,pain,gupi,ans);
@@ -1175,8 +1177,9 @@ function Intake({onDone,mainRef,initialEmail}){
       <div style={{background:C.purp,color:C.white,padding:"6px 14px",borderRadius:20,fontSize:12,fontWeight:600,flexShrink:0}}>{visibleIdx+1} / {visibleSteps.length}</div>
     </div>
     <div style={{display:"flex",gap:3,marginBottom:20}}>{visibleSteps.map((si,vi)=><div key={si}style={{flex:1,height:4,borderRadius:2,background:si<=step?`linear-gradient(90deg,${C.pink},${C.purp})`:C.g200,transition:"all .3s"}}/>)}</div>
-    {triedNext&&page1Incomplete&&step===0&&!isUnder18&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please complete the required fields — name, email, date of birth, pregnancy status, and insurance type — to continue.</div>}
+    {triedNext&&page1Incomplete&&step===0&&!isUnder18&&!isMale&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please complete the required fields — name, email, date of birth, sex, pregnancy status, and insurance type — to continue.</div>}
     {isUnder18&&step===0&&<div className="ra"style={{background:"#FEE2E2",borderColor:C.rd,color:"#991B1B",fontSize:14,fontWeight:600,marginBottom:14}}>⛔ This program is designed for adults 18 years and older. Based on the date of birth you entered, you are under 18. If you believe this is an error, please correct your date of birth above.</div>}
+    {isMale&&step===0&&<div className="ra"style={{background:"#EFF6FF",borderColor:C.blue,color:"#1E40AF",fontSize:14,fontWeight:500,marginBottom:14,lineHeight:1.7}}>Our male pelvic floor program is coming soon. In the meantime, please contact us at <strong>support@expecthealth.com</strong> for a referral to a pelvic floor PT in your area.</div>}
     {isOver115&&step===0&&<div className="ra"style={{background:"#FEF3C7",borderColor:C.or,color:"#92400E",fontSize:14,fontWeight:600,marginBottom:14}}>🤔 The date of birth you entered would make you over 115 years old. Could you double-check that your birth date is correct? Typos in the year are common.</div>}
     {hasER&&step===1&&<div className="ra"style={{background:"#FEE2E2",borderColor:C.rd,color:"#991B1B",fontSize:15,fontWeight:600,marginBottom:14}}>⛔ STOP — Please call 911 or go to the nearest emergency room immediately.</div>}
     {hasAnyRF&&!hasER&&step===1&&<div className="ra"style={{background:"#FEF3C7",borderColor:C.or,color:"#92400E",fontSize:14,fontWeight:600,marginBottom:14}}>⚠ Based on your responses, you need to see your physician before starting this program. Please contact your doctor for evaluation.</div>}
