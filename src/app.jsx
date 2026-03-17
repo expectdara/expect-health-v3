@@ -1895,10 +1895,18 @@ function getOptScore(qs,id,val){const q=qs.find(q=>q.id===id);if(!q)return undef
 function PTReview(){
   useFlagSync();
   const[sel,setSel]=useState(null);const[viewNew,setViewNew]=useState(false);
+  const[viewDbPt,setViewDbPt]=useState(null);
+  const[dbPatients,setDbPatients]=useState([]);const[dbLoading,setDbLoading]=useState(true);
+  useEffect(()=>{(async()=>{try{const pts=await db("listPatients");if(pts)setDbPatients(pts)}catch(e){}finally{setDbLoading(false)}})()},[]);
+  // Filter out sharedIntake patient from DB results to avoid duplicates
+  const filteredDb=dbPatients.filter(p=>!sharedIntake||!authSession||p.userId!==authSession.userId);
+  if(viewDbPt)return<PTNewIntakeReview data={viewDbPt}onBack={()=>setViewDbPt(null)}/>;
   if(viewNew&&sharedIntake)return<PTNewIntakeReview data={sharedIntake}onBack={()=>setViewNew(false)}/>;
   if(sel)return<PTPatientDetail pt={sel}onBack={()=>setSel(null)}/>;
-  const pend=DPTS.filter(p=>p.ps==="pending_review").length+(sharedIntake?1:0);
-  return<div className="fi"><div className="h1">Patient Caseload</div><div className="sub">{pend} pending review · {DPTS.length+(sharedIntake?1:0)} total</div>
+  const dbPending=filteredDb.filter(p=>p.status==="pending_review").length;
+  const pend=DPTS.filter(p=>p.ps==="pending_review").length+dbPending+(sharedIntake?1:0);
+  const total=DPTS.length+filteredDb.length+(sharedIntake?1:0);
+  return<div className="fi"><div className="h1">Patient Caseload</div><div className="sub">{pend} pending review · {total} total</div>
     {sharedIntake&&<div className="card fi"style={{borderColor:C.pink,cursor:"pointer"}}onClick={()=>setViewNew(true)}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div><div style={{fontWeight:700,fontSize:15,color:C.pink}}> New Intake — {sharedIntake.name}</div>
@@ -1906,6 +1914,14 @@ function PTReview(){
         {sharedIntake.plan?.review_flags?.length>0&&<div style={{display:"flex",gap:3,marginTop:4,flexWrap:"wrap"}}>{sharedIntake.plan.review_flags.map(f=><span key={f.id}className="bdg"style={{background:f.type==="always"?`${C.rd}15`:`${C.or}15`,color:f.type==="always"?C.rd:C.or,fontSize:9}}>{f.label}</span>)}</div>}</div>
         <span className="bdg pu"style={{background:`${C.or}15`,color:C.or}}>⏳ Review Now</span>
       </div></div>}
+    {filteredDb.map(pt=>{const iciqTotal=pt.iciq?.total??0;const painVal=pt.pain?.composite??pt.pain?.current??0;const submitted=new Date(pt.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric"});return<div className="card fi"key={pt._id}style={{borderColor:pt.status==="pending_review"?C.or:C.gn,cursor:"pointer"}}onClick={()=>setViewDbPt({ans:pt.ans,iciq:pt.iciq,pain:pt.pain,gupi:pt.gupi,fluts:pt.fluts,fsex:pt.fsex,plan:pt.plan,depressionFlag:pt.depressionFlag,prenatalFlag:pt.prenatalFlag,name:pt.name,physicianName:pt.physicianName,physicianFax:pt.physicianFax,physicianNPI:pt.physicianNPI,safetyAnswerChanged:pt.safetyAnswerChanged,safetyChanges:pt.safetyChanges,outcomeRecordId:pt.outcomeRecordId,week8:pt.week8,psiRefer:pt.psiRefer})}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div><div style={{fontWeight:700,fontSize:15,color:pt.status==="pending_review"?C.purp:C.g700}}>{pt.name}</div>
+        <div style={{fontSize:12,color:C.g500,marginTop:2}}>Submitted {submitted} · ICIQ {iciqTotal} · Pain {painVal}{pt.plan?.status==="approved"?" · Plan approved":" · Awaiting review"}</div>
+        {pt.plan?.review_flags?.length>0&&<div style={{display:"flex",gap:3,marginTop:4,flexWrap:"wrap"}}>{pt.plan.review_flags.map(f=><span key={f.id}className="bdg"style={{background:f.type==="always"?`${C.rd}15`:`${C.or}15`,color:f.type==="always"?C.rd:C.or,fontSize:9}}>{f.label}</span>)}</div>}</div>
+        <span className="bdg pu"style={{background:pt.status==="pending_review"?`${C.or}15`:`${C.gn}15`,color:pt.status==="pending_review"?C.or:C.gn}}>{pt.status==="pending_review"?"⏳ Review":"✓ Reviewed"}</span>
+      </div></div>})}
+    {dbLoading&&<div style={{textAlign:"center",padding:16,fontSize:13,color:C.g400}}>Loading patients...</div>}
     <div className="card"style={{padding:0,overflow:"hidden"}}>
       <div className="plr plh"><span>Patient</span><span>ICIQ</span><span>Pain</span><span>Adherence</span><span>Status</span><span>Next RA</span></div>
       {DPTS.map(p=>{const li=p.iciq[p.iciq.length-1].s,lp=p.pain[p.pain.length-1].s;const w8=p.week8;const intk=p.intake;const iciqProg=w8&&intk?intk.iciq-w8.iciq:null;return<div className="plr"key={p.id}onClick={()=>setSel(p)}>
