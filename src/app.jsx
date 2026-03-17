@@ -1113,6 +1113,7 @@ function Intake({onDone,mainRef,initialEmail}){
     {id:"referral_source",text:"How did you hear about us?",opts:[["A healthcare provider referred me","provider_referral"],["I found you on my own","self"],["My insurance plan referred me","insurance_referral"],["Through the Expect Fitness app","expect_app"],["Other","other"]]},
     {id:"physician_npi",text:"Find your physician",type:"concierge_search"},
     {id:"insurance_type",text:"What type of insurance do you have?",opts:[["Utah Medicaid","medicaid"],["Commercial insurance","commercial"],["Self-pay","self_pay"],["Uninsured","uninsured"]]},
+    {id:"insurance_carrier",text:"What is the name of your insurance company?",type:"text",ph:"e.g. Blue Cross, SelectHealth, Aetna",conditional:a=>a.insurance_type==="commercial"},
     {id:"insurance_id",text:"What is your insurance member ID?",type:"text",ph:"Member ID",conditional:a=>a.insurance_type&&!["self_pay","uninsured"].includes(a.insurance_type)},
   ];
   const steps=[
