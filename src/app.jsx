@@ -1113,6 +1113,14 @@ function Intake({onDone,mainRef,initialEmail}){
   const[acctPw,setAcctPw]=useState("");const[acctPwC,setAcctPwC]=useState("");const[acctErr,setAcctErr]=useState(null);const doneRef=useRef(false);
   const[saveState,setSaveState]=useState("idle");// idle|saving|saved|failed
   const[showDraftBanner,setShowDraftBanner]=useState(!!initState);
+  // Create session on mount so we can save drafts to DB throughout intake
+  const sessionCreated=useRef(false);
+  useEffect(()=>{if(sessionCreated.current||authSession)return;sessionCreated.current=true;
+    const _uuid=()=>typeof crypto.randomUUID==="function"?crypto.randomUUID():([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^(crypto.getRandomValues(new Uint8Array(1))[0]&(15>>c/4))).toString(16));
+    authSession={userId:"usr_"+_uuid(),email:initialEmail||"",sessionToken:"tok_"+_uuid(),expiresAt:Date.now()+60*60*1000,createdAt:new Date().toISOString()};
+    db("createSession",{userId:authSession.userId,email:authSession.email,sessionToken:authSession.sessionToken,expiresAt:authSession.expiresAt,createdAt:authSession.createdAt});
+    try{localStorage.setItem("expect_session",authSession.sessionToken)}catch(e){}
+  },[]);
   const set=(k,v)=>{setAns(p=>{const next={...p,[k]:v};if(k==="pregnancy_status"){next.prenatal_flag=v==="pregnant";if(v==="pregnant")L("PRENATAL_PROTOCOL_APPLIED",{context:"PATIENT_INDICATED_ACTIVE_PREGNANCY"});if(v!=="pregnant"){delete next.ex_highrisk_preg;setRfs(r=>r.filter(f=>f.id!=="ex_highrisk_preg"));setSafetyTriggered(s=>{const n={...s};delete n.ex_highrisk_preg;return n})}}if(k==="screen_pain"&&v==="no"){["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d","gupi3","gupi4","pain1","pain3","symptoms_trigger"].forEach(key=>delete next[key])}if(k==="screen_sexual"&&v==="no"){["fs2a","fs2b","fs3a","fs3b","fs4a","fs4b","fs5a","fs5b"].forEach(key=>delete next[key])}if(k.startsWith("popdi")&&!k.includes("_bother")&&v==="no"){delete next[k+"_bother"]}return next})};
   const togM=(k,v)=>setAns(p=>{
     const cur=p[k]||[];
@@ -1121,7 +1129,9 @@ function Intake({onDone,mainRef,initialEmail}){
     if(v==="never"||v==="none"){return{...p,[k]:[v]};}
     return{...p,[k]:[...cur.filter(x=>x!=="never"&&x!=="none"),v]};
   });
-  const goStep=(s)=>{setStep(s);setTriedNext(false);if(mainRef?.current)mainRef.current.scrollTop=0;try{localStorage.setItem("expect_draft",JSON.stringify({ans,step:s,email:initialEmail||ans.email,ts:Date.now()}))}catch(e){}};
+  const goStep=(s)=>{setStep(s);setTriedNext(false);if(mainRef?.current)mainRef.current.scrollTop=0;try{localStorage.setItem("expect_draft",JSON.stringify({ans,step:s,email:initialEmail||ans.email,ts:Date.now()}))}catch(e){}
+    // Progressive DB save — save draft after each section advance
+    if(authSession){db("upsertPatient",{userId:authSession.userId,email:authSession.email||ans.email||"",name:(ans.name_first||"")+" "+(ans.name_last||""),ans,iciq:null,pain:null,gupi:null,fluts:null,fsex:null,popdi:null,plan:null,depressionFlag:null,prenatalFlag:!!ans.prenatal_flag,physicianName:ans.physician_name||"",physicianFax:ans.physician_fax||"",physicianNPI:ans.physician_npi_id||"",safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],status:"in_progress",createdAt:authSession.createdAt})}};
   const isMale=ans.sex_at_birth==="male";
   const demo=[
     {id:"name",text:"What is your name?",type:"twotext"},
@@ -1233,7 +1243,7 @@ function Intake({onDone,mainRef,initialEmail}){
     {steps[step].qs.some(q=>q.id==="phq2_mood")&&phq2Score>=2&&<div style={{margin:"16px 0"}}><PsiResourceCard/></div>}
     <div style={{display:"flex",justifyContent:"space-between",marginTop:20}}>
       <button className="btn bo"onClick={()=>step>0&&goStep(prevVisibleStep(step))}disabled={step===0}>← Back</button>
-      <button className="btn bpk"onClick={async()=>{if(steps[step].custom==="account"){const email=ans.email||"";if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setAcctErr("Please enter a valid email in the demographics step.");return}if(acctPw.length<8){setAcctErr("Password must be at least 8 characters.");return}if(!/[A-Z]/.test(acctPw)){setAcctErr("Password must contain at least 1 uppercase letter.");return}if(!/[0-9]/.test(acctPw)){setAcctErr("Password must contain at least 1 number.");return}if(acctPw!==acctPwC){setAcctErr("Passwords do not match.");return}const _uuid=()=>typeof crypto.randomUUID==="function"?crypto.randomUUID():([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^(crypto.getRandomValues(new Uint8Array(1))[0]&(15>>c/4))).toString(16));authSession={userId:"usr_"+_uuid(),email,sessionToken:"tok_"+_uuid(),expiresAt:Date.now()+30*60*1000,createdAt:new Date().toISOString()};L("account_created",{email,userId:authSession.userId});try{await db("createSession",{userId:authSession.userId,email:authSession.email,sessionToken:authSession.sessionToken,expiresAt:authSession.expiresAt,createdAt:authSession.createdAt},{throw:true});try{localStorage.setItem("expect_session",authSession.sessionToken)}catch(e){}setAcctErr(null);goStep(nextVisibleStep(step))}catch(e){setAcctErr("Could not create account. Please check your connection and try again.");authSession=null}}else if(blocked){setTriedNext(true)}else{goStep(nextVisibleStep(step))}}}style={{opacity:blocked?0.4:1}}>{steps[step].custom==="account"?"Create Account & Submit →":step===steps.length-1?"Submit Assessment →":"Continue →"}</button>
+      <button className="btn bpk"onClick={async()=>{if(steps[step].custom==="account"){const email=ans.email||"";if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setAcctErr("Please enter a valid email in the demographics step.");return}if(acctPw.length<8){setAcctErr("Password must be at least 8 characters.");return}if(!/[A-Z]/.test(acctPw)){setAcctErr("Password must contain at least 1 uppercase letter.");return}if(!/[0-9]/.test(acctPw)){setAcctErr("Password must contain at least 1 number.");return}if(acctPw!==acctPwC){setAcctErr("Passwords do not match.");return}L("account_created",{email,userId:authSession?.userId});setAcctErr(null);goStep(nextVisibleStep(step))}else if(blocked){setTriedNext(true)}else{goStep(nextVisibleStep(step))}}}style={{opacity:blocked?0.4:1}}>{steps[step].custom==="account"?"Secure Account & Submit →":step===steps.length-1?"Submit Assessment →":"Continue →"}</button>
     </div></div>;
 }
 
@@ -1915,8 +1925,8 @@ function PTReview(){
   const[viewDbPt,setViewDbPt]=useState(null);
   const[dbPatients,setDbPatients]=useState([]);const[dbLoading,setDbLoading]=useState(true);
   useEffect(()=>{(async()=>{try{const pts=await db("listPatients");if(pts)setDbPatients(pts)}catch(e){}finally{setDbLoading(false)}})()},[]);
-  // Filter out sharedIntake patient from DB results to avoid duplicates
-  const filteredDb=dbPatients.filter(p=>!sharedIntake||!authSession||p.userId!==authSession.userId);
+  // Filter out in-progress drafts and sharedIntake duplicates
+  const filteredDb=dbPatients.filter(p=>p.status!=="in_progress"&&(!sharedIntake||!authSession||p.userId!==authSession.userId));
   if(viewDbPt)return<PTNewIntakeReview data={viewDbPt}onBack={()=>setViewDbPt(null)}/>;
   if(viewNew&&sharedIntake)return<PTNewIntakeReview data={sharedIntake}onBack={()=>setViewNew(false)}/>;
   if(sel)return<PTPatientDetail pt={sel}onBack={()=>setSel(null)}/>;
