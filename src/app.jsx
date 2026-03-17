@@ -969,6 +969,8 @@ function SessionWarningModal({cd,onDismiss}){
 }
 
 // LANDING PAGE (Step 1 — Welcome)
+// PHASE NOTE: "reviewed by a licensed Utah Physical Therapist" is accurate for Phase 1 (100% review).
+// Phase 2/3: low-risk plans may be auto-approved — update to "overseen by" or add phase-aware qualifier.
 function LandingPage({onDone}){
   return<div className="fi"style={{maxWidth:600,margin:"0 auto"}}>
     <div style={{textAlign:"center",marginBottom:24}}>
@@ -990,6 +992,12 @@ function LandingPage({onDone}){
 }
 
 // CONSENT
+// PHASE NOTE — items to revisit before Phase 2:
+//   "ai": already hedged ("may vary based on... program phase") — OK as-is
+//   "pt": "maintains clinical oversight" (oversight ≠ individual review) — OK as-is
+//   NEW ITEM NEEDED: disclose that some plans may be auto-approved without individual PT review
+//   NEW ITEM NEEDED: disclose 10% audit sampling rate for auto-approved plans
+//   NEW: Spanish-language consent version (Phase 2 commitment)
 function Consent({onDone,onBack,ck,setCk}){
   const items=[
     // AI & Clinical Oversight
