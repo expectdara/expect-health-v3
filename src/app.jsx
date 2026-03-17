@@ -715,7 +715,9 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
   </div>;
   if(q.type==="scale")return<div className="qc fi"><div className="qt">{q.text}</div><div className="scv">{ans[q.id]??q.min}</div><input className="slr"type="range"min={q.min}max={q.max}value={ans[q.id]??q.min}onChange={e=>set(q.id,parseInt(e.target.value))}/><div className="scl"><span>{q.lo}</span><span>{q.hi}</span></div></div>;
   if(q.type==="multi")return<div className="qc fi"><div className="qt">{q.text}</div><div style={{display:"flex",flexWrap:"wrap"}}>{q.opts.map(([l,v])=><div key={v}className={`mo ${(ans[q.id]||[]).includes(v)?"s":""}`}onClick={()=>togM(q.id,v)}>{(ans[q.id]||[]).includes(v)?"✓":"○"} {l}</div>)}</div></div>;
-  return<div className="qc fi"><div className="qt">{q.text}</div>{q.opts.map(([l,v])=><button key={v}className={`ob ${ans[q.id]===v?"s":""}`}onClick={()=>set(q.id,v)}>{l}</button>)}</div>;
+  return<div className="qc fi"><div className="qt">{q.text}</div>{q.opts.map(([l,v])=><button key={v}className={`ob ${ans[q.id]===v?"s":""}`}onClick={()=>set(q.id,v)}>{l}</button>)}
+    {ans[q.id]==="other"&&<input className="inp"type="text"value={ans[q.id+"_other"]||""}onChange={e=>set(q.id+"_other",e.target.value)}placeholder="Please specify"style={{marginTop:8}}/>}
+  </div>;
 }
 
 // Consistency Checker — flags contradictions in real-time
@@ -1108,7 +1110,7 @@ function Intake({onDone,mainRef,initialEmail}){
     {id:"num_deliveries",text:"How many total deliveries have you had? (Enter 0 if none)",type:"number",min:0,max:20},
     {id:"email",text:"What is your email address?",type:"email",ph:"email@example.com"},
     {id:"phone",text:"What is your phone number?",type:"phone",ph:"(801) 555-0100"},
-    {id:"referral_source",text:"How did you hear about us?",opts:[["A healthcare provider referred me","provider_referral"],["I found you on my own","self"],["My insurance plan referred me","insurance_referral"],["Through the Expect Fitness app","expect_app"]]},
+    {id:"referral_source",text:"How did you hear about us?",opts:[["A healthcare provider referred me","provider_referral"],["I found you on my own","self"],["My insurance plan referred me","insurance_referral"],["Through the Expect Fitness app","expect_app"],["Other","other"]]},
     {id:"physician_npi",text:"Find your physician",type:"concierge_search"},
     {id:"insurance_type",text:"What type of insurance do you have?",opts:[["Utah Medicaid","medicaid"],["Commercial insurance","commercial"],["Self-pay","self_pay"],["Uninsured","uninsured"]]},
     {id:"insurance_id",text:"What is your insurance member ID?",type:"text",ph:"Member ID",conditional:a=>a.insurance_type&&!["self_pay","uninsured"].includes(a.insurance_type)},
