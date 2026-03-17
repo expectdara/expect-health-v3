@@ -2589,8 +2589,8 @@ function OAIPView(){
   ];
   const n=DPTS.length+(sharedIntake?1:0),aa=Math.round(DPTS.reduce((s,p)=>s+p.adh,0)/DPTS.length);
 
-  // Gather red flags from all sources
-  const redFlags=[];
+  // Gather red flags (true safety/guardrail events) + monitoring flags (baseline detections, clinical notes)
+  const redFlags=[];const monitoringFlags=[];
   // From current intake
   if(sharedIntake){
     const a=sharedIntake.ans;
@@ -2600,32 +2600,51 @@ function OAIPView(){
     if(a._safety_answer_changed)(a._safety_changes||[]).forEach(c=>redFlags.push({type:"SAFETY_ANSWER_CHANGED",severity:"HIGH",desc:`Patient changed safety answer: ${c.id}`,action:"PT must verify safety concern was appropriately addressed",patient:sharedIntake.name||"Current Patient",ts:c.ts}));
     // PHQ-2 depression
     if(sharedIntake.depressionFlag?.positive)redFlags.push({type:"DEPRESSION_RISK",severity:sharedIntake.depressionFlag.oaip_report?.severity||"MODERATE",desc:`PHQ-2 positive (score: ${sharedIntake.depressionFlag.score}/6)`,action:"PHQ-9 full screening recommended. Assess capacity to consent.",patient:sharedIntake.name||"Current Patient",ts:sharedIntake.depressionFlag.oaip_report?.timestamp||new Date().toISOString()});
-    // Medication modification
-    if((a.med_modify??0)===1)redFlags.push({type:"MEDICATION_ALERT",severity:"MODERATE",desc:"Patient modifying prescribed medication due to urinary symptoms",action:"Refer to prescribing provider for medication review",patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()});
-    // Prenatal routing
-    if(sharedIntake.prenatalFlag)redFlags.push({type:"PRENATAL_PROTOCOL_APPLIED",severity:"MODERATE",desc:"Patient indicated active pregnancy — prenatal pelvic floor protocol applied with automatic supine exercise modifications",action:"Clinical routing note. Exercise modifications for supine positioning have been auto-applied. PT to review for trimester appropriateness.",patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()});
+    // Medication modification → monitoring (baseline detection, not safety event)
+    if((a.med_modify??0)===1)monitoringFlags.push({type:"MEDICATION_ALERT",severity:"MODERATE",desc:"Patient modifying prescribed medication due to urinary symptoms",action:"Refer to prescribing provider for medication review",patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()});
+    // Prenatal routing → monitoring (clinical routing, not safety event)
+    if(sharedIntake.prenatalFlag)monitoringFlags.push({type:"PRENATAL_PROTOCOL_APPLIED",severity:"MODERATE",desc:"Patient indicated active pregnancy — prenatal pelvic floor protocol applied with automatic supine exercise modifications",action:"Clinical routing note. Exercise modifications for supine positioning have been auto-applied. PT to review for trimester appropriateness.",patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()});
     // Pudendal neuralgia flag
     if((a.symptoms_trigger||[]).includes("sitting_long")&&(sharedIntake.pain?.composite||0)>6)redFlags.push({type:"PUDENDAL_NEURALGIA",severity:"HIGH",desc:"Potential pudendal neuralgia: sitting pain + composite pain >6/10",action:"Evaluate for pudendal nerve involvement. Avoid prolonged sitting exercises.",patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()});
-    // PSI Utah referral flag
-    if(sharedIntake.psiRefer)redFlags.push({type:"PSI_REFERRAL",severity:"MODERATE",desc:"Patient referred to PSI Utah for maternal mental health support (PHQ-2: "+calcPHQ2(a)+"/6)",action:"Documented referral to Postpartum Support International. Verify follow-up at next encounter.",patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()});
+    // PSI Utah referral → monitoring (referral action, track completion separately)
+    if(sharedIntake.psiRefer)monitoringFlags.push({type:"PSI_REFERRAL",severity:"MODERATE",desc:"Patient referred to PSI Utah for maternal mental health support (PHQ-2: "+calcPHQ2(a)+"/6)",action:"Documented referral to Postpartum Support International. Verify follow-up at next encounter.",patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()});
+    // URGENT_REVIEW from care plan review flags
+    if(sharedIntake.plan?.review_flags?.some(f=>f.id==="URGENT_REVIEW"))redFlags.push({type:"URGENT_REVIEW_FLAG",severity:"CRITICAL",desc:"Urgent clinical review flag set — multiple worsening domains detected at Week 8",action:"PT must address all triggered flags before continuing care plan.",patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()});
   }
   // From audit log - adverse events
   log.filter(e=>e.type==="adverse_event_report").forEach(e=>redFlags.push({type:"ADVERSE_EVENT",severity:"CRITICAL",desc:`Adverse event reported: ${e.category||"unknown"} — ${e.detail?.slice(0,80)||"See log"}`,action:"Immediate clinical team notification. Consider program pause.",patient:e.patient||"—",ts:new Date(e.ts).toISOString()}));
   // From audit log - safety triggers
   log.filter(e=>e.type==="SAFETY_TRIGGER").forEach(e=>redFlags.push({type:"SAFETY_FLAG_LOGGED",severity:"HIGH",desc:`Safety trigger: ${e.question||"—"}`,action:"Verify addressed in PT review",patient:"Current Intake",ts:new Date(e.ts).toISOString()}));
-  // From audit log - clinical regression reports
-  log.filter(e=>e.type==="CLINICAL_REGRESSION_FLAG").forEach(e=>redFlags.push({type:"CLINICAL_REGRESSION",severity:e.severity>=7?"CRITICAL":e.severity>=4?"HIGH":"MODERATE",desc:`Patient reports ${e.symptomType==="new"?"new symptom":"worsening symptoms"} (severity: ${e.severity}/10)`,action:"PT clinical review required. Consider program modification or in-person evaluation.",patient:sharedIntake?.name||"Current Patient",ts:new Date(e.ts).toISOString()}));
+  // From audit log - clinical regression (refined: severe pain → red flag, mild → monitoring)
+  log.filter(e=>e.type==="CLINICAL_REGRESSION_FLAG").forEach(e=>{if(e.symptomType==="pain_worsened"&&(e.delta>=4||e.week8>=8)){redFlags.push({type:"PAIN_SEVERE_WORSENING",severity:"CRITICAL",desc:`Severe pain worsening: ${e.intake||"?"}/10 → ${e.week8||"?"}/10 (delta: +${e.delta||"?"})`,action:"Immediate PT clinical review. Consider program pause or in-person evaluation.",patient:e.patient||sharedIntake?.name||"Current Patient",ts:new Date(e.ts).toISOString()})}else if(e.severity>=7){redFlags.push({type:"CLINICAL_REGRESSION",severity:"CRITICAL",desc:`Patient reports ${e.symptomType==="new"?"new symptom":"worsening symptoms"} (severity: ${e.severity}/10)`,action:"PT clinical review required. Consider program modification or in-person evaluation.",patient:e.patient||sharedIntake?.name||"Current Patient",ts:new Date(e.ts).toISOString()})}else{monitoringFlags.push({type:"CLINICAL_REGRESSION",severity:e.severity>=4?"HIGH":"MODERATE",desc:`Patient reports ${e.symptomType==="new"?"new symptom":"worsening symptoms"} (severity: ${e.severity||"?"}/10)`,action:"PT review recommended.",patient:e.patient||sharedIntake?.name||"Current Patient",ts:new Date(e.ts).toISOString()})}});
   // From audit log - exercise pain reports
   log.filter(e=>e.type==="EXERCISE_PAIN_REPORT").forEach(e=>redFlags.push({type:"EXERCISE_PAIN",severity:"HIGH",desc:"Patient reports pain during prescribed exercises",action:"PT must review exercise program and modify or pause as needed.",patient:sharedIntake?.name||"Current Patient",ts:new Date(e.ts).toISOString()}));
-  // From audit log - depression screen (fallback if sharedIntake is stale/null)
-  if(!sharedIntake?.depressionFlag?.positive){log.filter(e=>e.type==="depression_screen_positive").forEach(e=>redFlags.push({type:"DEPRESSION_RISK",severity:e.severity||"MODERATE",desc:`PHQ-2 positive (score: ${e.score}/6)`,action:"PHQ-9 full screening recommended. Assess capacity to consent.",patient:e.patient||sharedIntake?.name||"Current Patient",ts:new Date(e.ts).toISOString()}))}
-  // From audit log - prenatal protocol (fallback if sharedIntake is stale/null)
-  if(!sharedIntake?.prenatalFlag){log.filter(e=>e.type==="PRENATAL_PROTOCOL_APPLIED"&&e.context==="EXERCISE_MODIFICATIONS_GENERATED").forEach(e=>redFlags.push({type:"PRENATAL_PROTOCOL_APPLIED",severity:"MODERATE",desc:"Prenatal pelvic floor protocol applied — exercise modifications generated",action:"Clinical routing note. PT to review for trimester appropriateness.",patient:sharedIntake?.name||"Current Patient",ts:new Date(e.ts).toISOString()}))}
-  // From audit log - clinical review requests (clarity, optout)
-  log.filter(e=>e.type==="clinical_review_request").forEach(e=>redFlags.push({type:"CLINICAL_REVIEW_REQUEST",severity:e.category==="optout"?"HIGH":"MODERATE",desc:`Patient requested ${e.category==="optout"?"opt-out from AI-assisted care":"care plan clarification"}${e.note?`: ${e.note.slice(0,60)}`:""}`,action:e.category==="optout"?"Assign non-AI care pathway. Contact patient within 24 hours.":"PT follow-up to clarify care plan instructions.",patient:e.patient||"—",ts:new Date(e.ts).toISOString()}));
+  // From audit log - depression screen (intake fallback, exclude week8 which gets separate handling)
+  if(!sharedIntake?.depressionFlag?.positive){log.filter(e=>e.type==="depression_screen_positive"&&e.context!=="week8_checkin").forEach(e=>redFlags.push({type:"DEPRESSION_RISK",severity:e.severity||"MODERATE",desc:`PHQ-2 positive (score: ${e.score}/6)`,action:"PHQ-9 full screening recommended. Assess capacity to consent.",patient:e.patient||sharedIntake?.name||"Current Patient",ts:new Date(e.ts).toISOString()}))}
+  // From audit log - PHQ-2 worsened at week 8 reassessment
+  log.filter(e=>e.type==="depression_screen_positive"&&e.context==="week8_checkin").forEach(e=>redFlags.push({type:"PHQ2_WEEK8_WORSENED",severity:e.severity||"HIGH",desc:`PHQ-2 positive at Week 8 reassessment (score: ${e.score}/6)`,action:"Full PHQ-9 screening required. Assess for worsening depression.",patient:e.patient||sharedIntake?.name||"Current Patient",ts:new Date(e.ts).toISOString()}));
+  // From audit log - POPDI-6 worsened at week 8
+  log.filter(e=>e.type==="popdi_week8"&&e.worsened).forEach(e=>redFlags.push({type:"POPDI_WORSENED",severity:"HIGH",desc:`Prolapse symptoms worsened: POPDI-6 ${e.baseline_score} → ${e.week8_score}${e.bulge?" (bulge reported)":""}`,action:"Re-evaluate prolapse management. Consider urogynecology referral.",patient:sharedIntake?.name||"Current Patient",ts:new Date(e.ts).toISOString()}));
+  // From audit log - prolapse follow-up gap + worsening symptoms
+  {const pfGap=log.filter(e=>e.type==="prolapse_followup_week8"&&e.status==="not_yet");const anyWorsen=log.some(e=>(e.type==="popdi_week8"&&e.worsened)||(e.type==="CLINICAL_REGRESSION_FLAG")||(e.type==="BOWEL_REGRESSION"));if(pfGap.length>0&&anyWorsen)pfGap.forEach(e=>redFlags.push({type:"PROLAPSE_FOLLOWUP_GAP_WORSENING",severity:"HIGH",desc:"Prolapse follow-up not completed AND symptoms worsening",action:"Escalate: patient has not followed up for prolapse evaluation despite symptom worsening.",patient:e.patient||sharedIntake?.name||"Current Patient",ts:new Date(e.ts).toISOString()}))}
+  // From audit log - week 8 high concern level
+  log.filter(e=>e.type==="checkin_week8_complete"&&e.concern==="high").forEach(e=>redFlags.push({type:"WEEK8_HIGH_CONCERN",severity:"CRITICAL",desc:"Week 8 check-in flagged HIGH concern: multiple worsening domains detected",action:"Urgent PT review required. Multiple clinical parameters worsening simultaneously.",patient:sharedIntake?.name||"Current Patient",ts:new Date(e.ts).toISOString()}));
+  // From audit log - PT rejected AI plan
+  log.filter(e=>e.type==="plan_rejected").forEach(e=>redFlags.push({type:"PT_PLAN_REJECTED",severity:"HIGH",desc:"PT rejected AI-generated care plan",action:"Document rejection reason. Review AI recommendation accuracy.",patient:e.patient||"—",ts:new Date(e.ts).toISOString()}));
+  // From audit log - clinical escalation (out-of-scope)
+  log.filter(e=>e.type==="CLINICAL_ESCALATION").forEach(e=>redFlags.push({type:"CLINICAL_ESCALATION",severity:"CRITICAL",desc:`Clinical escalation: ${e.procedure||e.context||"See details"}`,action:"Verify human-in-the-loop functioned. Document escalation pathway.",patient:e.patient||"—",ts:new Date(e.ts).toISOString()}));
+  // From audit log - prenatal protocol (fallback) → monitoring
+  if(!sharedIntake?.prenatalFlag){log.filter(e=>e.type==="PRENATAL_PROTOCOL_APPLIED"&&e.context==="EXERCISE_MODIFICATIONS_GENERATED").forEach(e=>monitoringFlags.push({type:"PRENATAL_PROTOCOL_APPLIED",severity:"MODERATE",desc:"Prenatal pelvic floor protocol applied — exercise modifications generated",action:"Clinical routing note. PT to review for trimester appropriateness.",patient:sharedIntake?.name||"Current Patient",ts:new Date(e.ts).toISOString()}))}
+  // From audit log - bowel regression → monitoring
+  log.filter(e=>e.type==="BOWEL_REGRESSION").forEach(e=>monitoringFlags.push({type:"BOWEL_REGRESSION",severity:"MODERATE",desc:"Bowel symptoms worsened at Week 8 check-in",action:"PT to review bowel management recommendations.",patient:sharedIntake?.name||"Current Patient",ts:new Date(e.ts).toISOString()}));
+  // From audit log - prolapse follow-up alone (no worsening) → monitoring
+  {const pfAlone=log.filter(e=>e.type==="prolapse_followup_week8"&&e.status==="not_yet");const anyW=log.some(e=>(e.type==="popdi_week8"&&e.worsened)||(e.type==="CLINICAL_REGRESSION_FLAG")||(e.type==="BOWEL_REGRESSION"));if(pfAlone.length>0&&!anyW)pfAlone.forEach(e=>monitoringFlags.push({type:"PROLAPSE_FOLLOWUP_PENDING",severity:"MODERATE",desc:"Prolapse follow-up not yet completed (symptoms stable)",action:"Continue monitoring. Reinforce importance of follow-up at next touchpoint.",patient:e.patient||sharedIntake?.name||"Current Patient",ts:new Date(e.ts).toISOString()}))}
+  // From audit log - clinical review requests (opt-out → red flag, clarification → monitoring)
+  log.filter(e=>e.type==="clinical_review_request").forEach(e=>{if(e.category==="optout")redFlags.push({type:"CLINICAL_REVIEW_REQUEST",severity:"HIGH",desc:`Patient requested opt-out from AI-assisted care${e.note?`: ${e.note.slice(0,60)}`:""}`,action:"Assign non-AI care pathway. Contact patient within 24 hours.",patient:e.patient||"—",ts:new Date(e.ts).toISOString()});else monitoringFlags.push({type:"CLINICAL_REVIEW_REQUEST",severity:"MODERATE",desc:`Patient requested care plan clarification${e.note?`: ${e.note.slice(0,60)}`:""}`,action:"PT follow-up to clarify care plan instructions.",patient:e.patient||"—",ts:new Date(e.ts).toISOString()})});
 
   const sevOrder={CRITICAL:0,HIGH:1,MODERATE:2,LOW:3};
   redFlags.sort((a,b)=>(sevOrder[a.severity]||3)-(sevOrder[b.severity]||3));
+  monitoringFlags.sort((a,b)=>(sevOrder[a.severity]||3)-(sevOrder[b.severity]||3));
   const sevColors={CRITICAL:{bg:"#FEE2E2",border:"#DC2626",text:"#991B1B"},HIGH:{bg:"#FFF7ED",border:"#EA580C",text:"#9A3412"},MODERATE:{bg:"#FEF3C7",border:"#D97706",text:"#92400E"},LOW:{bg:"#F0FDF4",border:"#16A34A",text:"#166534"}};
 
   // Auditor view - de-identified
@@ -2634,8 +2653,8 @@ function OAIPView(){
 
   return<div className="fi"><div className="h1">OAIP Compliance Dashboard</div><div className="sub">Utah Office of AI Policy · Regulatory Mitigation Agreement</div>
     {/* View mode tabs */}
-    <div style={{display:"flex",gap:0,marginBottom:16,borderBottom:`1px solid ${C.g200}`}}>
-      {[["compliance","Compliance"],["redflags","Red Flags & Alerts"],["followup","Follow-Up Schedule"],["audit","Live Audit Stream"],["fhir","Interoperability / HIE"],["outcomes","Outcome Research"]].map(([id,l])=>
+    <div style={{display:"flex",gap:0,marginBottom:16,borderBottom:`1px solid ${C.g200}`,overflowX:"auto"}}>
+      {[["compliance","Compliance"],["redflags","Red Flags & Alerts"],["monitoring","Monitoring Metrics"],["followup","Follow-Up Schedule"],["audit","Live Audit Stream"],["fhir","Interoperability / HIE"],["outcomes","Outcome Research"]].map(([id,l])=>
         <div key={id}style={{padding:"10px 18px",fontSize:13,fontWeight:viewMode===id?600:400,color:viewMode===id?C.purp:C.g400,borderBottom:`2px solid ${viewMode===id?C.pink:"transparent"}`,cursor:"pointer",whiteSpace:"nowrap"}}onClick={()=>setViewMode(id)}>{l}</div>
       )}
     </div>
@@ -2685,6 +2704,111 @@ function OAIPView(){
         <div style={{fontSize:11,color:sc.text,marginTop:4,fontStyle:"italic"}}>→ {rf.action}</div>
       </div>})}
     </div>}
+    </>}
+
+    {/* Monitoring Metrics Tab */}
+    {viewMode==="monitoring"&&<>
+    {(()=>{
+      const allRecs=OUTCOME_RECORDS;const completed=allRecs.filter(r=>r.outcome!==null);const total=allRecs.length||1;const compN=completed.length||1;
+      // Baseline detection rates
+      const popdiPos=allRecs.filter(r=>r.baseline.popdi.positiveCount>0).length;
+      const phq2Pos=allRecs.filter(r=>r.baseline.phq2>=3).length;
+      const prenatalN=allRecs.filter(r=>r.baseline.pregnancy_status==="active_pregnancy").length;
+      const pudendalN=allRecs.filter(r=>r.baseline.pudendal_flag).length;
+      const prolapseReviewN=allRecs.filter(r=>r.baseline.popdi.bulge||r.baseline.popdi.highBother).length;
+      // Referral tracking
+      const pfEvents=log.filter(e=>e.type==="prolapse_followup_week8");
+      const pfYes=pfEvents.filter(e=>e.status==="yes").length;const pfNotYet=pfEvents.filter(e=>e.status==="not_yet").length;const pfNA=pfEvents.filter(e=>e.status==="na"||e.status==="not_applicable").length;
+      const psiRef=log.filter(e=>e.type==="psi_referral").length;const psiAppr=log.filter(e=>e.type==="psi_referral_approved").length;
+      const phq2Emails=log.filter(e=>e.type==="phq2_followup_email_queued").length;
+      // Clinical trend metrics
+      const painWorseN=completed.filter(r=>r.outcome.pain_delta<0).length;const painWorseR=Math.round(painWorseN/compN*100);
+      const bowelWorseN=completed.filter(r=>r.outcome.bowel_change==="worse").length;const bowelWorseR=Math.round(bowelWorseN/compN*100);
+      const popdiW8=log.filter(e=>e.type==="popdi_week8");const popdiWorseN=popdiW8.filter(e=>e.worsened).length;
+      const iciqWorseN=completed.filter(r=>r.outcome.iciq_delta<0).length;const iciqWorseR=Math.round(iciqWorseN/compN*100);
+      const phq2WorseN=completed.filter(r=>r.outcome.phq2_delta<0).length;const phq2WorseR=Math.round(phq2WorseN/compN*100);
+      const anyWorseN=completed.filter(r=>r.outcome.iciq_delta<0||r.outcome.pain_delta<0||r.outcome.phq2_delta<0||r.outcome.bowel_change==="worse").length;
+      const anyWorseR=Math.round(anyWorseN/compN*100);
+      // AI oversight
+      const ptOverrideN=allRecs.filter(r=>r.treatment.pt_modified_exercises||r.treatment.pt_modified_adjuncts||r.treatment.pt_modified_goals).length;
+      const ptOverrideR=Math.round(ptOverrideN/total*100);
+      const rvTimes=allRecs.map(r=>r.treatment.review_time_seconds).filter(t=>t>0);
+      const meanRvTime=rvTimes.length>0?Math.round(rvTimes.reduce((s,t)=>s+t,0)/rvTimes.length):0;
+      const under2min=rvTimes.filter(t=>t<120).length;
+      const rejectN=log.filter(e=>e.type==="plan_rejected").length;
+      const escalationN=log.filter(e=>e.type==="CLINICAL_ESCALATION").length;
+      return<>
+      {/* Section A: Baseline Detection Rates */}
+      <div className="card"><div className="chd">Baseline Detection Rates</div>
+        <div style={{fontSize:11,color:C.g500,marginBottom:12}}>Clinical findings identified during intake assessment. These are expected prevalence detections, not safety events.</div>
+        {allRecs.length===0?<div style={{textAlign:"center",padding:24,color:C.g400,fontSize:13}}>No outcome records yet. Detection rates will populate as patients complete intake.</div>:
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
+          <div className="sc"><div className="scl2">POPDI-6 Positive</div><div className="scv2"style={{color:C.or}}>{popdiPos}</div><div className="scs">{Math.round(popdiPos/total*100)}% of enrolled</div></div>
+          <div className="sc"><div className="scl2">PHQ-2 Positive</div><div className="scv2"style={{color:C.or}}>{phq2Pos}</div><div className="scs">{Math.round(phq2Pos/total*100)}% of enrolled</div></div>
+          <div className="sc"><div className="scl2">Prenatal Protocol</div><div className="scv2"style={{color:C.blue}}>{prenatalN}</div></div>
+          <div className="sc"><div className="scl2">Pudendal Flag</div><div className="scv2"style={{color:C.or}}>{pudendalN}</div></div>
+          <div className="sc"><div className="scl2">Prolapse Review</div><div className="scv2"style={{color:C.or}}>{prolapseReviewN}</div><div className="scs">bulge or high bother</div></div>
+        </div>}
+      </div>
+      {/* Section B: Referral & Follow-Up Tracking */}
+      <div className="card"style={{marginTop:16}}><div className="chd">Referral & Follow-Up Tracking</div>
+        <div className="three"style={{marginBottom:12}}>
+          <div className="sc"><div className="scl2">Prolapse Follow-Up</div><div className="scv2"style={{color:C.blue}}>{pfEvents.length}</div><div className="scs">{pfYes} completed · {pfNotYet} pending · {pfNA} N/A</div></div>
+          <div className="sc"><div className="scl2">PSI Referrals</div><div className="scv2"style={{color:C.blue}}>{psiRef}</div><div className="scs">{psiAppr} approved by PT</div></div>
+          <div className="sc"><div className="scl2">PHQ-2 Follow-Up Emails</div><div className="scv2"style={{color:C.blue}}>{phq2Emails}</div><div className="scs">queued for delivery</div></div>
+        </div>
+        {pfNotYet>0&&<div style={{padding:"8px 14px",background:"#FEF3C7",border:"1px solid #F59E0B",borderRadius:8,fontSize:12,color:"#92400E"}}>{pfNotYet} patient{pfNotYet>1?"s":""} with prolapse symptoms {pfNotYet>1?"have":"has"} not yet followed up with a provider.</div>}
+      </div>
+      {/* Section C: Clinical Trend Metrics */}
+      <div className="card"style={{marginTop:16}}><div className="chd">Clinical Trend Metrics</div>
+        <div style={{fontSize:11,color:C.g500,marginBottom:12}}>Symptom change rates across completed Week 8 assessments (n={completed.length}).</div>
+        {completed.length===0?<div style={{textAlign:"center",padding:24,color:C.g400,fontSize:13}}>No completed Week 8 assessments yet.</div>:<>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+          <div className="sc"><div className="scl2">Pain Worsening</div><div className="scv2"style={{color:painWorseR>0?C.or:C.gn}}>{painWorseR}%</div><div className="scs">{painWorseN}/{completed.length}</div></div>
+          <div className="sc"><div className="scl2">Bowel Worsening</div><div className="scv2"style={{color:bowelWorseR>0?C.or:C.gn}}>{bowelWorseR}%</div><div className="scs">{bowelWorseN}/{completed.length}</div></div>
+          <div className="sc"><div className="scl2">POPDI Worsening</div><div className="scv2"style={{color:popdiWorseN>0?C.or:C.gn}}>{popdiWorseN}</div><div className="scs">of {popdiW8.length} re-assessed</div></div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+          <div className="sc"><div className="scl2">ICIQ Worsening</div><div className="scv2"style={{color:iciqWorseR>0?C.or:C.gn}}>{iciqWorseR}%</div><div className="scs">{iciqWorseN}/{completed.length}</div></div>
+          <div className="sc"><div className="scl2">PHQ-2 Worsening</div><div className="scv2"style={{color:phq2WorseR>0?C.or:C.gn}}>{phq2WorseR}%</div><div className="scs">{phq2WorseN}/{completed.length}</div></div>
+          <div className="sc"><div className="scl2">Any Domain Worse</div><div className="scv2"style={{color:anyWorseR>20?C.rd:anyWorseR>0?C.or:C.gn}}>{anyWorseR}%</div><div className="scs">{anyWorseN}/{completed.length}</div></div>
+        </div>
+        {/* Worsening by tier */}
+        <div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:8,marginTop:4}}>Worsening Rate by Tier</div>
+        <div className="three">
+          {["Beginner","Moderate","Advanced"].map(t=>{const tc=completed.filter(r=>r.treatment.tier===t);const wn=tc.filter(r=>r.outcome.iciq_delta<0||r.outcome.pain_delta<0||r.outcome.bowel_change==="worse").length;const wr=tc.length>0?Math.round(wn/tc.length*100):0;
+            return<div key={t}className="sc"><div className="scl2">{t}</div><div className="scv2"style={{color:wr>20?C.rd:wr>0?C.or:C.gn}}>{wr}%</div><div className="scs">{wn}/{tc.length} patients</div></div>})}
+        </div>
+        </>}
+      </div>
+      {/* Section D: AI Oversight Metrics */}
+      <div className="card"style={{marginTop:16}}><div className="chd">AI Oversight Metrics</div>
+        <div style={{fontSize:11,color:C.g500,marginBottom:12}}>Human-in-the-loop performance indicators. Tracks whether clinician oversight is functioning as designed.</div>
+        {allRecs.length===0?<div style={{textAlign:"center",padding:24,color:C.g400,fontSize:13}}>No plans reviewed yet.</div>:
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
+          <div className="sc"><div className="scl2">PT Override Rate</div><div className="scv2"style={{color:ptOverrideR>0?C.or:C.gn}}>{ptOverrideR}%</div><div className="scs">{ptOverrideN}/{allRecs.length} plans modified</div></div>
+          <div className="sc"><div className="scl2">Mean Review Time</div><div className="scv2"style={{color:meanRvTime<120?C.rd:C.gn}}>{meanRvTime<60?meanRvTime+"s":Math.round(meanRvTime/60*10)/10+"m"}</div><div className="scs">{rvTimes.length} reviews timed</div></div>
+          <div className="sc"><div className="scl2">Under 2 Min</div><div className="scv2"style={{color:under2min>0?C.rd:C.gn}}>{under2min}</div><div className="scs">{under2min>0?"CMS concern":"All adequate"}</div></div>
+          <div className="sc"><div className="scl2">Plan Rejections</div><div className="scv2"style={{color:rejectN>0?C.or:C.gn}}>{rejectN}</div><div className="scs">{Math.round(rejectN/total*100)}% rejection rate</div></div>
+          <div className="sc"><div className="scl2">Out-of-Scope</div><div className="scv2"style={{color:escalationN>0?C.or:C.gn}}>{escalationN}</div><div className="scs">clinical escalations</div></div>
+        </div>}
+      </div>
+      {/* Section E: Routing Detections & Clinical Notes */}
+      {monitoringFlags.length>0&&<div className="card"style={{marginTop:16}}><div className="chd">Routing Detections & Clinical Notes ({monitoringFlags.length})</div>
+        <div style={{fontSize:11,color:C.g500,marginBottom:12}}>Baseline clinical findings and routing decisions. These are operational tracking items, not safety events.</div>
+        {monitoringFlags.map((mf,i)=><div key={i}style={{padding:"10px 14px",borderBottom:`1px solid ${C.g100}`,borderLeft:"3px solid #93C5FD",background:"#F0F4FF"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <span style={{background:"#DBEAFE",color:"#1E40AF",padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:600}}>{mf.type.replace(/_/g," ")}</span>
+            </div>
+            <span style={{fontSize:10,color:C.g400}}>{new Date(mf.ts).toLocaleString()}</span>
+          </div>
+          <div style={{fontSize:12,color:"#1E3A5F",marginBottom:2}}>{mf.desc}</div>
+          <div style={{fontSize:11,color:"#1E3A5F",opacity:.7}}>Patient: {mask(mf.patient)}</div>
+        </div>)}
+      </div>}
+      </>;
+    })()}
     </>}
 
     {viewMode==="audit"&&<>
@@ -2893,6 +3017,97 @@ function OAIPView(){
         </div>)}
         <div style={{padding:"10px 16px",background:C.g50,fontSize:10,color:C.g400,borderTop:`1px solid ${C.g100}`}}>Signals are exploratory hypotheses, not validated predictions. Effect sizes (Cohen's d) and p-values are approximate. Full validation requires IRB-approved analysis.</div>
       </div>
+      {/* Multi-Instrument Outcomes */}
+      {completed.length>0&&(()=>{
+        const mPainD=Math.round(completed.reduce((s,r)=>s+r.outcome.pain_delta,0)/completed.length*10)/10;
+        const painImp=Math.round(completed.filter(r=>r.outcome.pain_delta>0).length/completed.length*100);
+        const mFsexD=Math.round(completed.reduce((s,r)=>s+r.outcome.fsex_delta,0)/completed.length*10)/10;
+        const fsexImp=Math.round(completed.filter(r=>r.outcome.fsex_delta>0).length/completed.length*100);
+        const mPhq2D=Math.round(completed.reduce((s,r)=>s+r.outcome.phq2_delta,0)/completed.length*10)/10;
+        const phq2Imp=Math.round(completed.filter(r=>r.outcome.phq2_delta>0).length/completed.length*100);
+        const bowelB=completed.filter(r=>r.outcome.bowel_change==="better").length;
+        const bowelS=completed.filter(r=>r.outcome.bowel_change==="same").length;
+        const bowelW=completed.filter(r=>r.outcome.bowel_change==="worse").length;
+        const actY=completed.filter(r=>r.outcome.activities_resumed==="yes").length;
+        const actP=completed.filter(r=>r.outcome.activities_resumed==="partially").length;
+        const actN=completed.filter(r=>r.outcome.activities_resumed==="no").length;
+        return<div className="card"style={{marginTop:16}}>
+        <div className="chd">Multi-Instrument Outcomes</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+          <div className="sc"><div className="scl2">Pain Delta</div><div className="scv2"style={{color:mPainD>0?C.gn:mPainD<0?C.rd:C.or}}>{mPainD>0?"+":""}{mPainD}</div><div className="scs">{painImp}% improved</div></div>
+          <div className="sc"><div className="scl2">Sexual Function</div><div className="scv2"style={{color:mFsexD>0?C.gn:mFsexD<0?C.rd:C.or}}>{mFsexD>0?"+":""}{mFsexD}</div><div className="scs">{fsexImp}% improved</div></div>
+          <div className="sc"><div className="scl2">PHQ-2 Delta</div><div className="scv2"style={{color:mPhq2D>0?C.gn:mPhq2D<0?C.rd:C.or}}>{mPhq2D>0?"+":""}{mPhq2D}</div><div className="scs">{phq2Imp}% improved</div></div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <div className="sc"><div className="scl2">Bowel Outcomes</div><div style={{display:"flex",gap:12,justifyContent:"center",marginTop:4}}>
+            <span style={{fontSize:12}}><span style={{color:C.gn,fontWeight:700}}>{bowelB}</span> better</span>
+            <span style={{fontSize:12}}><span style={{color:C.g500,fontWeight:700}}>{bowelS}</span> same</span>
+            <span style={{fontSize:12}}><span style={{color:C.rd,fontWeight:700}}>{bowelW}</span> worse</span>
+          </div></div>
+          <div className="sc"><div className="scl2">Activity Resumption</div><div style={{display:"flex",gap:12,justifyContent:"center",marginTop:4}}>
+            <span style={{fontSize:12}}><span style={{color:C.gn,fontWeight:700}}>{actY}</span> yes</span>
+            <span style={{fontSize:12}}><span style={{color:C.or,fontWeight:700}}>{actP}</span> partial</span>
+            <span style={{fontSize:12}}><span style={{color:C.rd,fontWeight:700}}>{actN}</span> no</span>
+          </div></div>
+        </div>
+      </div>})()}
+      {/* Patient Engagement */}
+      {completed.length>0&&(()=>{
+        const mAdh=Math.round(completed.reduce((s,r)=>s+(r.outcome.adherence_rate||0),0)/completed.length);
+        const adhH=completed.filter(r=>(r.outcome.adherence_rate||0)>80).length;
+        const adhM=completed.filter(r=>{const a=r.outcome.adherence_rate||0;return a>=50&&a<=80}).length;
+        const adhL=completed.filter(r=>(r.outcome.adherence_rate||0)<50).length;
+        const mNPS=Math.round(completed.reduce((s,r)=>s+r.outcome.nps,0)/completed.length*10)/10;
+        const promoters=completed.filter(r=>r.outcome.nps>=9).length;
+        const passives=completed.filter(r=>r.outcome.nps>=7&&r.outcome.nps<=8).length;
+        const detractors=completed.filter(r=>r.outcome.nps<=6).length;
+        return<div className="card"style={{marginTop:16}}>
+        <div className="chd">Patient Engagement</div>
+        <div className="four">
+          <div className="sc"><div className="scl2">Mean Adherence</div><div className="scv2"style={{color:mAdh>=80?C.gn:mAdh>=50?C.or:C.rd}}>{mAdh}%</div><div className="scs">{adhH} high · {adhM} mid · {adhL} low</div></div>
+          <div className="sc"><div className="scl2">Mean NPS</div><div className="scv2"style={{color:mNPS>=9?C.gn:mNPS>=7?C.or:C.rd}}>{mNPS}/10</div></div>
+          <div className="sc"><div className="scl2">Promoters (9-10)</div><div className="scv2"style={{color:C.gn}}>{promoters}</div><div className="scs">{completed.length>0?Math.round(promoters/completed.length*100):0}%</div></div>
+          <div className="sc"><div className="scl2">Detractors (0-6)</div><div className="scv2"style={{color:detractors>0?C.rd:C.gn}}>{detractors}</div><div className="scs">{passives} passive</div></div>
+        </div>
+      </div>})()}
+      {/* Equity & Demographics */}
+      {completed.length>0&&<div className="card"style={{marginTop:16}}>
+        <div className="chd">Equity & Demographics</div>
+        <div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:8}}>ICIQ Improvement by Age Bracket</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:16}}>
+          {["18-29","30-39","40-49","50-59","60+"].map(bracket=>{const group=completed.filter(r=>r.baseline.age_bracket===bracket);const md=group.length>0?Math.round(group.reduce((s,r)=>s+r.outcome.iciq_delta,0)/group.length*10)/10:0;
+            return<div key={bracket}className="sc"><div className="scl2">{bracket}</div><div className="scv2"style={{color:md>0?C.gn:md<0?C.rd:C.or}}>{md>0?"+":""}{md}</div><div className="scs">n={group.length}</div></div>})}
+        </div>
+        <div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:8}}>ICIQ Improvement by Risk Level</div>
+        <div className="three"style={{marginBottom:16}}>
+          {["green","yellow","red"].map(risk=>{const group=completed.filter(r=>r.treatment.risk_level===risk);const md=group.length>0?Math.round(group.reduce((s,r)=>s+r.outcome.iciq_delta,0)/group.length*10)/10:0;
+            return<div key={risk}className="sc"><div className="scl2"style={{textTransform:"capitalize"}}>{risk}</div><div className="scv2"style={{color:md>0?C.gn:md<0?C.rd:C.or}}>{md>0?"+":""}{md}</div><div className="scs">n={group.length}</div></div>})}
+        </div>
+        <div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:8}}>ICIQ Improvement by Clinical Profile</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+          {[["Prenatal",r=>r.baseline.pregnancy_status==="active_pregnancy"],["Postpartum",r=>r.baseline.pregnancy_status==="postpartum"],["Prolapse+",r=>r.baseline.popdi.positiveCount>0],["No Prolapse",r=>r.baseline.popdi.positiveCount===0]].map(([label,fn])=>{const group=completed.filter(fn);const md=group.length>0?Math.round(group.reduce((s,r)=>s+r.outcome.iciq_delta,0)/group.length*10)/10:0;
+            return<div key={label}className="sc"><div className="scl2">{label}</div><div className="scv2"style={{color:md>0?C.gn:md<0?C.rd:C.or}}>{md>0?"+":""}{md}</div><div className="scs">n={group.length}</div></div>})}
+        </div>
+      </div>}
+      {/* Long-Term Outcomes (Month 12) */}
+      {(()=>{
+        const m12=log.filter(e=>e.type==="month12_checkin_complete");
+        const surgAvoid=log.filter(e=>e.type==="surgical_avoidance_confirmed").length;
+        const erVisits=m12.filter(e=>e.er_visit==="yes").length;
+        const addlCare=m12.filter(e=>e.additional_care==="yes").length;
+        const surgeries=m12.filter(e=>e.surgery==="yes").length;
+        const clinMRate=completed.length>0?meaningful.length/completed.length:0;
+        const nnt=clinMRate>0?Math.round(1/clinMRate*10)/10:"N/A";
+        return(m12.length>0||completed.length>0)?<div className="card"style={{marginTop:16}}>
+        <div className="chd">Long-Term Outcomes</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
+          <div className="sc"><div className="scl2">Month 12 Responses</div><div className="scv2"style={{color:C.blue}}>{m12.length}</div></div>
+          <div className="sc"><div className="scl2">Surgical Avoidance</div><div className="scv2"style={{color:C.gn}}>{surgAvoid}</div><div className="scs">{surgeries} had surgery</div></div>
+          <div className="sc"><div className="scl2">ER Visits</div><div className="scv2"style={{color:erVisits>0?C.rd:C.gn}}>{erVisits}</div></div>
+          <div className="sc"><div className="scl2">Additional Care</div><div className="scv2"style={{color:C.or}}>{addlCare}</div></div>
+          <div className="sc"><div className="scl2">NNT</div><div className="scv2"style={{color:C.purp}}>{nnt}</div><div className="scs">1 / clin. meaningful rate</div></div>
+        </div>
+      </div>:null})()}
       </>;
     })()}
     </>}
