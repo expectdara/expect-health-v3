@@ -1105,10 +1105,14 @@ function IdentityVerify({onDone,onBack}){
 
 // INTAKE
 function Intake({onDone,mainRef,initialEmail}){
-  const[step,setStep]=useState(0);const[ans,setAns]=useState(initialEmail?{email:initialEmail}:{});const[rfs,setRfs]=useState([]);
+  // Draft restore from localStorage
+  const initState=(()=>{const raw=localStorage.getItem("expect_draft");if(!raw)return null;try{const d=JSON.parse(raw);if(d.email===initialEmail&&Date.now()-d.ts<86400000)return d}catch(e){}return null})();
+  const[step,setStep]=useState(initState?initState.step:0);const[ans,setAns]=useState(initState?initState.ans:initialEmail?{email:initialEmail}:{});const[rfs,setRfs]=useState([]);
   const[safetyTriggered,setSafetyTriggered]=useState({});const[showSafetyModal,setShowSafetyModal]=useState(null);
   const[triedNext,setTriedNext]=useState(false);
   const[acctPw,setAcctPw]=useState("");const[acctPwC,setAcctPwC]=useState("");const[acctErr,setAcctErr]=useState(null);const doneRef=useRef(false);
+  const[saveState,setSaveState]=useState("idle");// idle|saving|saved|failed
+  const[showDraftBanner,setShowDraftBanner]=useState(!!initState);
   const set=(k,v)=>{setAns(p=>{const next={...p,[k]:v};if(k==="pregnancy_status"){next.prenatal_flag=v==="pregnant";if(v==="pregnant")L("PRENATAL_PROTOCOL_APPLIED",{context:"PATIENT_INDICATED_ACTIVE_PREGNANCY"});if(v!=="pregnant"){delete next.ex_highrisk_preg;setRfs(r=>r.filter(f=>f.id!=="ex_highrisk_preg"));setSafetyTriggered(s=>{const n={...s};delete n.ex_highrisk_preg;return n})}}if(k==="screen_pain"&&v==="no"){["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d","gupi3","gupi4","pain1","pain3","symptoms_trigger"].forEach(key=>delete next[key])}if(k==="screen_sexual"&&v==="no"){["fs2a","fs2b","fs3a","fs3b","fs4a","fs4b","fs5a","fs5b"].forEach(key=>delete next[key])}if(k.startsWith("popdi")&&!k.includes("_bother")&&v==="no"){delete next[k+"_bother"]}return next})};
   const togM=(k,v)=>setAns(p=>{
     const cur=p[k]||[];
@@ -1117,7 +1121,7 @@ function Intake({onDone,mainRef,initialEmail}){
     if(v==="never"||v==="none"){return{...p,[k]:[v]};}
     return{...p,[k]:[...cur.filter(x=>x!=="never"&&x!=="none"),v]};
   });
-  const goStep=(s)=>{setStep(s);setTriedNext(false);if(mainRef?.current)mainRef.current.scrollTop=0};
+  const goStep=(s)=>{setStep(s);setTriedNext(false);if(mainRef?.current)mainRef.current.scrollTop=0;try{localStorage.setItem("expect_draft",JSON.stringify({ans,step:s,email:initialEmail||ans.email,ts:Date.now()}))}catch(e){}};
   const isMale=ans.sex_at_birth==="male";
   const demo=[
     {id:"name",text:"What is your name?",type:"twotext"},
@@ -1176,6 +1180,7 @@ function Intake({onDone,mainRef,initialEmail}){
   const popdiIncomplete=steps[step]?.qs===POPDI&&(POPDI[0].rows.some(r=>ans[r.id]===undefined)||POPDI[0].rows.some(r=>ans[r.id]==="yes"&&ans[r.id+"_bother"]===undefined));
   // Block on safety (step 1) for ANY red flag, block on exclusions (step 2) for ANY exclusion
   const blocked=(step===0&&(isUnder18||isMale||page1Incomplete))||(step===1&&hasAnyRF)||(step===2&&hasExclusion)||screenerIncomplete||popdiIncomplete;
+  const savePatientRef=useRef(null);// hold save args for retry
   useEffect(()=>{
     if(step!==steps.length||doneRef.current)return;doneRef.current=true;
     const iciq=sICIQ(ans),pain=sPain(ans),gupi=sGUPI(ans),fluts=sFLUTS(ans),fsex=sFSEX(ans),popdi=sPOPDI(ans),plan=genPlan(iciq,pain,gupi,ans);
@@ -1184,11 +1189,23 @@ function Intake({onDone,mainRef,initialEmail}){
     const depressionFlag=phq2Total>=3?{positive:true,score:phq2Total,maxScore:6,interest:ans.phq2_interest||0,mood:ans.phq2_mood||0,threshold:3,recommendation:"PHQ-9 full screening recommended. Consider mental health resource referral.",oaip_report:{flagType:"DEPRESSION_RISK",severity:phq2Total>=5?"HIGH":"MODERATE",score:phq2Total,maxScore:6,timestamp:new Date().toISOString()}}:{positive:false,score:phq2Total};
     sharedIntake={ans,iciq,pain,gupi,fluts,fsex,popdi,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,name:(ans.name_first||"")+" "+(ans.name_last||""),physicianName:ans.physician_name,physicianFax:ans.physician_fax,physicianNPI:ans.physician_npi_id,safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],userId:authSession?.userId,screeners:{urinary:ans.screen_urinary,bowel:ans.screen_bowel,pain:ans.screen_pain,sexual:ans.screen_sexual},pelvicHistory:ans.pelvic_history||[]};
     if(depressionFlag.positive)L("depression_screen_positive",{score:phq2Total,severity:phq2Total>=5?"HIGH":"MODERATE",patient:(ans.name_first||"")+" "+(ans.name_last||"")});
-    if(authSession){db("upsertPatient",{userId:authSession.userId,email:authSession.email,name:sharedIntake.name,ans,iciq,pain,gupi,fluts,fsex,popdi,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,physicianName:ans.physician_name||"",physicianFax:ans.physician_fax||"",physicianNPI:ans.physician_npi_id||"",safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],status:"pending_review",createdAt:new Date().toISOString()})}
-    if(onDone)onDone();
+    if(authSession){
+      const saveArgs={userId:authSession.userId,email:authSession.email,name:sharedIntake.name,ans,iciq,pain,gupi,fluts,fsex,popdi,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,physicianName:ans.physician_name||"",physicianFax:ans.physician_fax||"",physicianNPI:ans.physician_npi_id||"",safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],status:"pending_review",createdAt:new Date().toISOString()};
+      savePatientRef.current=saveArgs;
+      setSaveState("saving");
+      (async()=>{for(let attempt=0;attempt<3;attempt++){try{await db("upsertPatient",saveArgs,{throw:true});try{localStorage.removeItem("expect_draft")}catch(e){}setSaveState("saved");if(onDone)onDone();return}catch(e){if(attempt<2)await new Promise(r=>setTimeout(r,1000))}}setSaveState("failed")})();
+    }else{if(onDone)onDone()}
   },[step]);
-  if(step===steps.length)return null;
+  if(step===steps.length){
+    if(saveState==="saving")return<div className="fi"style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:36,marginBottom:16,animation:"pulse 1.5s ease-in-out infinite"}}>💾</div><div className="h1"style={{fontSize:22}}>Saving your assessment...</div><p style={{fontSize:14,color:C.g500,marginTop:8}}>Please don't close this page.</p></div>;
+    if(saveState==="failed")return<div className="fi"style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:36,marginBottom:16}}>⚠️</div><div className="h1"style={{fontSize:22,color:C.rd}}>Save failed</div><p style={{fontSize:14,color:C.g500,maxWidth:400,margin:"12px auto",lineHeight:1.7}}>We couldn't save your assessment. Your answers are safe in this browser — please try again.</p><button className="btn bpk"style={{marginTop:16}}onClick={()=>{if(!savePatientRef.current)return;setSaveState("saving");(async()=>{for(let attempt=0;attempt<3;attempt++){try{await db("upsertPatient",savePatientRef.current,{throw:true});try{localStorage.removeItem("expect_draft")}catch(e){}setSaveState("saved");if(onDone)onDone();return}catch(e){if(attempt<2)await new Promise(r=>setTimeout(r,1000))}}setSaveState("failed")})()}}>Retry Save</button></div>;
+    return null;
+  }
   return<div className="fi">
+    {showDraftBanner&&<div className="ra"style={{background:"#EFF6FF",borderColor:C.blue,color:"#1E40AF",fontSize:14,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <span>We found your previous progress. You've been returned to where you left off.</span>
+      <button className="btn bsm"style={{fontSize:11,color:C.blue,background:"transparent",border:`1px solid ${C.blue}`,padding:"4px 10px"}}onClick={()=>{setShowDraftBanner(false);setStep(0);setAns(initialEmail?{email:initialEmail}:{});try{localStorage.removeItem("expect_draft")}catch(e){}}}>Start Over</button>
+    </div>}
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
       <div><div className="h1">{steps[step].t}</div><div className="sub"style={{maxWidth:600}}>{steps[step].s}</div></div>
       <div style={{background:C.purp,color:C.white,padding:"6px 14px",borderRadius:20,fontSize:12,fontWeight:600,flexShrink:0}}>{visibleIdx+1} / {visibleSteps.length}</div>
@@ -1216,7 +1233,7 @@ function Intake({onDone,mainRef,initialEmail}){
     {steps[step].qs.some(q=>q.id==="phq2_mood")&&phq2Score>=2&&<div style={{margin:"16px 0"}}><PsiResourceCard/></div>}
     <div style={{display:"flex",justifyContent:"space-between",marginTop:20}}>
       <button className="btn bo"onClick={()=>step>0&&goStep(prevVisibleStep(step))}disabled={step===0}>← Back</button>
-      <button className="btn bpk"onClick={()=>{if(steps[step].custom==="account"){const email=ans.email||"";if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setAcctErr("Please enter a valid email in the demographics step.");return}if(acctPw.length<8){setAcctErr("Password must be at least 8 characters.");return}if(!/[A-Z]/.test(acctPw)){setAcctErr("Password must contain at least 1 uppercase letter.");return}if(!/[0-9]/.test(acctPw)){setAcctErr("Password must contain at least 1 number.");return}if(acctPw!==acctPwC){setAcctErr("Passwords do not match.");return}const _uuid=()=>typeof crypto.randomUUID==="function"?crypto.randomUUID():([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^(crypto.getRandomValues(new Uint8Array(1))[0]&(15>>c/4))).toString(16));authSession={userId:"usr_"+_uuid(),email,sessionToken:"tok_"+_uuid(),expiresAt:Date.now()+30*60*1000,createdAt:new Date().toISOString()};L("account_created",{email,userId:authSession.userId});db("createSession",{userId:authSession.userId,email:authSession.email,sessionToken:authSession.sessionToken,expiresAt:authSession.expiresAt,createdAt:authSession.createdAt});try{localStorage.setItem("expect_session",authSession.sessionToken)}catch(e){}setAcctErr(null);goStep(nextVisibleStep(step))}else if(blocked){setTriedNext(true)}else{goStep(nextVisibleStep(step))}}}style={{opacity:blocked?0.4:1}}>{steps[step].custom==="account"?"Create Account & Submit →":step===steps.length-1?"Submit Assessment →":"Continue →"}</button>
+      <button className="btn bpk"onClick={async()=>{if(steps[step].custom==="account"){const email=ans.email||"";if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setAcctErr("Please enter a valid email in the demographics step.");return}if(acctPw.length<8){setAcctErr("Password must be at least 8 characters.");return}if(!/[A-Z]/.test(acctPw)){setAcctErr("Password must contain at least 1 uppercase letter.");return}if(!/[0-9]/.test(acctPw)){setAcctErr("Password must contain at least 1 number.");return}if(acctPw!==acctPwC){setAcctErr("Passwords do not match.");return}const _uuid=()=>typeof crypto.randomUUID==="function"?crypto.randomUUID():([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^(crypto.getRandomValues(new Uint8Array(1))[0]&(15>>c/4))).toString(16));authSession={userId:"usr_"+_uuid(),email,sessionToken:"tok_"+_uuid(),expiresAt:Date.now()+30*60*1000,createdAt:new Date().toISOString()};L("account_created",{email,userId:authSession.userId});try{await db("createSession",{userId:authSession.userId,email:authSession.email,sessionToken:authSession.sessionToken,expiresAt:authSession.expiresAt,createdAt:authSession.createdAt},{throw:true});try{localStorage.setItem("expect_session",authSession.sessionToken)}catch(e){}setAcctErr(null);goStep(nextVisibleStep(step))}catch(e){setAcctErr("Could not create account. Please check your connection and try again.");authSession=null}}else if(blocked){setTriedNext(true)}else{goStep(nextVisibleStep(step))}}}style={{opacity:blocked?0.4:1}}>{steps[step].custom==="account"?"Create Account & Submit →":step===steps.length-1?"Submit Assessment →":"Continue →"}</button>
     </div></div>;
 }
 

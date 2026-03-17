@@ -51,6 +51,7 @@ export const upsertPatient = mutation({
     gupi: v.any(),
     fluts: v.any(),
     fsex: v.any(),
+    popdi: v.optional(v.any()),
     plan: v.any(),
     depressionFlag: v.any(),
     prenatalFlag: v.boolean(),
