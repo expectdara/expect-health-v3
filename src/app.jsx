@@ -214,8 +214,7 @@ const GUPI_PAIN=[
 // pain2 removed — gupi4 ("average pain on days you had it, over the last week") serves as the
 // canonical average pain item for both GUPI scoring and backend safety logic (measure once, use twice)
 {id:"pain3",text:"How does your pain affect your daily activities?",opts:[["No effect",0],["Mild — I can do most activities",1],["Moderate — I avoid some activities",2],["Severe — I am significantly limited",3],["I cannot perform daily activities",4]]},
-{id:"symptoms_location",text:"Where do you experience pain or discomfort? Please select all that apply.",type:"multi",opts:[["None — no pain","none"],["Lower abdomen","lower_abd"],["Pelvic floor","pelvic_floor"],["Vaginal area","vaginal"],["Lower back","lower_back"],["Hip area","hip"]]},
-{id:"symptoms_trigger",text:"When do you feel pain or discomfort? Select all that apply.",type:"multi",conditional:a=>!((a.symptoms_location||[]).includes("none")||(a.symptoms_location||[]).length===0),opts:[["During urination","dysuria"],["As my bladder fills (relieved by urinating)","bladder_fills"],["During sexual activity","dyspareunia"],["While inserting a tampon","tampon"],["During bowel movements","bowel_movements"],["While sitting for long periods","sitting_long"],["None of the above","none"]]},
+{id:"symptoms_trigger",text:"When do you feel pain or discomfort? Select all that apply.",type:"multi",conditional:a=>{const painYN=["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d"];return painYN.some(k=>a[k]==="yes")},opts:[["During urination","dysuria"],["As my bladder fills (relieved by urinating)","bladder_fills"],["During sexual activity","dyspareunia"],["While inserting a tampon","tampon"],["During bowel movements","bowel_movements"],["While sitting for long periods","sitting_long"],["None of the above","none"]]},
 ];
 // GUPI urinary subscale (always shown, moved from GUPI_PAIN)
 const GUPI_URINARY=[
@@ -250,9 +249,16 @@ const POPDI=[
 
 // Additional clinical intake
 const CLINICAL_EXTRA=[
-{id:"caffeine_intake",text:"How many caffeinated drinks (coffee, tea, soda, energy drinks) do you have per day on average?",opts:[["None",0],["1 per day",1],["2-3 per day",2],["4 or more per day",3]]},
-{id:"alcohol_intake",text:"How many alcoholic drinks do you have per week on average?",opts:[["None",0],["1-3 per week",1],["4-7 per week",2],["8 or more per week",3]]},
-{id:"water_intake",text:"How many glasses of water (8 oz) do you drink per day on average?",opts:[["1-3 glasses",0],["4-5 glasses",1],["6-8 glasses",2],["More than 8 glasses",3]]},
+// Caffeine: show only for OAB/urgency/storage symptoms (not pure stress incontinence)
+// Triggers: urgency leakage on ICIQ Q4, FLUTS urgency ≥ occasionally, FLUTS frequency ≥ sometimes, FLUTS nocturia ≥ 2
+{id:"caffeine_intake",text:"How many caffeinated drinks (coffee, tea, soda, energy drinks) do you have per day on average?",
+  conditional:a=>(a.iciq4||[]).includes("urgency")||(a.fl3a??0)>=1||(a.fl5a??0)>=2||(a.fl2a??0)>=2,
+  opts:[["None",0],["1 per day",1],["2-3 per day",2],["4 or more per day",3]]},
+// Water: show for urgency/storage symptoms OR constipation/bowel risk
+// Urinary: same triggers as caffeine. Bowel: straining ≥ sometimes, frequency ≤ 1-4x/wk, Bristol 1-2
+{id:"water_intake",text:"How many glasses of water (8 oz) do you drink per day on average?",
+  conditional:a=>(a.iciq4||[]).includes("urgency")||(a.fl3a??0)>=1||(a.fl5a??0)>=2||(a.fl2a??0)>=2||(a.bowel_constipation??0)>=2||(a.bowel_frequency??3)<=1||(a.bristol_stool??4)<=2,
+  opts:[["1-3 glasses",0],["4-5 glasses",1],["6-8 glasses",2],["More than 8 glasses",3]]},
 {id:"phq2_interest",text:"Over the past 2 weeks, how often have you been bothered by having little interest or pleasure in doing things?",opts:[["Not at all",0],["Several days",1],["More than half the days",2],["Nearly every day",3]]},
 {id:"phq2_mood",text:"Over the past 2 weeks, how often have you been bothered by feeling down, depressed, or hopeless?",opts:[["Not at all",0],["Several days",1],["More than half the days",2],["Nearly every day",3]]},
 {id:"symptom_triggers",text:"What activities tend to trigger your symptoms? Please select all that apply.",type:"multi",opts:[["Lifting or carrying","lifting"],["Running or jumping","running"],["Coughing or sneezing","coughing"],["Laughing","laughing"],["Getting up from sitting or lying down","standing"],["Climbing stairs","stairs"],["Other exercises","other_exercise"],["Sexual activity","sexual"],["None in particular","none"]]},
@@ -290,7 +296,7 @@ function sFLUTS(a){const F=(a.fl2a??0)+(a.fl3a??0)+(a.fl5a??0);const V=(a.fl6a??
 function sFSEX(a){return{total:(a.fs2a??0)+(a.fs3a??0)+Math.min(a.fs4a??0,3)+Math.min(a.fs5a??0,3)}}
 function sGUPI(a){const p=(a.gupi1a==="yes"?1:0)+(a.gupi1b==="yes"?1:0)+(a.gupi1c==="yes"?1:0)+(a.gupi1d==="yes"?1:0)+(a.gupi2a==="yes"?1:0)+(a.gupi2b==="yes"?1:0)+(a.gupi2c==="yes"?1:0)+(a.gupi2d==="yes"?1:0)+(a.gupi3??0)+(a.gupi4??0);const u=(a.gupi5??0)+(a.gupi6??0);const q=(a.gupi7??0)+(a.gupi8??0)+(a.gupi9??0);const t=p+u+q;return{total:t,pain:p,urinary:u,qol:q,severity:t<=14?"Mild":t<=29?"Moderate":"Severe"}}
 // sPain: composite uses gupi4 (GUPI average pain) as the canonical "average pain" item — measure once, use twice
-function sPain(a){const c=a.pain1??0,v=a.gupi4??0,f=a.pain3??0;const cm=v>0?Math.round((c+v)/2*10)/10:c;const locs=(a.symptoms_location||[]).filter(x=>x!=="none");const trigs=(a.symptoms_trigger||[]).filter(x=>x!=="none");return{current:c,average:v,composite:cm,functional:f,severity:cm===0?"None":cm<=3?"Mild":cm<=6?"Moderate":"Severe",locations:locs,triggers:trigs}}
+function sPain(a){const c=a.pain1??0,v=a.gupi4??0,f=a.pain3??0;const cm=v>0?Math.round((c+v)/2*10)/10:c;const trigs=(a.symptoms_trigger||[]).filter(x=>x!=="none");return{current:c,average:v,composite:cm,functional:f,severity:cm===0?"None":cm<=3?"Mild":cm<=6?"Moderate":"Severe",triggers:trigs}}
 // sPOPDI: Pelvic Organ Prolapse Distress Inventory — symptom screener (not diagnostic)
 function sPOPDI(a){const ids=["popdi1","popdi2","popdi3","popdi4","popdi5","popdi6"];const pos=ids.filter(k=>a[k]==="yes");const bothers=pos.map(k=>a[k+"_bother"]??0).filter(b=>b>0);const mean=bothers.length>0?bothers.reduce((s,v)=>s+v,0)/bothers.length:0;const score=Math.round(mean*25);return{score,positiveCount:pos.length,bulge:a.popdi3==="yes"||a.popdi6==="yes",highBother:bothers.some(b=>b>=3)}}
 
@@ -747,7 +753,6 @@ function getInconsistencies(ans){
   // Says "none" for leak amount but reports high interference
   if(ans.iciq2===0&&ans.iciq3>=5)flags.push({field:"iciq3",msg:"You said no urine leaks, but rated high interference with daily life. Please confirm."});
   // Reports no pain anywhere but high pain score
-  if(Array.isArray(ans.symptoms_location)&&ans.symptoms_location.includes("none")&&(ans.pain1>=3||(ans.gupi4??0)>=3))flags.push({field:"symptoms_location",msg:"You selected 'no pain locations' but reported moderate-to-high pain scores. Please review."});
   // Reports high pain but says no effect on activities
   if((ans.pain1>=5||(ans.gupi4??0)>=5)&&ans.pain3===0)flags.push({field:"pain3",msg:"You reported significant pain but said it has no effect on daily activities. Please confirm."});
   // Says never has urgency but reports urgency-type leaking
@@ -1105,16 +1110,12 @@ function Intake({onDone,mainRef,initialEmail}){
   const[safetyTriggered,setSafetyTriggered]=useState({});const[showSafetyModal,setShowSafetyModal]=useState(null);
   const[triedNext,setTriedNext]=useState(false);
   const[acctPw,setAcctPw]=useState("");const[acctPwC,setAcctPwC]=useState("");const[acctErr,setAcctErr]=useState(null);const doneRef=useRef(false);
-  const set=(k,v)=>{setAns(p=>{const next={...p,[k]:v};if(k==="pregnancy_status"){next.prenatal_flag=v==="pregnant";if(v==="pregnant")L("PRENATAL_PROTOCOL_APPLIED",{context:"PATIENT_INDICATED_ACTIVE_PREGNANCY"});if(v!=="pregnant"){delete next.ex_highrisk_preg;setRfs(r=>r.filter(f=>f.id!=="ex_highrisk_preg"));setSafetyTriggered(s=>{const n={...s};delete n.ex_highrisk_preg;return n})}}if(k==="screen_pain"&&v==="no"){["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d","gupi3","gupi4","pain1","pain3","symptoms_location","symptoms_trigger"].forEach(key=>delete next[key])}if(k==="screen_sexual"&&v==="no"){["fs2a","fs2b","fs3a","fs3b","fs4a","fs4b","fs5a","fs5b"].forEach(key=>delete next[key])}if(k.startsWith("popdi")&&!k.includes("_bother")&&v==="no"){delete next[k+"_bother"]}return next})};
+  const set=(k,v)=>{setAns(p=>{const next={...p,[k]:v};if(k==="pregnancy_status"){next.prenatal_flag=v==="pregnant";if(v==="pregnant")L("PRENATAL_PROTOCOL_APPLIED",{context:"PATIENT_INDICATED_ACTIVE_PREGNANCY"});if(v!=="pregnant"){delete next.ex_highrisk_preg;setRfs(r=>r.filter(f=>f.id!=="ex_highrisk_preg"));setSafetyTriggered(s=>{const n={...s};delete n.ex_highrisk_preg;return n})}}if(k==="screen_pain"&&v==="no"){["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d","gupi3","gupi4","pain1","pain3","symptoms_trigger"].forEach(key=>delete next[key])}if(k==="screen_sexual"&&v==="no"){["fs2a","fs2b","fs3a","fs3b","fs4a","fs4b","fs5a","fs5b"].forEach(key=>delete next[key])}if(k.startsWith("popdi")&&!k.includes("_bother")&&v==="no"){delete next[k+"_bother"]}return next})};
   const togM=(k,v)=>setAns(p=>{
     const cur=p[k]||[];
-    if(cur.includes(v)){const next=cur.filter(x=>x!==v);
-      if(k==="symptoms_location"&&next.filter(x=>x!=="none").length===0)return{...p,[k]:next,symptoms_trigger:[]};
-      return{...p,[k]:next};}
+    if(cur.includes(v)){return{...p,[k]:cur.filter(x=>x!==v)};}
     // Mutual exclusivity: "never"/"none" vs everything else
-    if(v==="never"||v==="none"){
-      if(k==="symptoms_location")return{...p,[k]:[v],symptoms_trigger:[]};
-      return{...p,[k]:[v]};}
+    if(v==="never"||v==="none"){return{...p,[k]:[v]};}
     return{...p,[k]:[...cur.filter(x=>x!=="never"&&x!=="none"),v]};
   });
   const goStep=(s)=>{setStep(s);setTriedNext(false);if(mainRef?.current)mainRef.current.scrollTop=0};
