@@ -2,6 +2,13 @@ const { useState, useEffect, useRef } = React;
 
 
 
+// PILOT PHASE CONFIG — change when OAIP approves phase advancement
+// Phase 1: 100% PT review (Months 1-4)
+// Phase 2: Low-risk auto-approved, 10% audit; high-risk 100% PT review (Months 5-8)
+// Phase 3: Auto-approval expanded; PT review for high-risk + first-time (Months 9-12)
+const PILOT_PHASE=1;
+const PILOT_CASES_VALIDATED=0; // total supervised cases completed — update as pilot progresses
+
 const C={
   pink:"#FC228A",pinkL:"#FF5CA8",pinkD:"#C91A6E",
   purp:"#4C2C84",purpL:"#6B45A8",purpD:"#3A1F68",
@@ -969,17 +976,21 @@ function SessionWarningModal({cd,onDismiss}){
 }
 
 // LANDING PAGE (Step 1 — Welcome)
-// PHASE NOTE: "reviewed by a licensed Utah Physical Therapist" is accurate for Phase 1 (100% review).
-// Phase 2/3: low-risk plans may be auto-approved — update to "overseen by" or add phase-aware qualifier.
 function LandingPage({onDone}){
+  const sub=PILOT_PHASE===1
+    ?"Get a personalized pelvic floor care plan created by AI and reviewed by a licensed Utah Physical Therapist."
+    :`Get a personalized pelvic floor care plan created by AI and clinically supervised by licensed Utah Physical Therapists — validated through ${PILOT_CASES_VALIDATED}+ supervised cases.`;
+  const disc=PILOT_PHASE===1
+    ?"This service utilizes AI to assist licensed professionals in care planning. All treatment decisions are finalized by a human clinician."
+    :"This service utilizes AI validated through extensive clinical supervision to generate care plans. Complex cases receive direct PT review; all plans are audited for safety.";
   return<div className="fi"style={{maxWidth:600,margin:"0 auto"}}>
     <div style={{textAlign:"center",marginBottom:24}}>
       <div className="h1"style={{fontSize:28}}>AI-Augmented Pelvic Floor Physical Therapy</div>
-      <div className="sub"style={{fontSize:15,maxWidth:480,margin:"8px auto 0",lineHeight:1.7}}>Get a personalized pelvic floor care plan created by AI and reviewed by a licensed Utah Physical Therapist.</div>
+      <div className="sub"style={{fontSize:15,maxWidth:480,margin:"8px auto 0",lineHeight:1.7}}>{sub}</div>
     </div>
     <div className="card"style={{borderColor:C.purp}}>
       <div style={{background:"rgba(76,44,132,.04)",border:`1px solid ${C.g200}`,borderRadius:8,padding:"12px 16px",marginBottom:16,fontSize:12,color:C.g600,lineHeight:1.6}}>
-        This service utilizes AI to assist licensed professionals in care planning. All treatment decisions are finalized by a human clinician.
+        {disc}
       </div>
       <div className="chd">Get Started</div>
       <p style={{fontSize:13,color:C.g500,marginBottom:14,lineHeight:1.6}}>Complete a quick intake assessment and get a personalized care plan. You'll be asked to review informed consent and verify your email before starting.</p>
@@ -992,17 +1003,15 @@ function LandingPage({onDone}){
 }
 
 // CONSENT
-// PHASE NOTE — items to revisit before Phase 2:
-//   "ai": already hedged ("may vary based on... program phase") — OK as-is
-//   "pt": "maintains clinical oversight" (oversight ≠ individual review) — OK as-is
-//   NEW ITEM NEEDED: disclose that some plans may be auto-approved without individual PT review
-//   NEW ITEM NEEDED: disclose 10% audit sampling rate for auto-approved plans
-//   NEW: Spanish-language consent version (Phase 2 commitment)
+// Spanish-language consent version needed for Phase 2 commitment
 function Consent({onDone,onBack,ck,setCk}){
   const items=[
     // AI & Clinical Oversight
-    {id:"ai",tx:"I understand this platform uses AI to assist in my care. A licensed Physical Therapist oversees all AI-generated treatment plans. The level of clinical review may vary based on clinical complexity and program phase."},
+    {id:"ai",tx:PILOT_PHASE===1
+      ?"I understand this platform uses AI to assist in my care. A licensed Physical Therapist oversees all AI-generated treatment plans. The level of clinical review may vary based on clinical complexity and program phase."
+      :`I understand this platform uses AI — validated through ${PILOT_CASES_VALIDATED}+ supervised cases — to generate my care plan. Complex cases receive direct PT review. All plans are subject to clinical audit.`},
     {id:"pt",tx:"I understand a licensed Utah PT maintains clinical oversight of AI recommendations. The AI supports — but never replaces — clinical judgment."},
+    ...(PILOT_PHASE>=2?[{id:"auto",tx:"I understand that lower-complexity plans may be delivered without individual PT review, based on protocols validated during supervised care. Higher-complexity plans continue to receive direct PT review. All plans are subject to a 10% random clinical audit."}]:[]),
     {id:"rest",tx:"I understand that if I report a concern about AI-supported care, Expect Health will provide a no-cost clinical review and, if clinically appropriate, corrective pelvic floor PT follow-up (telehealth or in-person, as available), subject to program terms."},
     // Data & Communications
     {id:"coll",tx:"Data collected includes: intake responses, scores, adherence, chat interactions, and outcomes — all in HIPAA-compliant encrypted systems."},
