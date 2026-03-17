@@ -226,7 +226,7 @@ const GUPI_URINARY=[
 const BOWEL=[
 {id:"bowel_constipation",text:"Over the past month, how often have you experienced constipation or straining during bowel movements?",opts:[["Never",0],["Rarely",1],["Sometimes",2],["Often",3],["Almost always",4]]},
 {id:"bowel_frequency",text:"How often do you typically have a bowel movement?",opts:[["Less than once a week",0],["1–4 times per week",1],["5–7 times per week",2],["1–2 times per day",3],["3 or more times per day",4]]},
-{id:"bristol_stool",text:"Which best describes your usual stool form? (Bristol Stool Scale)",opts:[["Type 1: Separate hard lumps (like nuts), hard to pass",1],["Type 2: Sausage-shaped but lumpy",2],["Type 3: Sausage-shaped with cracks on the surface",3],["Type 4: Smooth and soft, like a sausage or snake",4],["Type 5: Soft blobs with clear-cut edges, easy to pass",5],["Type 6: Fluffy pieces with ragged edges, mushy",6],["Type 7: Watery, no solid pieces, entirely liquid",7]]},
+{id:"bristol_stool",text:"Which best describes your usual stool form? (Bristol Stool Scale)",type:"bristol",opts:[["Type 1: Separate hard lumps, hard to pass",1],["Type 2: Sausage-shaped but lumpy",2],["Type 3: Sausage-shaped with cracks on surface",3],["Type 4: Smooth and soft, like a sausage",4],["Type 5: Soft blobs with clear-cut edges",5],["Type 6: Fluffy pieces with ragged edges",6],["Type 7: Watery, no solid pieces",7]]},
 ];
 
 const QOL_IMPACT=[
@@ -715,6 +715,23 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
   </div>;
   if(q.type==="scale")return<div className="qc fi"><div className="qt">{q.text}</div><div className="scv">{ans[q.id]??q.min}</div><input className="slr"type="range"min={q.min}max={q.max}value={ans[q.id]??q.min}onChange={e=>set(q.id,parseInt(e.target.value))}/><div className="scl"><span>{q.lo}</span><span>{q.hi}</span></div></div>;
   if(q.type==="multi")return<div className="qc fi"><div className="qt">{q.text}</div><div style={{display:"flex",flexWrap:"wrap"}}>{q.opts.map(([l,v])=><div key={v}className={`mo ${(ans[q.id]||[]).includes(v)?"s":""}`}onClick={()=>togM(q.id,v)}>{(ans[q.id]||[]).includes(v)?"✓":"○"} {l}</div>)}</div></div>;
+  if(q.type==="bristol"){
+    const bsvg=[
+      null,
+      /*1*/<svg viewBox="0 0 80 28" width="80" height="28"><circle cx="10" cy="14" r="6" fill="#8B6914"/><circle cx="26" cy="14" r="5" fill="#8B6914"/><circle cx="40" cy="14" r="6.5" fill="#8B6914"/><circle cx="55" cy="14" r="5.5" fill="#8B6914"/><circle cx="69" cy="14" r="5" fill="#8B6914"/></svg>,
+      /*2*/<svg viewBox="0 0 80 28" width="80" height="28"><path d="M6 14c0-6 4-9 10-9s8 2 12 1 8-2 12-1 8 2 12 1 8-3 12-2 8 4 10 10c0 6-4 9-10 9s-8-2-12-1-8 2-12 1-8-2-12-1-8 3-12 2S6 20 6 14z" fill="#8B6914"/></svg>,
+      /*3*/<svg viewBox="0 0 80 28" width="80" height="28"><rect x="6" y="5" width="68" height="18" rx="9" fill="#7A5C12"/><line x1="20" y1="6" x2="22" y2="22" stroke="#5C440E" strokeWidth="1.2"/><line x1="35" y1="6" x2="33" y2="22" stroke="#5C440E" strokeWidth="1.2"/><line x1="48" y1="6" x2="50" y2="22" stroke="#5C440E" strokeWidth="1.2"/><line x1="62" y1="6" x2="60" y2="22" stroke="#5C440E" strokeWidth="1.2"/></svg>,
+      /*4*/<svg viewBox="0 0 80 28" width="80" height="28"><rect x="6" y="6" width="68" height="16" rx="8" fill="#6B8C23"/></svg>,
+      /*5*/<svg viewBox="0 0 80 28" width="80" height="28"><ellipse cx="16" cy="14" rx="10" ry="8" fill="#8B7B2A"/><ellipse cx="38" cy="14" rx="9" ry="7" fill="#8B7B2A"/><ellipse cx="60" cy="14" rx="11" ry="8" fill="#8B7B2A"/></svg>,
+      /*6*/<svg viewBox="0 0 80 28" width="80" height="28"><ellipse cx="12" cy="10" rx="7" ry="5" fill="#A08830" opacity=".8"/><ellipse cx="30" cy="16" rx="8" ry="5" fill="#A08830" opacity=".7"/><ellipse cx="48" cy="11" rx="6" ry="4" fill="#A08830" opacity=".75"/><ellipse cx="64" cy="17" rx="7" ry="5" fill="#A08830" opacity=".7"/><ellipse cx="22" cy="22" rx="5" ry="3" fill="#A08830" opacity=".6"/><ellipse cx="55" cy="6" rx="5" ry="3" fill="#A08830" opacity=".6"/></svg>,
+      /*7*/<svg viewBox="0 0 80 28" width="80" height="28"><ellipse cx="40" cy="16" rx="34" ry="10" fill="#B8A040" opacity=".4"/><ellipse cx="36" cy="16" rx="24" ry="7" fill="#B8A040" opacity=".3"/></svg>,
+    ];
+    return<div className="qc fi"><div className="qt">{q.text}</div>
+      {q.opts.map(([l,v])=><button key={v}className={`ob ${ans[q.id]===v?"s":""}`}onClick={()=>set(q.id,v)}style={{display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
+        <div style={{flexShrink:0}}>{bsvg[v]}</div><span>{l}</span>
+      </button>)}
+    </div>;
+  }
   return<div className="qc fi"><div className="qt">{q.text}</div>{q.opts.map(([l,v])=><button key={v}className={`ob ${ans[q.id]===v?"s":""}`}onClick={()=>set(q.id,v)}>{l}</button>)}
     {ans[q.id]==="other"&&<input className="inp"type="text"value={ans[q.id+"_other"]||""}onChange={e=>set(q.id+"_other",e.target.value)}placeholder="Please specify"style={{marginTop:8}}/>}
   </div>;
