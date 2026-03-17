@@ -630,20 +630,17 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
   if(q.type==="phone"){
     const raw=ans[q.id+"_raw"]||"";
     const formatPhone=(v)=>{
-      let d=v.replace(/[^\d]/g,"");
-      if(d.length>10)d=d.slice(0,10);
-      let display="";
-      if(d.length>0)display="("+d.slice(0,3);
-      if(d.length>=3)display="("+d.slice(0,3)+") ";
-      if(d.length>3)display+= d.slice(3,6);
-      if(d.length>=6)display+="-"+d.slice(6,10);
-      if(d.length>0&&d.length<3)display="("+d;
-      return display;
+      const d=v.replace(/[^\d]/g,"").slice(0,10);
+      if(d.length===0)return"";
+      if(d.length<=3)return"("+d;
+      if(d.length<=6)return"("+d.slice(0,3)+") "+d.slice(3);
+      return"("+d.slice(0,3)+") "+d.slice(3,6)+"-"+d.slice(6);
     };
     const digits=(raw.match(/\d/g)||[]).length;
     const err=raw.length>0&&digits>0&&digits<10?"Enter a 10-digit phone number":null;
     return<div className="qc fi"><div className="qt">{q.text}</div>
       <input className="inp" value={raw} placeholder={q.ph||"(XXX) XXX-XXXX"} maxLength={14} style={{width:200,fontFamily:"monospace"}}
+        onKeyDown={e=>{if(e.key==="Backspace"&&raw.length>0){e.preventDefault();const d=raw.replace(/[^\d]/g,"");const shorter=d.slice(0,-1);const display=formatPhone(shorter);set(q.id+"_raw",display);set(q.id,shorter.length===10?shorter:"")}}}
         onChange={e=>{
           const display=formatPhone(e.target.value);
           set(q.id+"_raw",display);
