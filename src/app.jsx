@@ -968,10 +968,8 @@ function SessionWarningModal({cd,onDismiss}){
   </div>;
 }
 
-// LANDING PAGE (Step 1 — Email Collection)
+// LANDING PAGE (Step 1 — Welcome)
 function LandingPage({onDone}){
-  const[email,setEmail]=useState("");const[err,setErr]=useState(null);
-  const valid=email&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   return<div className="fi"style={{maxWidth:600,margin:"0 auto"}}>
     <div style={{textAlign:"center",marginBottom:24}}>
       <div className="h1"style={{fontSize:28}}>AI-Augmented Pelvic Floor Physical Therapy</div>
@@ -982,14 +980,8 @@ function LandingPage({onDone}){
         This service utilizes AI to assist licensed professionals in care planning. All treatment decisions are finalized by a human clinician.
       </div>
       <div className="chd">Get Started</div>
-      <p style={{fontSize:13,color:C.g500,marginBottom:14,lineHeight:1.6}}>Enter your email address to begin. This lets us save your progress and send you a secure link to your care plan when it's ready.</p>
-      <div style={{marginBottom:14}}>
-        <div className="il">Email Address</div>
-        <input className="inp"type="email"value={email}onChange={e=>{setEmail(e.target.value);setErr(null)}}placeholder="you@example.com"/>
-      </div>
-      {err&&<div style={{color:C.rd,fontSize:12,marginBottom:8}}>{err}</div>}
-      <button className="btn bpk"style={{width:"100%",justifyContent:"center",opacity:valid?1:.4}}disabled={!valid}onClick={()=>{if(!valid){setErr("Please enter a valid email address.");return}onDone(email)}}>Begin Assessment →</button>
-      <div style={{fontSize:10,color:C.g400,marginTop:10,textAlign:"center",lineHeight:1.5}}>Your email is used only to deliver your care plan and for abandonment recovery. No spam, ever.</div>
+      <p style={{fontSize:13,color:C.g500,marginBottom:14,lineHeight:1.6}}>Complete a quick intake assessment and get a personalized care plan. You'll be asked to review informed consent and verify your email before starting.</p>
+      <button className="btn bpk"style={{width:"100%",justifyContent:"center"}}onClick={onDone}>Begin Assessment →</button>
     </div>
     <div style={{textAlign:"center",marginTop:16}}>
       <div style={{fontSize:11,color:C.g400}}>Utah OAIP Regulatory Sandbox Pilot · Expect Health Inc.</div>
@@ -1028,9 +1020,9 @@ function Consent({onDone,onBack,ck,setCk}){
 
 // EMAIL VERIFICATION — confirms patient controls the email they provided
 // Photo ID verification (Persona) available if OAIP requires additional identity assurance
-function IdentityVerify({onDone,onBack,email}){
+function IdentityVerify({onDone,onBack}){
   const[st,setSt]=useState("input");
-  const[addr,setAddr]=useState(email||"");
+  const[addr,setAddr]=useState("");
   const[code,setCode]=useState("");
   const[sentCode,setSentCode]=useState(null);
   const[err,setErr]=useState(null);
@@ -1044,7 +1036,7 @@ function IdentityVerify({onDone,onBack,email}){
     L("email_verification_sent",{email:em});
   };
   const checkCode=()=>{
-    if(code===sentCode){setSt("verified");L("identity_verified",{mode:"email",email:addr.trim().toLowerCase()});setTimeout(onDone,1200)}
+    if(code===sentCode){setSt("verified");L("identity_verified",{mode:"email",email:addr.trim().toLowerCase()});setTimeout(()=>onDone(addr.trim().toLowerCase()),1200)}
     else{setErr("Incorrect code. Please try again.")}
   };
   return<div className="fi"style={{maxWidth:520,margin:"0 auto"}}>
@@ -2892,9 +2884,9 @@ authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,
     </div>
     <div ref={mainRef} style={{overflowY:"auto",maxHeight:"calc(100vh - 56px)"}}>
       <div className="mn" key={"p"+rk} style={{display:mode==="patient"?"block":"none"}}>
-        {pView==="landing"&&<LandingPage onDone={(em)=>{setLandingEmail(em);L("landing_email_collected",{email:em});setPView("consent")}}/>}
-        {pView==="consent"&&<Consent ck={consentCk} setCk={setConsentCk} onBack={()=>setPView("landing")} onDone={()=>{L("consent_completed",{email:landingEmail});setPView("verify")}}/>}
-        {pView==="verify"&&<IdentityVerify email={landingEmail} onBack={()=>setPView("consent")} onDone={()=>setPView("intake")}/>}
+        {pView==="landing"&&<LandingPage onDone={()=>setPView("consent")}/>}
+        {pView==="consent"&&<Consent ck={consentCk} setCk={setConsentCk} onBack={()=>setPView("landing")} onDone={()=>{L("consent_completed");setPView("verify")}}/>}
+        {pView==="verify"&&<IdentityVerify onBack={()=>setPView("consent")} onDone={(em)=>{setLandingEmail(em);L("email_verified",{email:em});setPView("intake")}}/>}
         {pView==="intake"&&<Intake onDone={()=>setPView("done")}mainRef={mainRef}initialEmail={landingEmail}/>}
         {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status!=="approved"&&<PatientWaiting name={sharedIntake.ans?.name_first}/>}
         {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status==="approved"&&<MyCareplan data={sharedIntake}/>}
