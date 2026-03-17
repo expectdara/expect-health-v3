@@ -196,7 +196,7 @@ export default async function handler(req, res) {
     if (!args?.sessionToken) return res.status(400).json({ error: "Missing session token" });
   }
 
-  // Session creation — PT uses email+password, OAIP uses shared access code
+  // Session creation — patients pass userId directly, PT uses email+password, OAIP uses shared access code
   if (fn === "functions:createSession") {
     const { accessCode, email, password, ...sessionArgs } = args;
 
@@ -223,6 +223,9 @@ export default async function handler(req, res) {
       } catch (e) {
         return res.status(403).json({ error: "Invalid email or password" });
       }
+    } else if (sessionArgs.userId && sessionArgs.userId.startsWith("usr_")) {
+      // Patient: session created during intake account creation — email stays in sessionArgs
+      sessionArgs.email = email;
     } else {
       return res.status(403).json({ error: "Invalid credentials" });
     }
