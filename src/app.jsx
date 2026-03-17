@@ -1000,15 +1000,17 @@ function LandingPage({onDone}){
 // CONSENT
 function Consent({onDone,onBack,ck,setCk}){
   const items=[
+    // AI & Clinical Oversight
     {id:"ai",tx:"I understand this platform uses AI to assist in my care. A licensed Physical Therapist oversees all AI-generated treatment plans. The level of clinical review may vary based on clinical complexity and program phase."},
     {id:"pt",tx:"I understand a licensed Utah PT maintains clinical oversight of AI recommendations. The AI supports — but never replaces — clinical judgment."},
-    {id:"opt",tx:"I understand that I can request a review by a human Physical Therapist at any time."},
+    {id:"rest",tx:"I understand that if I report a concern about AI-supported care, Expect Health will provide a no-cost clinical review and, if clinically appropriate, corrective pelvic floor PT follow-up (telehealth or in-person, as available), subject to program terms."},
+    // Data & Communications
+    {id:"coll",tx:"Data collected includes: intake responses, scores, adherence, chat interactions, and outcomes — all in HIPAA-compliant encrypted systems."},
     {id:"data",tx:"I consent to de-identified data sharing with: (1) Utah OAIP for oversight, (2) researchers under IRB protocols, (3) external auditors, (4) anonymized public dashboards."},
     {id:"coord",tx:"I authorize Expect Health to share my assessment results, treatment plan, and progress reports with the medical provider I identify for care coordination purposes."},
-    {id:"pilot",tx:"I understand this is a pilot under a Regulatory Mitigation Agreement with the Utah Office of AI Policy."},
-    {id:"rest",tx:"I understand that if I report a concern about AI-supported care, Expect Health will provide a no-cost clinical review and, if clinically appropriate, corrective pelvic floor PT follow-up (telehealth or in-person, as available), subject to program terms."},
-    {id:"coll",tx:"Data collected includes: intake responses, scores, adherence, chat interactions, and outcomes — all in HIPAA-compliant encrypted systems."},
     {id:"enotify",tx:"I consent to receive electronic notifications about my care plan. I understand these notifications will link to a secure portal and will not contain sensitive health details directly."},
+    // Program & Eligibility
+    {id:"pilot",tx:"I understand this is a pilot under a Regulatory Mitigation Agreement with the Utah Office of AI Policy."},
     {id:"utah",tx:"I confirm that I am currently located in the state of Utah."},
     {id:"age",tx:"I confirm I am at least 18 years old and provide this consent voluntarily."},
   ];
