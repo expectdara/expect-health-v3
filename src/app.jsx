@@ -261,7 +261,6 @@ const CLINICAL_EXTRA=[
   opts:[["1-3 glasses",0],["4-5 glasses",1],["6-8 glasses",2],["More than 8 glasses",3]]},
 {id:"phq2_interest",text:"Over the past 2 weeks, how often have you been bothered by having little interest or pleasure in doing things?",opts:[["Not at all",0],["Several days",1],["More than half the days",2],["Nearly every day",3]]},
 {id:"phq2_mood",text:"Over the past 2 weeks, how often have you been bothered by feeling down, depressed, or hopeless?",opts:[["Not at all",0],["Several days",1],["More than half the days",2],["Nearly every day",3]]},
-{id:"symptom_triggers",text:"What activities tend to trigger your symptoms? Please select all that apply.",type:"multi",opts:[["Lifting or carrying","lifting"],["Running or jumping","running"],["Coughing or sneezing","coughing"],["Laughing","laughing"],["Getting up from sitting or lying down","standing"],["Climbing stairs","stairs"],["Other exercises","other_exercise"],["Sexual activity","sexual"],["None in particular","none"]]},
 {id:"avoid_activities",text:"Are you avoiding activities because of pelvic symptoms? Select all that apply.",type:"multi",opts:[["Exercise or sports","exercise"],["Social events","social"],["Travel","travel"],["Sexual activity","sexual"],["Lifting (children, groceries, etc.)","lifting"],["None — symptoms don't limit my activities","none"]]},
 {id:"medications",text:"Are you taking any medications that might affect your bladder? (e.g., diuretics, antihistamines, antidepressants)",type:"text",ph:"List medications or type 'None'"},
 {id:"med_modify",text:"Are you changing how you take any prescribed medication because of urinary symptoms? (e.g., skipping doses, changing timing)",opts:[["No",0],["Yes",1],["Not sure",2]]},
@@ -2073,7 +2072,6 @@ function PTNewIntakeReview({data,onBack}){
         <AnsRow label="Bowel — straining" value={getOptLabel([{id:"x",opts:[["Never",0],["Rarely",1],["Sometimes",2],["Often",3],["Almost always",4]]}],"x",ans.bowel_constipation)}/>
         <AnsRow label="Bowel — frequency" value={getOptLabel([{id:"x",opts:[["<1x/wk",0],["1-4x/wk",1],["5-7x/wk",2],["1-2x/day",3],["3+/day",4]]}],"x",ans.bowel_frequency)}/>
         <AnsRow label="Bowel — Bristol stool type" value={ans.bristol_stool!==undefined?`Type ${ans.bristol_stool}${ans.bristol_stool<=2?" (constipation)":ans.bristol_stool<=5?" (normal range)":" (inflammation/diarrhea)"}`:undefined}/>
-        <AnsRow label="Symptom triggers" value={Array.isArray(ans.symptom_triggers)?ans.symptom_triggers.join(", "):ans.symptom_triggers}/>
         <AnsRow label="Avoided activities" value={Array.isArray(ans.avoid_activities)?((ans.avoid_activities.filter(x=>x!=="none").length>=3?"⚠️ HIGH IMPACT — ":"")+ans.avoid_activities.join(", ")):"None"}/>
         <AnsRow label="Cue preference" value={ans.cue_preference==="biologic"?"Body function (stop urine flow)":ans.cue_preference==="imaginative"?"Imaginative (lift a blueberry)":ans.cue_preference==="breathing"?"Breath-based (exhale and lift)":"Default"}/>
       </Section>
