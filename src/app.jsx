@@ -2580,7 +2580,7 @@ function AuditLog(){
 }
 
 function OAIPView(){
-  const[viewMode,setViewMode]=useState("compliance");
+  const[viewMode,setViewMode]=useState("safety");
   const checks=[
     {cat:"Consumer Protection",items:[{l:"Informed consent with AI disclosure",s:1},{l:"Right to opt out",s:1},{l:"100% PT review (Phase 1)",s:1},{l:"Corrective care commitment (scope-defined)",s:1},{l:"Malpractice + Tech E&O coverage",s:1}]},
     {cat:"Data Transparency",items:[{l:"OAIP monthly dashboard",s:1},{l:"Public anonymized dashboard",s:1},{l:"Researcher dataset (IRB)",s:1},{l:"External auditor access",s:1},{l:"FDA CDS exemption",s:1}]},
@@ -2651,20 +2651,63 @@ function OAIPView(){
   const[auditorMode,setAuditorMode]=useState(true);
   const mask=(name)=>auditorMode?hashMask(name):(name||"—");
 
-  return<div className="fi"><div className="h1">OAIP Compliance Dashboard</div><div className="sub">Utah Office of AI Policy · Regulatory Mitigation Agreement</div>
-    {/* View mode tabs */}
+  // --- Shared computations (used by summary cards + multiple tabs) ---
+  const allRecs=OUTCOME_RECORDS;const completed=allRecs.filter(r=>r.outcome!==null);const total=allRecs.length||1;const compN=completed.length||1;
+  const enrolled=DPTS.length+(sharedIntake?1:0);
+  const w8Logs=log.filter(e=>e.type==="checkin_week8_complete");const w8Completed=w8Logs.length;
+  const concernDist={none:0,mild:0,moderate:0,high:0};w8Logs.forEach(e=>{if(concernDist.hasOwnProperty(e.concern))concernDist[e.concern]++});
+  const highConcernRate=w8Completed>0?Math.round(concernDist.high/w8Completed*100):0;
+  const median=(arr)=>{if(arr.length===0)return 0;const s=[...arr].sort((a,b)=>a-b);const m=Math.floor(s.length/2);return s.length%2?s[m]:Math.round((s[m-1]+s[m])/2)};
+  const rvTimes=allRecs.map(r=>r.treatment.review_time_seconds).filter(t=>t>0);
+  const medianRvTime=median(rvTimes);const meanRvTime=rvTimes.length>0?Math.round(rvTimes.reduce((s,t)=>s+t,0)/rvTimes.length):0;
+  const meaningful=completed.filter(r=>r.outcome.clinically_meaningful);
+  const clinMeaningfulRate=completed.length>0?Math.round(meaningful.length/completed.length*100):0;
+  const ptOverrideN=allRecs.filter(r=>r.treatment.pt_modified_exercises||r.treatment.pt_modified_adjuncts||r.treatment.pt_modified_goals).length;
+  const ptOverrideR=Math.round(ptOverrideN/total*100);const under2min=rvTimes.filter(t=>t<120).length;
+  const rejectN=log.filter(e=>e.type==="plan_rejected").length;const escalationN=log.filter(e=>e.type==="CLINICAL_ESCALATION").length;
+  const popdiPos=allRecs.filter(r=>r.baseline.popdi.positiveCount>0).length;const phq2Pos=allRecs.filter(r=>r.baseline.phq2>=3).length;
+  const prenatalN=allRecs.filter(r=>r.baseline.pregnancy_status==="active_pregnancy").length;const pudendalN=allRecs.filter(r=>r.baseline.pudendal_flag).length;
+  const prolapseReviewN=allRecs.filter(r=>r.baseline.popdi.bulge||r.baseline.popdi.highBother).length;
+  const pfEvents=log.filter(e=>e.type==="prolapse_followup_week8");const pfYes=pfEvents.filter(e=>e.status==="yes").length;
+  const pfNotYet=pfEvents.filter(e=>e.status==="not_yet").length;const pfNA=pfEvents.filter(e=>e.status==="na"||e.status==="not_applicable").length;
+  const psiRef=log.filter(e=>e.type==="psi_referral").length;const psiAppr=log.filter(e=>e.type==="psi_referral_approved").length;
+  const phq2Emails=log.filter(e=>e.type==="phq2_followup_email_queued").length;
+  const painWorseN=completed.filter(r=>r.outcome.pain_delta<0).length;const painWorseR=Math.round(painWorseN/compN*100);
+  const bowelWorseN=completed.filter(r=>r.outcome.bowel_change==="worse").length;const bowelWorseR=Math.round(bowelWorseN/compN*100);
+  const popdiW8=log.filter(e=>e.type==="popdi_week8");const popdiWorseN=popdiW8.filter(e=>e.worsened).length;
+  const iciqWorseN=completed.filter(r=>r.outcome.iciq_delta<0).length;const iciqWorseR=Math.round(iciqWorseN/compN*100);
+  const phq2WorseN=completed.filter(r=>r.outcome.phq2_delta<0).length;const phq2WorseR=Math.round(phq2WorseN/compN*100);
+  const anyWorseN=completed.filter(r=>r.outcome.iciq_delta<0||r.outcome.pain_delta<0||r.outcome.phq2_delta<0||r.outcome.bowel_change==="worse").length;
+  const anyWorseR=Math.round(anyWorseN/compN*100);
+  const adhRates=completed.map(r=>r.outcome.adherence_rate||0);const medianAdh=median(adhRates);
+  const adhAbove80=completed.filter(r=>(r.outcome.adherence_rate||0)>80).length;const adhAbove80R=completed.length>0?Math.round(adhAbove80/completed.length*100):0;
+  const adhBelow50=completed.filter(r=>(r.outcome.adherence_rate||0)<50).length;const adhBelow50R=completed.length>0?Math.round(adhBelow50/completed.length*100):0;
+  const adhZero=completed.filter(r=>(r.outcome.adherence_rate||0)===0).length;const adhZeroR=completed.length>0?Math.round(adhZero/completed.length*100):0;
+  const rfByType={};redFlags.forEach(rf=>{rfByType[rf.type]=(rfByType[rf.type]||0)+1});
+  const m12Logs=log.filter(e=>e.type==="month12_checkin_complete");
+  const intakeSubmitted=enrolled;const planApproved=allRecs.length;const week8Done=w8Completed;const month12Done=m12Logs.length;
+  const fmtTime=(sec)=>sec<60?sec+"s":Math.round(sec/60*10)/10+"m";
+
+  return<div className="fi"><div className="h1">OAIP Pilot Dashboard</div><div className="sub">Utah Office of AI Policy · Safe oversight, measurable improvement, timely review, clear follow-through</div>
+    {/* Persistent Summary Cards */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:16}}>
+      <div className="sc"><div className="scl2">Active Patients</div><div className="scv2"style={{color:C.purp}}>{enrolled}</div></div>
+      <div className="sc"><div className="scl2">Week 8 Completed</div><div className="scv2"style={{color:C.blue}}>{w8Completed}</div><div className="scs">{enrolled>0?Math.round(w8Completed/enrolled*100):0}% of enrolled</div></div>
+      <div className="sc"style={{borderLeft:highConcernRate>0?"3px solid #DC2626":"none"}}><div className="scl2">High-Concern Rate</div><div className="scv2"style={{color:highConcernRate>0?C.rd:C.gn}}>{highConcernRate}%</div><div className="scs">{concernDist.high}/{w8Completed} check-ins</div></div>
+      <div className="sc"><div className="scl2">PT Review Timeliness</div><div className="scv2"style={{color:rvTimes.length===0?C.g400:medianRvTime<120?C.rd:C.gn}}>{rvTimes.length>0?fmtTime(medianRvTime):"\u2014"}</div><div className="scs">median review time</div></div>
+      <div className="sc"><div className="scl2">Clinically Meaningful</div><div className="scv2"style={{color:clinMeaningfulRate>=50?C.gn:clinMeaningfulRate>0?C.or:C.g400}}>{completed.length>0?clinMeaningfulRate+"%":"\u2014"}</div><div className="scs">{meaningful.length}/{completed.length} ICIQ delta {"\u2265"} 3</div></div>
+    </div>
+    {/* Tabs */}
     <div style={{display:"flex",gap:0,marginBottom:16,borderBottom:`1px solid ${C.g200}`,overflowX:"auto"}}>
-      {[["compliance","Compliance"],["redflags","Red Flags & Alerts"],["monitoring","Monitoring Metrics"],["followup","Follow-Up Schedule"],["audit","Live Audit Stream"],["fhir","Interoperability / HIE"],["outcomes","Outcome Research"]].map(([id,l])=>
+      {[["safety","Safety & Oversight"],["outcomes","Outcomes"],["operations","Pilot Operations"],["casereview","Case Review"],["compliance","Compliance"],["audit","Audit Stream"],["fhir","Interoperability / HIE"]].map(([id,l])=>
         <div key={id}style={{padding:"10px 18px",fontSize:13,fontWeight:viewMode===id?600:400,color:viewMode===id?C.purp:C.g400,borderBottom:`2px solid ${viewMode===id?C.pink:"transparent"}`,cursor:"pointer",whiteSpace:"nowrap"}}onClick={()=>setViewMode(id)}>{l}</div>
       )}
     </div>
 
     {viewMode==="compliance"&&<>
-    <div className="four"style={{marginBottom:16}}>
-      <div className="sc"><div className="scl2">Phase</div><div style={{fontSize:16,fontWeight:700,color:C.purp}}>Phase 1</div><div className="scs">Shadow · 100% review</div></div>
-      <div className="sc"><div className="scl2">Enrolled</div><div className="scv2"style={{color:C.blue}}>{n}</div></div>
-      <div className="sc"><div className="scl2">Adherence</div><div className="scv2"style={{color:C.gn}}>{aa}%</div></div>
-      <div className="sc"><div className="scl2">Red Flags</div><div className="scv2"style={{color:redFlags.length>0?C.rd:C.gn}}>{redFlags.length}</div></div>
+    <div style={{padding:"10px 16px",background:`${C.purp}10`,borderRadius:8,marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <span style={{fontSize:13,fontWeight:600,color:C.purp}}>Phase 1 — Shadow Mode · 100% PT Review</span>
+      <span style={{fontSize:12,color:C.g500}}>{redFlags.length} red flag{redFlags.length!==1?"s":""} active</span>
     </div>
     {checks.map(c=><div className="card"key={c.cat}><div className="chd">{c.cat}</div>
       {c.items.map((it,i)=><div key={i}style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:i<c.items.length-1?`1px solid ${C.g100}`:"none"}}>
@@ -2678,19 +2721,22 @@ function OAIPView(){
     </div>
     </>}
 
-    {viewMode==="redflags"&&<>
-    {/* Red Flags Summary Cards */}
-    <div className="four"style={{marginBottom:16}}>
-      <div className="sc"style={{borderLeft:"3px solid #DC2626"}}><div className="scl2">Critical</div><div className="scv2"style={{color:"#DC2626"}}>{redFlags.filter(f=>f.severity==="CRITICAL").length}</div></div>
-      <div className="sc"style={{borderLeft:"3px solid #EA580C"}}><div className="scl2">High</div><div className="scv2"style={{color:"#EA580C"}}>{redFlags.filter(f=>f.severity==="HIGH").length}</div></div>
-      <div className="sc"style={{borderLeft:"3px solid #D97706"}}><div className="scl2">Moderate</div><div className="scv2"style={{color:"#D97706"}}>{redFlags.filter(f=>f.severity==="MODERATE").length}</div></div>
-      <div className="sc"style={{borderLeft:"3px solid #16A34A"}}><div className="scl2">Clear</div><div className="scv2"style={{color:"#16A34A"}}>{redFlags.length===0?"✓":"—"}</div></div>
-    </div>
-
-    {redFlags.length===0&&<div className="card"style={{textAlign:"center",padding:40}}><div style={{fontSize:32,marginBottom:8}}>✅</div><div style={{color:C.g500,fontSize:14}}>No active red flags. All safety screening clear.</div></div>}
-
-    {redFlags.length>0&&<div className="card"style={{padding:0,overflow:"hidden"}}>
-      <div style={{padding:"14px 18px",background:"#FAFAFA",borderBottom:`1px solid ${C.g200}`,fontWeight:600,fontSize:13,color:C.purp}}>Active Red Flags & Clinical Alerts ({redFlags.length})</div>
+    {viewMode==="safety"&&<>
+    {/* Section A: Red Flags by Type */}
+    <div className="card">
+      <div className="chd">Red Flags by Type ({redFlags.length})</div>
+      <div className="four"style={{marginBottom:12}}>
+        <div className="sc"style={{borderLeft:"3px solid #DC2626"}}><div className="scl2">Critical</div><div className="scv2"style={{color:"#DC2626"}}>{redFlags.filter(f=>f.severity==="CRITICAL").length}</div></div>
+        <div className="sc"style={{borderLeft:"3px solid #EA580C"}}><div className="scl2">High</div><div className="scv2"style={{color:"#EA580C"}}>{redFlags.filter(f=>f.severity==="HIGH").length}</div></div>
+        <div className="sc"style={{borderLeft:"3px solid #D97706"}}><div className="scl2">Moderate</div><div className="scv2"style={{color:"#D97706"}}>{redFlags.filter(f=>f.severity==="MODERATE").length}</div></div>
+        <div className="sc"style={{borderLeft:"3px solid #16A34A"}}><div className="scl2">Clear</div><div className="scv2"style={{color:"#16A34A"}}>{redFlags.length===0?"\u2713":"\u2014"}</div></div>
+      </div>
+      {Object.keys(rfByType).length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
+        {Object.entries(rfByType).sort((a,b)=>b[1]-a[1]).map(([type,count])=>
+          <div key={type}className="sc"><div className="scl2"style={{fontSize:10}}>{type.replace(/_/g," ")}</div><div className="scv2"style={{color:C.or}}>{count}</div></div>
+        )}
+      </div>}
+      {redFlags.length===0&&<div style={{textAlign:"center",padding:24,color:C.g500,fontSize:14}}>No active red flags. All safety screening clear.</div>}
       {redFlags.map((rf,i)=>{const sc=sevColors[rf.severity]||sevColors.MODERATE;return<div key={i}style={{padding:"14px 18px",borderBottom:`1px solid ${C.g100}`,borderLeft:`4px solid ${sc.border}`,background:sc.bg}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -2701,114 +2747,73 @@ function OAIPView(){
         </div>
         <div style={{fontSize:13,fontWeight:600,color:sc.text,marginBottom:2}}>{rf.desc}</div>
         <div style={{fontSize:11,color:sc.text,opacity:.8}}>Patient: {mask(rf.patient)}</div>
-        <div style={{fontSize:11,color:sc.text,marginTop:4,fontStyle:"italic"}}>→ {rf.action}</div>
+        <div style={{fontSize:11,color:sc.text,marginTop:4,fontStyle:"italic"}}>{"\u2192"} {rf.action}</div>
       </div>})}
-    </div>}
-    </>}
-
-    {/* Monitoring Metrics Tab */}
-    {viewMode==="monitoring"&&<>
-    {(()=>{
-      const allRecs=OUTCOME_RECORDS;const completed=allRecs.filter(r=>r.outcome!==null);const total=allRecs.length||1;const compN=completed.length||1;
-      // Baseline detection rates
-      const popdiPos=allRecs.filter(r=>r.baseline.popdi.positiveCount>0).length;
-      const phq2Pos=allRecs.filter(r=>r.baseline.phq2>=3).length;
-      const prenatalN=allRecs.filter(r=>r.baseline.pregnancy_status==="active_pregnancy").length;
-      const pudendalN=allRecs.filter(r=>r.baseline.pudendal_flag).length;
-      const prolapseReviewN=allRecs.filter(r=>r.baseline.popdi.bulge||r.baseline.popdi.highBother).length;
-      // Referral tracking
-      const pfEvents=log.filter(e=>e.type==="prolapse_followup_week8");
-      const pfYes=pfEvents.filter(e=>e.status==="yes").length;const pfNotYet=pfEvents.filter(e=>e.status==="not_yet").length;const pfNA=pfEvents.filter(e=>e.status==="na"||e.status==="not_applicable").length;
-      const psiRef=log.filter(e=>e.type==="psi_referral").length;const psiAppr=log.filter(e=>e.type==="psi_referral_approved").length;
-      const phq2Emails=log.filter(e=>e.type==="phq2_followup_email_queued").length;
-      // Clinical trend metrics
-      const painWorseN=completed.filter(r=>r.outcome.pain_delta<0).length;const painWorseR=Math.round(painWorseN/compN*100);
-      const bowelWorseN=completed.filter(r=>r.outcome.bowel_change==="worse").length;const bowelWorseR=Math.round(bowelWorseN/compN*100);
-      const popdiW8=log.filter(e=>e.type==="popdi_week8");const popdiWorseN=popdiW8.filter(e=>e.worsened).length;
-      const iciqWorseN=completed.filter(r=>r.outcome.iciq_delta<0).length;const iciqWorseR=Math.round(iciqWorseN/compN*100);
-      const phq2WorseN=completed.filter(r=>r.outcome.phq2_delta<0).length;const phq2WorseR=Math.round(phq2WorseN/compN*100);
-      const anyWorseN=completed.filter(r=>r.outcome.iciq_delta<0||r.outcome.pain_delta<0||r.outcome.phq2_delta<0||r.outcome.bowel_change==="worse").length;
-      const anyWorseR=Math.round(anyWorseN/compN*100);
-      // AI oversight
-      const ptOverrideN=allRecs.filter(r=>r.treatment.pt_modified_exercises||r.treatment.pt_modified_adjuncts||r.treatment.pt_modified_goals).length;
-      const ptOverrideR=Math.round(ptOverrideN/total*100);
-      const rvTimes=allRecs.map(r=>r.treatment.review_time_seconds).filter(t=>t>0);
-      const meanRvTime=rvTimes.length>0?Math.round(rvTimes.reduce((s,t)=>s+t,0)/rvTimes.length):0;
-      const under2min=rvTimes.filter(t=>t<120).length;
-      const rejectN=log.filter(e=>e.type==="plan_rejected").length;
-      const escalationN=log.filter(e=>e.type==="CLINICAL_ESCALATION").length;
-      return<>
-      {/* Section A: Baseline Detection Rates */}
-      <div className="card"><div className="chd">Baseline Detection Rates</div>
-        <div style={{fontSize:11,color:C.g500,marginBottom:12}}>Clinical findings identified during intake assessment. These are expected prevalence detections, not safety events.</div>
-        {allRecs.length===0?<div style={{textAlign:"center",padding:24,color:C.g400,fontSize:13}}>No outcome records yet. Detection rates will populate as patients complete intake.</div>:
-        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
-          <div className="sc"><div className="scl2">POPDI-6 Positive</div><div className="scv2"style={{color:C.or}}>{popdiPos}</div><div className="scs">{Math.round(popdiPos/total*100)}% of enrolled</div></div>
-          <div className="sc"><div className="scl2">PHQ-2 Positive</div><div className="scv2"style={{color:C.or}}>{phq2Pos}</div><div className="scs">{Math.round(phq2Pos/total*100)}% of enrolled</div></div>
-          <div className="sc"><div className="scl2">Prenatal Protocol</div><div className="scv2"style={{color:C.blue}}>{prenatalN}</div></div>
-          <div className="sc"><div className="scl2">Pudendal Flag</div><div className="scv2"style={{color:C.or}}>{pudendalN}</div></div>
-          <div className="sc"><div className="scl2">Prolapse Review</div><div className="scv2"style={{color:C.or}}>{prolapseReviewN}</div><div className="scs">bulge or high bother</div></div>
-        </div>}
-      </div>
-      {/* Section B: Referral & Follow-Up Tracking */}
-      <div className="card"style={{marginTop:16}}><div className="chd">Referral & Follow-Up Tracking</div>
-        <div className="three"style={{marginBottom:12}}>
-          <div className="sc"><div className="scl2">Prolapse Follow-Up</div><div className="scv2"style={{color:C.blue}}>{pfEvents.length}</div><div className="scs">{pfYes} completed · {pfNotYet} pending · {pfNA} N/A</div></div>
-          <div className="sc"><div className="scl2">PSI Referrals</div><div className="scv2"style={{color:C.blue}}>{psiRef}</div><div className="scs">{psiAppr} approved by PT</div></div>
-          <div className="sc"><div className="scl2">PHQ-2 Follow-Up Emails</div><div className="scv2"style={{color:C.blue}}>{phq2Emails}</div><div className="scs">queued for delivery</div></div>
-        </div>
-        {pfNotYet>0&&<div style={{padding:"8px 14px",background:"#FEF3C7",border:"1px solid #F59E0B",borderRadius:8,fontSize:12,color:"#92400E"}}>{pfNotYet} patient{pfNotYet>1?"s":""} with prolapse symptoms {pfNotYet>1?"have":"has"} not yet followed up with a provider.</div>}
-      </div>
-      {/* Section C: Clinical Trend Metrics */}
-      <div className="card"style={{marginTop:16}}><div className="chd">Clinical Trend Metrics</div>
-        <div style={{fontSize:11,color:C.g500,marginBottom:12}}>Symptom change rates across completed Week 8 assessments (n={completed.length}).</div>
-        {completed.length===0?<div style={{textAlign:"center",padding:24,color:C.g400,fontSize:13}}>No completed Week 8 assessments yet.</div>:<>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
-          <div className="sc"><div className="scl2">Pain Worsening</div><div className="scv2"style={{color:painWorseR>0?C.or:C.gn}}>{painWorseR}%</div><div className="scs">{painWorseN}/{completed.length}</div></div>
-          <div className="sc"><div className="scl2">Bowel Worsening</div><div className="scv2"style={{color:bowelWorseR>0?C.or:C.gn}}>{bowelWorseR}%</div><div className="scs">{bowelWorseN}/{completed.length}</div></div>
-          <div className="sc"><div className="scl2">POPDI Worsening</div><div className="scv2"style={{color:popdiWorseN>0?C.or:C.gn}}>{popdiWorseN}</div><div className="scs">of {popdiW8.length} re-assessed</div></div>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
-          <div className="sc"><div className="scl2">ICIQ Worsening</div><div className="scv2"style={{color:iciqWorseR>0?C.or:C.gn}}>{iciqWorseR}%</div><div className="scs">{iciqWorseN}/{completed.length}</div></div>
-          <div className="sc"><div className="scl2">PHQ-2 Worsening</div><div className="scv2"style={{color:phq2WorseR>0?C.or:C.gn}}>{phq2WorseR}%</div><div className="scs">{phq2WorseN}/{completed.length}</div></div>
-          <div className="sc"><div className="scl2">Any Domain Worse</div><div className="scv2"style={{color:anyWorseR>20?C.rd:anyWorseR>0?C.or:C.gn}}>{anyWorseR}%</div><div className="scs">{anyWorseN}/{completed.length}</div></div>
-        </div>
-        {/* Worsening by tier */}
-        <div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:8,marginTop:4}}>Worsening Rate by Tier</div>
-        <div className="three">
-          {["Beginner","Moderate","Advanced"].map(t=>{const tc=completed.filter(r=>r.treatment.tier===t);const wn=tc.filter(r=>r.outcome.iciq_delta<0||r.outcome.pain_delta<0||r.outcome.bowel_change==="worse").length;const wr=tc.length>0?Math.round(wn/tc.length*100):0;
-            return<div key={t}className="sc"><div className="scl2">{t}</div><div className="scv2"style={{color:wr>20?C.rd:wr>0?C.or:C.gn}}>{wr}%</div><div className="scs">{wn}/{tc.length} patients</div></div>})}
-        </div>
-        </>}
-      </div>
-      {/* Section D: AI Oversight Metrics */}
-      <div className="card"style={{marginTop:16}}><div className="chd">AI Oversight Metrics</div>
-        <div style={{fontSize:11,color:C.g500,marginBottom:12}}>Human-in-the-loop performance indicators. Tracks whether clinician oversight is functioning as designed.</div>
-        {allRecs.length===0?<div style={{textAlign:"center",padding:24,color:C.g400,fontSize:13}}>No plans reviewed yet.</div>:
-        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
-          <div className="sc"><div className="scl2">PT Override Rate</div><div className="scv2"style={{color:ptOverrideR>0?C.or:C.gn}}>{ptOverrideR}%</div><div className="scs">{ptOverrideN}/{allRecs.length} plans modified</div></div>
-          <div className="sc"><div className="scl2">Mean Review Time</div><div className="scv2"style={{color:meanRvTime<120?C.rd:C.gn}}>{meanRvTime<60?meanRvTime+"s":Math.round(meanRvTime/60*10)/10+"m"}</div><div className="scs">{rvTimes.length} reviews timed</div></div>
-          <div className="sc"><div className="scl2">Under 2 Min</div><div className="scv2"style={{color:under2min>0?C.rd:C.gn}}>{under2min}</div><div className="scs">{under2min>0?"CMS concern":"All adequate"}</div></div>
-          <div className="sc"><div className="scl2">Plan Rejections</div><div className="scv2"style={{color:rejectN>0?C.or:C.gn}}>{rejectN}</div><div className="scs">{Math.round(rejectN/total*100)}% rejection rate</div></div>
-          <div className="sc"><div className="scl2">Out-of-Scope</div><div className="scv2"style={{color:escalationN>0?C.or:C.gn}}>{escalationN}</div><div className="scs">clinical escalations</div></div>
-        </div>}
-      </div>
-      {/* Section E: Routing Detections & Clinical Notes */}
-      {monitoringFlags.length>0&&<div className="card"style={{marginTop:16}}><div className="chd">Routing Detections & Clinical Notes ({monitoringFlags.length})</div>
-        <div style={{fontSize:11,color:C.g500,marginBottom:12}}>Baseline clinical findings and routing decisions. These are operational tracking items, not safety events.</div>
-        {monitoringFlags.map((mf,i)=><div key={i}style={{padding:"10px 14px",borderBottom:`1px solid ${C.g100}`,borderLeft:"3px solid #93C5FD",background:"#F0F4FF"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
-            <div style={{display:"flex",gap:6,alignItems:"center"}}>
-              <span style={{background:"#DBEAFE",color:"#1E40AF",padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:600}}>{mf.type.replace(/_/g," ")}</span>
-            </div>
-            <span style={{fontSize:10,color:C.g400}}>{new Date(mf.ts).toLocaleString()}</span>
-          </div>
-          <div style={{fontSize:12,color:"#1E3A5F",marginBottom:2}}>{mf.desc}</div>
-          <div style={{fontSize:11,color:"#1E3A5F",opacity:.7}}>Patient: {mask(mf.patient)}</div>
-        </div>)}
+    </div>
+    {/* Section B: Concern-Level Distribution */}
+    <div className="card"style={{marginTop:16}}>
+      <div className="chd">Concern-Level Distribution (Week 8 Check-Ins)</div>
+      {w8Completed===0?<div style={{textAlign:"center",padding:24,color:C.g400,fontSize:13}}>No Week 8 check-ins recorded yet.</div>:
+      <div className="four">
+        {[["None",concernDist.none,C.gn],["Mild",concernDist.mild,C.blue],["Moderate",concernDist.moderate,C.or],["High",concernDist.high,C.rd]].map(([label,count,color])=>
+          <div key={label}className="sc"><div className="scl2">{label}</div><div className="scv2"style={{color}}>{count}</div><div className="scs">{w8Completed>0?Math.round(count/w8Completed*100):0}%</div></div>
+        )}
       </div>}
-      </>;
-    })()}
+    </div>
+    {/* Section C: Human Oversight Metrics */}
+    <div className="card"style={{marginTop:16}}>
+      <div className="chd">Human Oversight Metrics</div>
+      <div style={{fontSize:11,color:C.g500,marginBottom:12}}>Licensed clinician review performance. OAIP requires documented human-in-the-loop functioning.</div>
+      {allRecs.length===0?<div style={{textAlign:"center",padding:24,color:C.g400,fontSize:13}}>No plans reviewed yet.</div>:<>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+        <div className="sc"><div className="scl2">PT Review Rate</div><div className="scv2"style={{color:C.gn}}>100%</div><div className="scs">Phase 1: all plans reviewed</div></div>
+        <div className="sc"><div className="scl2">Override Rate</div><div className="scv2"style={{color:ptOverrideR>0?C.or:C.gn}}>{ptOverrideR}%</div><div className="scs">{ptOverrideN}/{allRecs.length} plans modified</div></div>
+        <div className="sc"><div className="scl2">Mean Review Time</div><div className="scv2"style={{color:meanRvTime<120?C.rd:C.gn}}>{fmtTime(meanRvTime)}</div><div className="scs">{rvTimes.length} reviews</div></div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+        <div className="sc"><div className="scl2">Median Review Time</div><div className="scv2"style={{color:medianRvTime<120?C.rd:C.gn}}>{fmtTime(medianRvTime)}</div></div>
+        <div className="sc"><div className="scl2">Under 2 Min</div><div className="scv2"style={{color:under2min>0?C.rd:C.gn}}>{under2min}</div><div className="scs">{under2min>0?"CMS concern":"All adequate"}</div></div>
+        <div className="sc"><div className="scl2">Plan Rejections</div><div className="scv2"style={{color:rejectN>0?C.or:C.gn}}>{rejectN}</div><div className="scs">{Math.round(rejectN/total*100)}% rejection rate</div></div>
+      </div>
+      {escalationN>0&&<div style={{marginTop:8}}><div className="sc"><div className="scl2">Out-of-Scope Escalations</div><div className="scv2"style={{color:C.or}}>{escalationN}</div></div></div>}
+      </>}
+    </div>
+    {/* Section D: Follow-Up Completion */}
+    <div className="card"style={{marginTop:16}}>
+      <div className="chd">Follow-Up Completion</div>
+      <div className="three"style={{marginBottom:12}}>
+        <div className="sc"><div className="scl2">Prolapse Follow-Up</div><div className="scv2"style={{color:C.blue}}>{pfEvents.length}</div><div className="scs">{pfYes} completed {"\u00B7"} {pfNotYet} pending {"\u00B7"} {pfNA} N/A</div></div>
+        <div className="sc"><div className="scl2">PSI Referrals</div><div className="scv2"style={{color:C.blue}}>{psiRef}</div><div className="scs">{psiAppr} approved by PT</div></div>
+        <div className="sc"><div className="scl2">PHQ-2 Follow-Up Emails</div><div className="scv2"style={{color:C.blue}}>{phq2Emails}</div></div>
+      </div>
+      {pfNotYet>0&&<div style={{padding:"8px 14px",background:"#FEF3C7",border:"1px solid #F59E0B",borderRadius:8,fontSize:12,color:"#92400E"}}>{pfNotYet} patient{pfNotYet>1?"s":""} with prolapse symptoms {pfNotYet>1?"have":"has"} not yet followed up.</div>}
+    </div>
+    {/* Section E: Baseline Detection Rates */}
+    <div className="card"style={{marginTop:16}}>
+      <div className="chd">Baseline Detection Rates</div>
+      <div style={{fontSize:11,color:C.g500,marginBottom:12}}>Expected prevalence detections identified during intake, not safety events.</div>
+      {allRecs.length===0?<div style={{textAlign:"center",padding:24,color:C.g400,fontSize:13}}>No outcome records yet.</div>:
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
+        <div className="sc"><div className="scl2">POPDI-6 Positive</div><div className="scv2"style={{color:C.or}}>{popdiPos}</div><div className="scs">{Math.round(popdiPos/total*100)}%</div></div>
+        <div className="sc"><div className="scl2">PHQ-2 Positive</div><div className="scv2"style={{color:C.or}}>{phq2Pos}</div><div className="scs">{Math.round(phq2Pos/total*100)}%</div></div>
+        <div className="sc"><div className="scl2">Prenatal Protocol</div><div className="scv2"style={{color:C.blue}}>{prenatalN}</div></div>
+        <div className="sc"><div className="scl2">Pudendal Flag</div><div className="scv2"style={{color:C.or}}>{pudendalN}</div></div>
+        <div className="sc"><div className="scl2">Prolapse Review</div><div className="scv2"style={{color:C.or}}>{prolapseReviewN}</div><div className="scs">bulge or high bother</div></div>
+      </div>}
+    </div>
+    {/* Section F: Routing Detections */}
+    {monitoringFlags.length>0&&<div className="card"style={{marginTop:16}}>
+      <div className="chd">Routing Detections & Clinical Notes ({monitoringFlags.length})</div>
+      <div style={{fontSize:11,color:C.g500,marginBottom:12}}>Operational tracking items, not safety events.</div>
+      {monitoringFlags.map((mf,i)=><div key={i}style={{padding:"10px 14px",borderBottom:`1px solid ${C.g100}`,borderLeft:"3px solid #93C5FD",background:"#F0F4FF"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+          <span style={{background:"#DBEAFE",color:"#1E40AF",padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:600}}>{mf.type.replace(/_/g," ")}</span>
+          <span style={{fontSize:10,color:C.g400}}>{new Date(mf.ts).toLocaleString()}</span>
+        </div>
+        <div style={{fontSize:12,color:"#1E3A5F",marginBottom:2}}>{mf.desc}</div>
+        <div style={{fontSize:11,color:"#1E3A5F",opacity:.7}}>Patient: {mask(mf.patient)}</div>
+      </div>)}
+    </div>}
     </>}
 
     {viewMode==="audit"&&<>
@@ -2836,8 +2841,32 @@ function OAIPView(){
     </div>
     </>}
 
-    {viewMode==="followup"&&<>
-    {/* Follow-Up Schedule */}
+    {viewMode==="operations"&&<>
+    {/* Section A: Completion Funnel */}
+    <div className="card">
+      <div className="chd">Completion Funnel</div>
+      <div className="four"style={{marginBottom:12}}>
+        <div className="sc"><div className="scl2">Intake Submitted</div><div className="scv2"style={{color:C.purp}}>{intakeSubmitted}</div></div>
+        <div className="sc"><div className="scl2">Plan Approved</div><div className="scv2"style={{color:C.blue}}>{planApproved}</div><div className="scs">{intakeSubmitted>0?Math.round(planApproved/intakeSubmitted*100):0}% conversion</div></div>
+        <div className="sc"><div className="scl2">Week 8 Completed</div><div className="scv2"style={{color:C.gn}}>{week8Done}</div><div className="scs">{planApproved>0?Math.round(week8Done/planApproved*100):0}% of approved</div></div>
+        <div className="sc"><div className="scl2">Month 12 Completed</div><div className="scv2"style={{color:C.gn}}>{month12Done}</div><div className="scs">{week8Done>0?Math.round(month12Done/week8Done*100):0}% of week 8</div></div>
+      </div>
+      <div style={{display:"flex",gap:4,height:24,borderRadius:8,overflow:"hidden"}}>
+        {[[intakeSubmitted,C.purp,"Intake"],[planApproved,C.blue,"Approved"],[week8Done,C.gn,"Wk8"],[month12Done,"#059669","Mo12"]].map(([nn,cc,label],i)=>
+          <div key={i}style={{flex:Math.max(nn,1),background:cc,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"white",fontWeight:600,minWidth:nn>0?40:0}}>{nn>0?`${label}: ${nn}`:""}</div>
+        )}
+      </div>
+    </div>
+    {/* Section B: Dropout by Stage */}
+    <div className="card"style={{marginTop:16}}>
+      <div className="chd">Dropout by Stage</div>
+      <div className="three">
+        <div className="sc"><div className="scl2">Pre-Approval</div><div className="scv2"style={{color:intakeSubmitted-planApproved>0?C.or:C.gn}}>{intakeSubmitted-planApproved}</div><div className="scs">submitted but not approved</div></div>
+        <div className="sc"><div className="scl2">Pre-Week 8</div><div className="scv2"style={{color:planApproved-week8Done>0?C.or:C.gn}}>{planApproved-week8Done}</div><div className="scs">approved but no week 8</div></div>
+        <div className="sc"><div className="scl2">Pre-Month 12</div><div className="scv2"style={{color:week8Done-month12Done>0?C.or:C.gn}}>{week8Done-month12Done}</div><div className="scs">week 8 but no month 12</div></div>
+      </div>
+    </div>
+    {/* Section C+D: Overdue Follow-Ups + Schedule Grid */}
     {(()=>{
       const allPts=[...DPTS.map(p=>({id:p.id,nm:p.nm,approvedDate:p.planApprovedDate,w8:p.week8})),...(sharedIntake&&sharedIntake.plan?.status==="approved"?[{id:"NEW",nm:sharedIntake.name||"Current Patient",approvedDate:new Date().toISOString().split("T")[0],w8:sharedIntake.week8}]:[])];
       const checkpointStatus=(approvedDate,weeksOut,w8Data)=>{
@@ -2850,14 +2879,15 @@ function OAIPView(){
         return{status:`In ${Math.ceil((dueDay-daysSince)/7)}wk`,color:C.g300};
       };
       const w8Stats={completed:allPts.filter(p=>p.w8&&p.w8.submitted).length,pending:allPts.filter(p=>{const s=checkpointStatus(p.approvedDate,8,p.w8);return s.status==="Due now"||s.status.startsWith("Due in")}).length,overdue:allPts.filter(p=>{const s=checkpointStatus(p.approvedDate,8,p.w8);return s.status.startsWith("Overdue")}).length};
-      return<>
+      return<div className="card"style={{marginTop:16}}>
+        <div className="chd">Follow-Up Schedule</div>
         <div className="four"style={{marginBottom:16}}>
           <div className="sc"><div className="scl2">Week 8</div><div className="scv2"style={{color:C.gn}}>{w8Stats.completed}</div><div className="scs">completed</div></div>
           <div className="sc"><div className="scl2">Pending</div><div className="scv2"style={{color:C.or}}>{w8Stats.pending}</div></div>
           <div className="sc"><div className="scl2">Overdue</div><div className="scv2"style={{color:w8Stats.overdue>0?C.rd:C.gn}}>{w8Stats.overdue}</div></div>
           <div className="sc"><div className="scl2">Total Patients</div><div className="scv2"style={{color:C.purp}}>{allPts.length}</div></div>
         </div>
-        <div className="card"style={{padding:0,overflow:"hidden"}}>
+        <div style={{padding:0,overflow:"hidden"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",padding:"10px 16px",background:C.g50,borderBottom:`1px solid ${C.g200}`,fontSize:12,fontWeight:600,color:C.g500}}>
             <span>Patient</span><span>Week 8</span><span>Week 16</span><span>Month 12</span>
           </div>
@@ -2869,7 +2899,7 @@ function OAIPView(){
         </div>
         <div style={{marginTop:12}}><button className="btn bo bsm"onClick={()=>{const m12=document.getElementById("month12-preview");if(m12)m12.style.display=m12.style.display==="none"?"block":"none"}}>Preview: Month 12 Check-In</button></div>
         <div id="month12-preview"style={{display:"none",marginTop:12}}><Month12CheckIn/></div>
-      </>;
+      </div>;
     })()}
     </>}
 
@@ -2942,174 +2972,201 @@ function OAIPView(){
     </div>
     </>}
 
-    {/* Outcome Research Tab */}
+    {/* Outcomes Tab */}
     {viewMode==="outcomes"&&<>
-    {(()=>{
-      const recs=OUTCOME_RECORDS;const completed=recs.filter(r=>r.outcome!==null);
-      const meaningful=completed.filter(r=>r.outcome.clinically_meaningful);
-      const meanDelta=completed.length>0?Math.round(completed.reduce((s,r)=>s+r.outcome.iciq_delta,0)/completed.length*10)/10:0;
-      const analysis=analyzePatterns(OUTCOME_RECORDS);
-      const sigColors={green:C.gn,yellow:C.or,gray:C.g400};
-      return<>
-      <div className="four"style={{marginBottom:16}}>
-        <div className="sc"><div className="scl2">Total Records</div><div className="scv2"style={{color:C.purp}}>{recs.length}</div></div>
-        <div className="sc"><div className="scl2">Completed</div><div className="scv2"style={{color:C.blue}}>{completed.length}</div></div>
-        <div className="sc"><div className="scl2">Clin. Meaningful</div><div className="scv2"style={{color:C.gn}}>{meaningful.length}</div><div className="scs">{completed.length>0?Math.round(meaningful.length/completed.length*100):0}%</div></div>
-        <div className="sc"><div className="scl2">Mean ICIQ Delta</div><div className="scv2"style={{color:meanDelta>0?C.gn:C.or}}>{meanDelta>0?"+":""}{meanDelta}</div></div>
+    {completed.length===0&&allRecs.length===0&&<div className="card"style={{textAlign:"center",padding:40}}><div style={{color:C.g500,fontSize:14}}>No outcome data yet. Records are created when a PT approves a plan and completed at Week 8.</div></div>}
+    {/* Section A: Mean Deltas */}
+    {completed.length>0&&(()=>{
+      const mIciq=Math.round(completed.reduce((s,r)=>s+r.outcome.iciq_delta,0)/completed.length*10)/10;
+      const mPain=Math.round(completed.reduce((s,r)=>s+r.outcome.pain_delta,0)/completed.length*10)/10;
+      const mPhq2=Math.round(completed.reduce((s,r)=>s+r.outcome.phq2_delta,0)/completed.length*10)/10;
+      const mFsex=Math.round(completed.reduce((s,r)=>s+r.outcome.fsex_delta,0)/completed.length*10)/10;
+      const iciqImp=Math.round(completed.filter(r=>r.outcome.iciq_delta>0).length/completed.length*100);
+      const painImp=Math.round(completed.filter(r=>r.outcome.pain_delta>0).length/completed.length*100);
+      const phq2Imp=Math.round(completed.filter(r=>r.outcome.phq2_delta>0).length/completed.length*100);
+      const fsexImp=Math.round(completed.filter(r=>r.outcome.fsex_delta>0).length/completed.length*100);
+      const bowelB=completed.filter(r=>r.outcome.bowel_change==="better").length;
+      const bowelS=completed.filter(r=>r.outcome.bowel_change==="same").length;
+      const bowelW=completed.filter(r=>r.outcome.bowel_change==="worse").length;
+      const actY=completed.filter(r=>r.outcome.activities_resumed==="yes").length;
+      const actP=completed.filter(r=>r.outcome.activities_resumed==="partially").length;
+      const actN=completed.filter(r=>r.outcome.activities_resumed==="no").length;
+      return<div className="card">
+      <div className="chd">Mean Baseline-to-Week 8 Deltas (n={completed.length})</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
+        <div className="sc"><div className="scl2">ICIQ Delta</div><div className="scv2"style={{color:mIciq>0?C.gn:mIciq<0?C.rd:C.or}}>{mIciq>0?"+":""}{mIciq}</div><div className="scs">{iciqImp}% improved</div></div>
+        <div className="sc"><div className="scl2">Pain Delta</div><div className="scv2"style={{color:mPain>0?C.gn:mPain<0?C.rd:C.or}}>{mPain>0?"+":""}{mPain}</div><div className="scs">{painImp}% improved</div></div>
+        <div className="sc"><div className="scl2">PHQ-2 Delta</div><div className="scv2"style={{color:mPhq2>0?C.gn:mPhq2<0?C.rd:C.or}}>{mPhq2>0?"+":""}{mPhq2}</div><div className="scs">{phq2Imp}% improved</div></div>
+        <div className="sc"><div className="scl2">Sexual Function</div><div className="scv2"style={{color:mFsex>0?C.gn:mFsex<0?C.rd:C.or}}>{mFsex>0?"+":""}{mFsex}</div><div className="scs">{fsexImp}% improved</div></div>
       </div>
-      {recs.length===0&&<div className="card"style={{textAlign:"center",padding:40}}>
-        <div style={{fontSize:32,marginBottom:8}}>📊</div>
-        <div style={{color:C.g500,fontSize:14}}>No outcome records yet. Records are created when a PT approves a plan.</div>
-      </div>}
-      {recs.length>0&&<div className="card"style={{padding:0,overflow:"hidden"}}>
-        <div style={{padding:"14px 18px",background:C.g50,borderBottom:`1px solid ${C.g200}`,fontWeight:600,fontSize:13,color:C.purp}}>Outcome Records ({recs.length})</div>
-        <div style={{display:"grid",gridTemplateColumns:"1.2fr 1fr 1fr 1fr 1fr 1fr",padding:"8px 16px",background:C.g50,borderBottom:`1px solid ${C.g200}`,fontSize:10,fontWeight:600,color:C.g500,textTransform:"uppercase",letterSpacing:1}}>
-          <span>Record</span><span>Tier</span><span>ICIQ Base</span><span>Status</span><span>ICIQ Delta</span><span>NPS</span>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <div className="sc"><div className="scl2">Bowel Outcomes</div><div style={{display:"flex",gap:12,justifyContent:"center",marginTop:4}}>
+          <span style={{fontSize:12}}><span style={{color:C.gn,fontWeight:700}}>{bowelB}</span> better</span>
+          <span style={{fontSize:12}}><span style={{color:C.g500,fontWeight:700}}>{bowelS}</span> same</span>
+          <span style={{fontSize:12}}><span style={{color:C.rd,fontWeight:700}}>{bowelW}</span> worse</span>
+        </div></div>
+        <div className="sc"><div className="scl2">Activity Resumption</div><div style={{display:"flex",gap:12,justifyContent:"center",marginTop:4}}>
+          <span style={{fontSize:12}}><span style={{color:C.gn,fontWeight:700}}>{actY}</span> yes</span>
+          <span style={{fontSize:12}}><span style={{color:C.or,fontWeight:700}}>{actP}</span> partial</span>
+          <span style={{fontSize:12}}><span style={{color:C.rd,fontWeight:700}}>{actN}</span> no</span>
+        </div></div>
+      </div>
+    </div>})()}
+    {/* Section B: Clinically Meaningful */}
+    {allRecs.length>0&&<div className="card"style={{marginTop:16}}>
+      <div className="chd">Clinically Meaningful Improvement</div>
+      <div className="three">
+        <div className="sc"><div className="scl2">Rate</div><div className="scv2"style={{color:clinMeaningfulRate>=50?C.gn:clinMeaningfulRate>0?C.or:C.g400}}>{completed.length>0?clinMeaningfulRate+"%":"\u2014"}</div><div className="scs">{meaningful.length}/{completed.length} with ICIQ delta {"\u2265"} 3</div></div>
+        <div className="sc"><div className="scl2">Total Records</div><div className="scv2"style={{color:C.purp}}>{allRecs.length}</div><div className="scs">{completed.length} completed</div></div>
+        <div className="sc"><div className="scl2">NNT</div><div className="scv2"style={{color:C.purp}}>{clinMeaningfulRate>0?Math.round(100/clinMeaningfulRate*10)/10:"N/A"}</div><div className="scs">number needed to treat</div></div>
+      </div>
+    </div>}
+    {/* Section C: Worsening Rates */}
+    {completed.length>0&&<div className="card"style={{marginTop:16}}>
+      <div className="chd">Worsening Rates</div>
+      <div style={{fontSize:11,color:C.g500,marginBottom:12}}>Symptom change across completed Week 8 assessments (n={completed.length}).</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+        <div className="sc"><div className="scl2">Pain Worsening</div><div className="scv2"style={{color:painWorseR>0?C.or:C.gn}}>{painWorseR}%</div><div className="scs">{painWorseN}/{completed.length}</div></div>
+        <div className="sc"><div className="scl2">Bowel Worsening</div><div className="scv2"style={{color:bowelWorseR>0?C.or:C.gn}}>{bowelWorseR}%</div><div className="scs">{bowelWorseN}/{completed.length}</div></div>
+        <div className="sc"><div className="scl2">POPDI Worsening</div><div className="scv2"style={{color:popdiWorseN>0?C.or:C.gn}}>{popdiWorseN}</div><div className="scs">of {popdiW8.length} re-assessed</div></div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+        <div className="sc"><div className="scl2">ICIQ Worsening</div><div className="scv2"style={{color:iciqWorseR>0?C.or:C.gn}}>{iciqWorseR}%</div><div className="scs">{iciqWorseN}/{completed.length}</div></div>
+        <div className="sc"><div className="scl2">PHQ-2 Worsening</div><div className="scv2"style={{color:phq2WorseR>0?C.or:C.gn}}>{phq2WorseR}%</div><div className="scs">{phq2WorseN}/{completed.length}</div></div>
+        <div className="sc"><div className="scl2">Any Domain Worse</div><div className="scv2"style={{color:anyWorseR>20?C.rd:anyWorseR>0?C.or:C.gn}}>{anyWorseR}%</div><div className="scs">{anyWorseN}/{completed.length}</div></div>
+      </div>
+      <div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:8}}>Worsening Rate by Tier</div>
+      <div className="three">
+        {["Beginner","Moderate","Advanced"].map(t=>{const tc=completed.filter(r=>r.treatment.tier===t);const wn=tc.filter(r=>r.outcome.iciq_delta<0||r.outcome.pain_delta<0||r.outcome.bowel_change==="worse").length;const wr=tc.length>0?Math.round(wn/tc.length*100):0;
+          return<div key={t}className="sc"><div className="scl2">{t}</div><div className="scv2"style={{color:wr>20?C.rd:wr>0?C.or:C.gn}}>{wr}%</div><div className="scs">{wn}/{tc.length}</div></div>})}
+      </div>
+    </div>}
+    {/* Section D: Adherence Summary */}
+    {completed.length>0&&<div className="card"style={{marginTop:16}}>
+      <div className="chd">Adherence Summary</div>
+      <div className="four">
+        <div className="sc"><div className="scl2">Median Adherence</div><div className="scv2"style={{color:medianAdh>=80?C.gn:medianAdh>=50?C.or:C.rd}}>{medianAdh}%</div></div>
+        <div className="sc"><div className="scl2">Above 80%</div><div className="scv2"style={{color:C.gn}}>{adhAbove80R}%</div><div className="scs">{adhAbove80}/{completed.length}</div></div>
+        <div className="sc"><div className="scl2">Below 50%</div><div className="scv2"style={{color:adhBelow50>0?C.rd:C.gn}}>{adhBelow50R}%</div><div className="scs">{adhBelow50} concern</div></div>
+        <div className="sc"><div className="scl2">No Engagement</div><div className="scv2"style={{color:adhZero>0?C.rd:C.gn}}>{adhZeroR}%</div><div className="scs">{adhZero} patients</div></div>
+      </div>
+    </div>}
+    {/* Section E: Outcomes by Tier */}
+    {completed.length>0&&<div className="card"style={{marginTop:16}}>
+      <div className="chd">Outcomes by Tier</div>
+      <div className="three">
+        {["Beginner","Moderate","Advanced"].map(t=>{const tc=completed.filter(r=>r.treatment.tier===t);const md=tc.length>0?Math.round(tc.reduce((s,r)=>s+r.outcome.iciq_delta,0)/tc.length*10)/10:0;
+          return<div key={t}className="sc"><div className="scl2">{t}</div><div className="scv2"style={{color:md>0?C.gn:C.or}}>{md>0?"+":""}{md}</div><div className="scs">n={tc.length}</div></div>})}
+      </div>
+    </div>}
+    {/* Section F: Equity & Demographics */}
+    {completed.length>0&&<div className="card"style={{marginTop:16}}>
+      <div className="chd">Equity & Demographics</div>
+      <div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:8}}>ICIQ Improvement by Age Bracket</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:16}}>
+        {["18-29","30-39","40-49","50-59","60+"].map(bracket=>{const group=completed.filter(r=>r.baseline.age_bracket===bracket);const md=group.length>0?Math.round(group.reduce((s,r)=>s+r.outcome.iciq_delta,0)/group.length*10)/10:0;
+          return<div key={bracket}className="sc"><div className="scl2">{bracket}</div><div className="scv2"style={{color:md>0?C.gn:md<0?C.rd:C.or}}>{md>0?"+":""}{md}</div><div className="scs">n={group.length}</div></div>})}
+      </div>
+      <div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:8}}>ICIQ Improvement by Risk Level</div>
+      <div className="three"style={{marginBottom:16}}>
+        {["green","yellow","red"].map(risk=>{const group=completed.filter(r=>r.treatment.risk_level===risk);const md=group.length>0?Math.round(group.reduce((s,r)=>s+r.outcome.iciq_delta,0)/group.length*10)/10:0;
+          return<div key={risk}className="sc"><div className="scl2"style={{textTransform:"capitalize"}}>{risk}</div><div className="scv2"style={{color:md>0?C.gn:md<0?C.rd:C.or}}>{md>0?"+":""}{md}</div><div className="scs">n={group.length}</div></div>})}
+      </div>
+      <div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:8}}>ICIQ Improvement by Clinical Profile</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+        {[["Prenatal",r=>r.baseline.pregnancy_status==="active_pregnancy"],["Postpartum",r=>r.baseline.pregnancy_status==="postpartum"],["Prolapse+",r=>r.baseline.popdi.positiveCount>0],["No Prolapse",r=>r.baseline.popdi.positiveCount===0]].map(([label,fn])=>{const group=completed.filter(fn);const md=group.length>0?Math.round(group.reduce((s,r)=>s+r.outcome.iciq_delta,0)/group.length*10)/10:0;
+          return<div key={label}className="sc"><div className="scl2">{label}</div><div className="scv2"style={{color:md>0?C.gn:md<0?C.rd:C.or}}>{md>0?"+":""}{md}</div><div className="scs">n={group.length}</div></div>})}
+      </div>
+    </div>}
+    {/* Section G: Long-Term (Month 12) */}
+    {(()=>{const erVisits=m12Logs.filter(e=>e.er_visit==="yes").length;const addlCare=m12Logs.filter(e=>e.additional_care==="yes").length;const surgeries=m12Logs.filter(e=>e.surgery==="yes").length;
+      return(m12Logs.length>0||completed.length>0)?<div className="card"style={{marginTop:16}}>
+      <div className="chd">Long-Term Outcomes (Month 12)</div>
+      <div style={{fontSize:11,color:C.g500,marginBottom:12}}>Downstream healthcare utilization. Surgery is not necessarily a negative outcome.</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+        <div className="sc"><div className="scl2">Month 12 Responses</div><div className="scv2"style={{color:C.blue}}>{m12Logs.length}</div></div>
+        <div className="sc"><div className="scl2">Surgery Completed</div><div className="scv2"style={{color:C.or}}>{surgeries}</div><div className="scs">downstream care</div></div>
+        <div className="sc"><div className="scl2">ED / Urgent Care</div><div className="scv2"style={{color:erVisits>0?C.rd:C.gn}}>{erVisits}</div></div>
+        <div className="sc"><div className="scl2">Specialist Referral</div><div className="scv2"style={{color:C.or}}>{addlCare}</div><div className="scs">additional care</div></div>
+      </div>
+    </div>:null})()}
+    {/* Section H: Biomarker Discovery */}
+    {(()=>{const analysis=analyzePatterns(OUTCOME_RECORDS);const sigColors={green:C.gn,yellow:C.or,gray:C.g400};
+      return<div className="card"style={{marginTop:16}}>
+      <div className="chd">Research Signals (Biomarker Discovery)</div>
+      <div style={{fontSize:12,color:C.g500,marginBottom:12}}>Hypothesis testing framework. Requires {analysis.required} completed outcome records. Currently: {analysis.n}.</div>
+      {!analysis.sufficient&&<div className="ra"style={{background:"#F0F4FF",borderLeft:`4px solid ${C.blue}`,borderRadius:8,padding:"10px 14px",color:"#1E40AF",fontSize:12}}>Insufficient data for signal analysis. {analysis.required-analysis.n} more completed records needed.</div>}
+      {analysis.sufficient&&analysis.signals.map(s=><div key={s.biomarker_id}style={{padding:"12px 16px",borderBottom:`1px solid ${C.g100}`,display:"flex",gap:12,alignItems:"flex-start"}}>
+        <div style={{width:8,height:8,borderRadius:"50%",background:sigColors[s.signal_strength]||C.g400,marginTop:6,flexShrink:0}}/>
+        <div style={{flex:1}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontWeight:600,fontSize:13,color:C.g800}}>{s.name}</span><span className="bdg"style={{background:`${(sigColors[s.signal_strength]||C.g400)}15`,color:sigColors[s.signal_strength]||C.g400}}>{s.status}</span></div>
+          <div style={{fontSize:11,color:C.g500,marginTop:2}}>{s.desc}</div>
+          {s.status!=="insufficient"&&<div style={{display:"flex",gap:16,marginTop:6,fontSize:11,color:C.g600}}><span>n={s.cohort_size} vs {s.comparison_size}</span><span>Mean: {s.mean_match} vs {s.mean_comparison}</span><span>d={s.effect_size}</span><span>p~{s.p_estimate}</span></div>}
+          {s.status==="insufficient"&&s.cohort_size>0&&<div style={{fontSize:11,color:C.g400,marginTop:4}}>Matched {s.cohort_size} records — need at least 5 per cohort</div>}
         </div>
-        {recs.map(r=><div key={r.id}style={{display:"grid",gridTemplateColumns:"1.2fr 1fr 1fr 1fr 1fr 1fr",padding:"10px 16px",borderBottom:`1px solid ${C.g100}`,fontSize:12,alignItems:"center"}}>
-          <span style={{fontWeight:500,fontSize:11,color:C.g600}}>{r.id.slice(0,12)}</span>
+      </div>)}
+      <div style={{padding:"10px 16px",background:C.g50,fontSize:10,color:C.g400,borderTop:`1px solid ${C.g100}`}}>Signals are exploratory hypotheses, not validated predictions. Full validation requires IRB-approved analysis.</div>
+    </div>})()}
+    </>}
+
+    {/* Case Review Tab — De-Identified Drill-Down */}
+    {viewMode==="casereview"&&<>
+    <div style={{padding:"8px 14px",background:"#E0F2FE",border:"1px solid #7DD3FC",borderRadius:8,marginBottom:16,fontSize:12,color:"#0369A1"}}>
+      De-identified view. Patient names masked. For flagged or audited cases only.
+    </div>
+    {/* Section A: Flagged Cases */}
+    {(()=>{const flagged=allRecs.filter(r=>r.treatment.pt_modified_exercises||r.treatment.pt_modified_adjuncts||r.treatment.pt_modified_goals||r.treatment.pt_rejection);
+      return<div className="card">
+      <div className="chd">Flagged Cases ({flagged.length})</div>
+      <div style={{fontSize:11,color:C.g500,marginBottom:12}}>Patients with PT modifications, plan rejections, or clinical flags.</div>
+      {flagged.length===0?<div style={{textAlign:"center",padding:24,color:C.g400,fontSize:13}}>No flagged cases yet.</div>:
+      <div style={{padding:0,overflow:"hidden"}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",padding:"8px 16px",background:C.g50,borderBottom:`1px solid ${C.g200}`,fontSize:10,fontWeight:600,color:C.g500,textTransform:"uppercase",letterSpacing:1}}>
+          <span>Case</span><span>Age Bracket</span><span>Tier</span><span>Risk</span><span>ICIQ Delta</span>
+        </div>
+        {flagged.map((r,i)=><div key={r.id}style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",padding:"10px 16px",borderBottom:`1px solid ${C.g100}`,fontSize:12}}>
+          <span style={{fontWeight:500}}>Case #{i+1}</span>
+          <span>{r.baseline.age_bracket}</span>
           <span className="bdg"style={{background:`${C.blue}15`,color:C.blue,justifySelf:"start"}}>{r.treatment.tier}</span>
-          <span>{r.baseline.iciq.total}/21</span>
-          <span className="bdg"style={{background:r.outcome?`${C.gn}15`:`${C.or}15`,color:r.outcome?C.gn:C.or,justifySelf:"start"}}>{r.outcome?"Complete":"Pending"}</span>
-          <span style={{fontWeight:700,color:r.outcome?(r.outcome.iciq_delta>0?C.gn:r.outcome.iciq_delta<0?C.rd:C.or):C.g400}}>{r.outcome?((r.outcome.iciq_delta>0?"+":"")+r.outcome.iciq_delta):"\u2014"}</span>
-          <span>{r.outcome?r.outcome.nps+"/10":"\u2014"}</span>
+          <span style={{textTransform:"capitalize"}}>{r.treatment.risk_level}</span>
+          <span style={{fontWeight:700,color:r.outcome?(r.outcome.iciq_delta>0?C.gn:r.outcome.iciq_delta<0?C.rd:C.or):C.g400}}>{r.outcome?((r.outcome.iciq_delta>0?"+":"")+r.outcome.iciq_delta):"Pending"}</span>
         </div>)}
       </div>}
-      {completed.length>0&&<div className="card"style={{marginTop:16}}>
-        <div className="chd">Outcomes by Tier</div>
-        <div className="three">
-          {["Beginner","Moderate","Advanced"].map(t=>{const tc=completed.filter(r=>r.treatment.tier===t);const md=tc.length>0?Math.round(tc.reduce((s,r)=>s+r.outcome.iciq_delta,0)/tc.length*10)/10:0;
-            return<div key={t}className="sc"><div className="scl2">{t}</div><div className="scv2"style={{color:md>0?C.gn:C.or}}>{md>0?"+":""}{md}</div><div className="scs">n={tc.length}</div></div>})}
-        </div>
-      </div>}
-      {/* AI-PT Agreement Rate */}
-      {recs.length>0&&(()=>{const ar=computeAgreementRate(recs);const modRecs=recs.filter(r=>r.treatment.pt_diffs&&(r.treatment.pt_diffs.exercises.length||r.treatment.pt_diffs.adjuncts.length||r.treatment.pt_diffs.goals.length));
-        return<div className="card"style={{marginTop:16}}>
-        <div className="chd">AI-PT Agreement Rate</div>
-        <div className="three"style={{marginBottom:12}}>
-          <div className="sc"><div className="scl2">Agreement</div><div className="scv2"style={{color:ar.rate>=95?C.gn:ar.rate>=85?C.or:C.rd}}>{ar.rate}%</div><div className="scs">{ar.unmodified}/{ar.total} unmodified</div></div>
-          <div className="sc"><div className="scl2">Modified</div><div className="scv2"style={{color:C.or}}>{ar.total-ar.unmodified}</div></div>
-          <div className="sc"><div className="scl2">With Diffs</div><div className="scv2"style={{color:C.blue}}>{modRecs.length}</div><div className="scs">detailed tracking</div></div>
-        </div>
-        {modRecs.length>0&&<div style={{borderTop:`1px solid ${C.g200}`,paddingTop:12}}>
-          <div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:8}}>PT Modification Details</div>
-          {modRecs.map(r=><div key={r.id}style={{padding:"8px 12px",marginBottom:6,background:C.g50,borderRadius:8,fontSize:11}}>
-            <div style={{fontWeight:600,color:C.g700,marginBottom:4}}>{r.id.slice(0,12)} · {r.treatment.tier}</div>
-            {r.treatment.pt_diffs.exercises.map((d,i)=><div key={"e"+i}style={{color:d.action==="removed"?C.rd:d.action==="added"?C.gn:C.or}}>Exercise {d.action}: {d.name}{d.changes?" ("+d.changes.join(", ")+")":""}{d.detail?" — "+d.detail:""}</div>)}
-            {r.treatment.pt_diffs.adjuncts.map((d,i)=><div key={"a"+i}style={{color:d.action==="removed"?C.rd:d.action==="added"?C.gn:C.or}}>Adjunct {d.action}: {d.name}</div>)}
-            {r.treatment.pt_diffs.goals.map((d,i)=><div key={"g"+i}style={{color:d.action==="removed"?C.rd:C.gn}}>Goal {d.action}: {d.text}</div>)}
-          </div>)}
-        </div>}
-      </div>})()}
-      {/* Research Signals — Biomarker Discovery */}
-      <div className="card"style={{marginTop:16}}>
-        <div className="chd">Research Signals (Biomarker Discovery)</div>
-        <div style={{fontSize:12,color:C.g500,marginBottom:12}}>Hypothesis testing framework. Requires {analysis.required} completed outcome records. Currently: {analysis.n} records.</div>
-        {!analysis.sufficient&&<div className="ra"style={{background:"#F0F4FF",borderLeft:`4px solid ${C.blue}`,borderRadius:8,padding:"10px 14px",color:"#1E40AF",fontSize:12}}>Insufficient data for signal analysis. {analysis.required-analysis.n} more completed records needed.</div>}
-        {analysis.sufficient&&analysis.signals.map(s=><div key={s.biomarker_id}style={{padding:"12px 16px",borderBottom:`1px solid ${C.g100}`,display:"flex",gap:12,alignItems:"flex-start"}}>
-          <div style={{width:8,height:8,borderRadius:"50%",background:sigColors[s.signal_strength]||C.g400,marginTop:6,flexShrink:0}}/>
-          <div style={{flex:1}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontWeight:600,fontSize:13,color:C.g800}}>{s.name}</span><span className="bdg"style={{background:`${(sigColors[s.signal_strength]||C.g400)}15`,color:sigColors[s.signal_strength]||C.g400}}>{s.status}</span></div>
-            <div style={{fontSize:11,color:C.g500,marginTop:2}}>{s.desc}</div>
-            {s.status!=="insufficient"&&<div style={{display:"flex",gap:16,marginTop:6,fontSize:11,color:C.g600}}><span>n={s.cohort_size} vs {s.comparison_size}</span><span>Mean: {s.mean_match} vs {s.mean_comparison}</span><span>d={s.effect_size}</span><span>p~{s.p_estimate}</span></div>}
-            {s.status==="insufficient"&&s.cohort_size>0&&<div style={{fontSize:11,color:C.g400,marginTop:4}}>Matched {s.cohort_size} records — need at least 5 per cohort</div>}
-          </div>
-        </div>)}
-        <div style={{padding:"10px 16px",background:C.g50,fontSize:10,color:C.g400,borderTop:`1px solid ${C.g100}`}}>Signals are exploratory hypotheses, not validated predictions. Effect sizes (Cohen's d) and p-values are approximate. Full validation requires IRB-approved analysis.</div>
+    </div>})()}
+    {/* Section B: AI-PT Agreement Detail */}
+    {allRecs.length>0&&(()=>{const ar=computeAgreementRate(allRecs);const modRecs=allRecs.filter(r=>r.treatment.pt_diffs&&(r.treatment.pt_diffs.exercises.length||r.treatment.pt_diffs.adjuncts.length||r.treatment.pt_diffs.goals.length));
+      return<div className="card"style={{marginTop:16}}>
+      <div className="chd">AI-PT Agreement Rate</div>
+      <div className="three"style={{marginBottom:12}}>
+        <div className="sc"><div className="scl2">Agreement</div><div className="scv2"style={{color:ar.rate>=95?C.gn:ar.rate>=85?C.or:C.rd}}>{ar.rate}%</div><div className="scs">{ar.unmodified}/{ar.total} unmodified</div></div>
+        <div className="sc"><div className="scl2">Modified</div><div className="scv2"style={{color:C.or}}>{ar.total-ar.unmodified}</div></div>
+        <div className="sc"><div className="scl2">With Diffs</div><div className="scv2"style={{color:C.blue}}>{modRecs.length}</div><div className="scs">detailed tracking</div></div>
       </div>
-      {/* Multi-Instrument Outcomes */}
-      {completed.length>0&&(()=>{
-        const mPainD=Math.round(completed.reduce((s,r)=>s+r.outcome.pain_delta,0)/completed.length*10)/10;
-        const painImp=Math.round(completed.filter(r=>r.outcome.pain_delta>0).length/completed.length*100);
-        const mFsexD=Math.round(completed.reduce((s,r)=>s+r.outcome.fsex_delta,0)/completed.length*10)/10;
-        const fsexImp=Math.round(completed.filter(r=>r.outcome.fsex_delta>0).length/completed.length*100);
-        const mPhq2D=Math.round(completed.reduce((s,r)=>s+r.outcome.phq2_delta,0)/completed.length*10)/10;
-        const phq2Imp=Math.round(completed.filter(r=>r.outcome.phq2_delta>0).length/completed.length*100);
-        const bowelB=completed.filter(r=>r.outcome.bowel_change==="better").length;
-        const bowelS=completed.filter(r=>r.outcome.bowel_change==="same").length;
-        const bowelW=completed.filter(r=>r.outcome.bowel_change==="worse").length;
-        const actY=completed.filter(r=>r.outcome.activities_resumed==="yes").length;
-        const actP=completed.filter(r=>r.outcome.activities_resumed==="partially").length;
-        const actN=completed.filter(r=>r.outcome.activities_resumed==="no").length;
-        return<div className="card"style={{marginTop:16}}>
-        <div className="chd">Multi-Instrument Outcomes</div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
-          <div className="sc"><div className="scl2">Pain Delta</div><div className="scv2"style={{color:mPainD>0?C.gn:mPainD<0?C.rd:C.or}}>{mPainD>0?"+":""}{mPainD}</div><div className="scs">{painImp}% improved</div></div>
-          <div className="sc"><div className="scl2">Sexual Function</div><div className="scv2"style={{color:mFsexD>0?C.gn:mFsexD<0?C.rd:C.or}}>{mFsexD>0?"+":""}{mFsexD}</div><div className="scs">{fsexImp}% improved</div></div>
-          <div className="sc"><div className="scl2">PHQ-2 Delta</div><div className="scv2"style={{color:mPhq2D>0?C.gn:mPhq2D<0?C.rd:C.or}}>{mPhq2D>0?"+":""}{mPhq2D}</div><div className="scs">{phq2Imp}% improved</div></div>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          <div className="sc"><div className="scl2">Bowel Outcomes</div><div style={{display:"flex",gap:12,justifyContent:"center",marginTop:4}}>
-            <span style={{fontSize:12}}><span style={{color:C.gn,fontWeight:700}}>{bowelB}</span> better</span>
-            <span style={{fontSize:12}}><span style={{color:C.g500,fontWeight:700}}>{bowelS}</span> same</span>
-            <span style={{fontSize:12}}><span style={{color:C.rd,fontWeight:700}}>{bowelW}</span> worse</span>
-          </div></div>
-          <div className="sc"><div className="scl2">Activity Resumption</div><div style={{display:"flex",gap:12,justifyContent:"center",marginTop:4}}>
-            <span style={{fontSize:12}}><span style={{color:C.gn,fontWeight:700}}>{actY}</span> yes</span>
-            <span style={{fontSize:12}}><span style={{color:C.or,fontWeight:700}}>{actP}</span> partial</span>
-            <span style={{fontSize:12}}><span style={{color:C.rd,fontWeight:700}}>{actN}</span> no</span>
-          </div></div>
-        </div>
-      </div>})()}
-      {/* Patient Engagement */}
-      {completed.length>0&&(()=>{
-        const mAdh=Math.round(completed.reduce((s,r)=>s+(r.outcome.adherence_rate||0),0)/completed.length);
-        const adhH=completed.filter(r=>(r.outcome.adherence_rate||0)>80).length;
-        const adhM=completed.filter(r=>{const a=r.outcome.adherence_rate||0;return a>=50&&a<=80}).length;
-        const adhL=completed.filter(r=>(r.outcome.adherence_rate||0)<50).length;
-        const mNPS=Math.round(completed.reduce((s,r)=>s+r.outcome.nps,0)/completed.length*10)/10;
-        const promoters=completed.filter(r=>r.outcome.nps>=9).length;
-        const passives=completed.filter(r=>r.outcome.nps>=7&&r.outcome.nps<=8).length;
-        const detractors=completed.filter(r=>r.outcome.nps<=6).length;
-        return<div className="card"style={{marginTop:16}}>
-        <div className="chd">Patient Engagement</div>
-        <div className="four">
-          <div className="sc"><div className="scl2">Mean Adherence</div><div className="scv2"style={{color:mAdh>=80?C.gn:mAdh>=50?C.or:C.rd}}>{mAdh}%</div><div className="scs">{adhH} high · {adhM} mid · {adhL} low</div></div>
-          <div className="sc"><div className="scl2">Mean NPS</div><div className="scv2"style={{color:mNPS>=9?C.gn:mNPS>=7?C.or:C.rd}}>{mNPS}/10</div></div>
-          <div className="sc"><div className="scl2">Promoters (9-10)</div><div className="scv2"style={{color:C.gn}}>{promoters}</div><div className="scs">{completed.length>0?Math.round(promoters/completed.length*100):0}%</div></div>
-          <div className="sc"><div className="scl2">Detractors (0-6)</div><div className="scv2"style={{color:detractors>0?C.rd:C.gn}}>{detractors}</div><div className="scs">{passives} passive</div></div>
-        </div>
-      </div>})()}
-      {/* Equity & Demographics */}
-      {completed.length>0&&<div className="card"style={{marginTop:16}}>
-        <div className="chd">Equity & Demographics</div>
-        <div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:8}}>ICIQ Improvement by Age Bracket</div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:16}}>
-          {["18-29","30-39","40-49","50-59","60+"].map(bracket=>{const group=completed.filter(r=>r.baseline.age_bracket===bracket);const md=group.length>0?Math.round(group.reduce((s,r)=>s+r.outcome.iciq_delta,0)/group.length*10)/10:0;
-            return<div key={bracket}className="sc"><div className="scl2">{bracket}</div><div className="scv2"style={{color:md>0?C.gn:md<0?C.rd:C.or}}>{md>0?"+":""}{md}</div><div className="scs">n={group.length}</div></div>})}
-        </div>
-        <div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:8}}>ICIQ Improvement by Risk Level</div>
-        <div className="three"style={{marginBottom:16}}>
-          {["green","yellow","red"].map(risk=>{const group=completed.filter(r=>r.treatment.risk_level===risk);const md=group.length>0?Math.round(group.reduce((s,r)=>s+r.outcome.iciq_delta,0)/group.length*10)/10:0;
-            return<div key={risk}className="sc"><div className="scl2"style={{textTransform:"capitalize"}}>{risk}</div><div className="scv2"style={{color:md>0?C.gn:md<0?C.rd:C.or}}>{md>0?"+":""}{md}</div><div className="scs">n={group.length}</div></div>})}
-        </div>
-        <div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:8}}>ICIQ Improvement by Clinical Profile</div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-          {[["Prenatal",r=>r.baseline.pregnancy_status==="active_pregnancy"],["Postpartum",r=>r.baseline.pregnancy_status==="postpartum"],["Prolapse+",r=>r.baseline.popdi.positiveCount>0],["No Prolapse",r=>r.baseline.popdi.positiveCount===0]].map(([label,fn])=>{const group=completed.filter(fn);const md=group.length>0?Math.round(group.reduce((s,r)=>s+r.outcome.iciq_delta,0)/group.length*10)/10:0;
-            return<div key={label}className="sc"><div className="scl2">{label}</div><div className="scv2"style={{color:md>0?C.gn:md<0?C.rd:C.or}}>{md>0?"+":""}{md}</div><div className="scs">n={group.length}</div></div>})}
-        </div>
+      {modRecs.length>0&&<div style={{borderTop:`1px solid ${C.g200}`,paddingTop:12}}>
+        <div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:8}}>PT Modification Details</div>
+        {modRecs.map(r=><div key={r.id}style={{padding:"8px 12px",marginBottom:6,background:C.g50,borderRadius:8,fontSize:11}}>
+          <div style={{fontWeight:600,color:C.g700,marginBottom:4}}>{r.id.slice(0,12)} {"\u00B7"} {r.treatment.tier}</div>
+          {r.treatment.pt_diffs.exercises.map((d,i)=><div key={"e"+i}style={{color:d.action==="removed"?C.rd:d.action==="added"?C.gn:C.or}}>Exercise {d.action}: {d.name}{d.changes?" ("+d.changes.join(", ")+")":""}{d.detail?" \u2014 "+d.detail:""}</div>)}
+          {r.treatment.pt_diffs.adjuncts.map((d,i)=><div key={"a"+i}style={{color:d.action==="removed"?C.rd:d.action==="added"?C.gn:C.or}}>Adjunct {d.action}: {d.name}</div>)}
+          {r.treatment.pt_diffs.goals.map((d,i)=><div key={"g"+i}style={{color:d.action==="removed"?C.rd:C.gn}}>Goal {d.action}: {d.text}</div>)}
+        </div>)}
       </div>}
-      {/* Long-Term Outcomes (Month 12) */}
-      {(()=>{
-        const m12=log.filter(e=>e.type==="month12_checkin_complete");
-        const surgAvoid=log.filter(e=>e.type==="surgical_avoidance_confirmed").length;
-        const erVisits=m12.filter(e=>e.er_visit==="yes").length;
-        const addlCare=m12.filter(e=>e.additional_care==="yes").length;
-        const surgeries=m12.filter(e=>e.surgery==="yes").length;
-        const clinMRate=completed.length>0?meaningful.length/completed.length:0;
-        const nnt=clinMRate>0?Math.round(1/clinMRate*10)/10:"N/A";
-        return(m12.length>0||completed.length>0)?<div className="card"style={{marginTop:16}}>
-        <div className="chd">Long-Term Outcomes</div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
-          <div className="sc"><div className="scl2">Month 12 Responses</div><div className="scv2"style={{color:C.blue}}>{m12.length}</div></div>
-          <div className="sc"><div className="scl2">Surgical Avoidance</div><div className="scv2"style={{color:C.gn}}>{surgAvoid}</div><div className="scs">{surgeries} had surgery</div></div>
-          <div className="sc"><div className="scl2">ER Visits</div><div className="scv2"style={{color:erVisits>0?C.rd:C.gn}}>{erVisits}</div></div>
-          <div className="sc"><div className="scl2">Additional Care</div><div className="scv2"style={{color:C.or}}>{addlCare}</div></div>
-          <div className="sc"><div className="scl2">NNT</div><div className="scv2"style={{color:C.purp}}>{nnt}</div><div className="scs">1 / clin. meaningful rate</div></div>
-        </div>
-      </div>:null})()}
-      </>;
-    })()}
+    </div>})()}
+    {/* Section C: Outcome Records Table (De-Identified) */}
+    {allRecs.length>0&&<div className="card"style={{marginTop:16,padding:0,overflow:"hidden"}}>
+      <div style={{padding:"14px 18px",background:C.g50,borderBottom:`1px solid ${C.g200}`,fontWeight:600,fontSize:13,color:C.purp}}>Outcome Records {"\u2014"} De-Identified ({allRecs.length})</div>
+      <div style={{display:"grid",gridTemplateColumns:"1.2fr 1fr 1fr 1fr 1fr 1fr",padding:"8px 16px",background:C.g50,borderBottom:`1px solid ${C.g200}`,fontSize:10,fontWeight:600,color:C.g500,textTransform:"uppercase",letterSpacing:1}}>
+        <span>Record</span><span>Tier</span><span>Age</span><span>Status</span><span>ICIQ Delta</span><span>Risk</span>
+      </div>
+      {allRecs.map(r=><div key={r.id}style={{display:"grid",gridTemplateColumns:"1.2fr 1fr 1fr 1fr 1fr 1fr",padding:"10px 16px",borderBottom:`1px solid ${C.g100}`,fontSize:12,alignItems:"center"}}>
+        <span style={{fontWeight:500,fontSize:11,color:C.g600}}>{r.id.slice(0,12)}</span>
+        <span className="bdg"style={{background:`${C.blue}15`,color:C.blue,justifySelf:"start"}}>{r.treatment.tier}</span>
+        <span>{r.baseline.age_bracket}</span>
+        <span className="bdg"style={{background:r.outcome?`${C.gn}15`:`${C.or}15`,color:r.outcome?C.gn:C.or,justifySelf:"start"}}>{r.outcome?"Complete":"Pending"}</span>
+        <span style={{fontWeight:700,color:r.outcome?(r.outcome.iciq_delta>0?C.gn:r.outcome.iciq_delta<0?C.rd:C.or):C.g400}}>{r.outcome?((r.outcome.iciq_delta>0?"+":"")+r.outcome.iciq_delta):"\u2014"}</span>
+        <span style={{textTransform:"capitalize"}}>{r.treatment.risk_level}</span>
+      </div>)}
+    </div>}
     </>}
 
   </div>;
