@@ -272,7 +272,8 @@ export const getPtUserByEmail = query({
 export const listPtUsers = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("ptUsers").collect();
+    const users = await ctx.db.query("ptUsers").collect();
+    return users.map(({ passwordHash, salt, ...safe }) => safe);
   },
 });
 

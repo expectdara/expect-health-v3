@@ -97,6 +97,7 @@ const AUTH_REQUIRED = new Set([
   "functions:logAdherenceEntry",
   "functions:savePushSubscription",
   "functions:deletePushSubscription",
+  "functions:listActivePushSubscriptions",
 ]);
 
 // Role-based access — which userId prefixes can call which functions
@@ -114,6 +115,7 @@ const OAIP_ONLY = new Set([
   "functions:listAuditEvents",
   "functions:listOutcomeRecords",
   "functions:listDemoPatients",
+  "functions:listActivePushSubscriptions",
 ]);
 const PATIENT_SELF = new Set([
   "functions:getPatientByUserId",

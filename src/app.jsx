@@ -8,6 +8,7 @@ const { useState, useEffect, useRef } = React;
 // Phase 3: Auto-approval expanded; PT review for high-risk + first-time (Months 9-12)
 const PILOT_PHASE=1;
 const PILOT_CASES_VALIDATED=0; // total supervised cases completed — update as pilot progresses
+const CLINICAL_LOGIC_VERSION="1.0.0"; // increment on any scoring, tier, dx, or genPlan change
 
 const C={
   pink:"#FC228A",pinkL:"#FF5CA8",pinkD:"#C91A6E",
@@ -69,9 +70,9 @@ function buildOutcomeRecord(intake,plan,reviewTimeSec){
   const avoid=(a.avoid_activities||[]).filter(x=>x!=="none");
   const constip=(a.bowel_constipation??0)>=2||(a.bowel_frequency??3)<=1||(a.bristol_stool??4)<=2;
   const triggers=pain.triggers||[];
-  const rec={id:`OR-${++_orid}-${Date.now()}`,created:new Date().toISOString(),
+  const rec={id:`OR-${++_orid}-${Date.now()}`,created:new Date().toISOString(),logicVersion:CLINICAL_LOGIC_VERSION,
     baseline:{iciq:{total:iciq.total,severity:iciq.severity,subtype:iciq.subtype},fluts:{F:fluts.F,V:fluts.V,total:fluts.total},fsex:{total:fsex.total},gupi:{total:gupi.total,pain:gupi.pain,urinary:gupi.urinary,qol:gupi.qol,severity:gupi.severity},pain:{composite:pain.composite,functional:pain.functional,severity:pain.severity},phq2,age_bracket:ageBracket(a.dob),pregnancy_status:a.pregnancy_status||"none",delivery_type:a.delivery_type||null,weeks_postpartum:a.delivery_date?Math.round((Date.now()-new Date(a.delivery_date).getTime())/(7*24*60*60*1000)):null,constipation_composite:constip,avoidance_count:avoid.length,cue_preference:a.cue_preference||"default",pudendal_flag:triggers.includes("sitting_long")&&pain.composite>6,med_modify:a.med_modify??0,prior_treatment:a.prior_treatment||[],symptom_triggers:(a.symptoms_trigger||[]).filter(x=>x!=="none"),subtype:iciq.subtype,screener_pain:a.screen_pain==="yes",screener_sexual:a.screen_sexual==="yes",pelvic_history:(a.pelvic_history||[]).filter(x=>x!=="none"),popdi:{score:popdi.score,positiveCount:popdi.positiveCount,bulge:popdi.bulge,highBother:popdi.highBother}},
-    treatment:{tier:iciq.total>=13?"Beginner":iciq.total>=6?"Moderate":"Advanced",exercise_ids:(plan.ex||[]).map(e=>e.n),exercise_count:(plan.ex||[]).length,adjunct_types:(plan.adjuncts||[]).map(x=>x.type),adjunct_count:(plan.adjuncts||[]).length,cue_type:a.cue_preference||"default",dx_codes:(plan.dx||[]).map(d=>d.c),risk_level:plan.risk||"green",prenatal_modified:!!plan.prenatal,pt_modified_exercises:false,pt_modified_adjuncts:false,pt_modified_goals:false,pt_rejection:false,review_time_seconds:reviewTimeSec||0},
+    treatment:{tier:iciq.total>=13?"Beginner":iciq.total>=6?"Moderate":iciq.total>0?"Advanced":"Foundation",exercise_ids:(plan.ex||[]).map(e=>e.n),exercise_count:(plan.ex||[]).length,adjunct_types:(plan.adjuncts||[]).map(x=>x.type),adjunct_count:(plan.adjuncts||[]).length,cue_type:a.cue_preference||"default",dx_codes:(plan.dx||[]).map(d=>d.c),risk_level:plan.risk||"green",prenatal_modified:!!plan.prenatal,pt_modified_exercises:false,pt_modified_adjuncts:false,pt_modified_goals:false,pt_rejection:false,review_time_seconds:reviewTimeSec||0},
     outcome:null};
   OUTCOME_RECORDS.push(rec);
   L("OUTCOME_RECORD_CREATED",{recordId:rec.id,tier:rec.treatment.tier,iciq:iciq.total,risk:rec.treatment.risk_level});
@@ -360,10 +361,11 @@ followUpMsg:"Were you able to connect with any of the Postpartum Support Interna
 };
 
 function genPlan(iciq,pain,gupi,intake){
-  const p={id:`TP-${Date.now()}`,at:new Date().toISOString(),status:"pending_review",risk:"green",dx:[],goals:[],ex:[],adjuncts:[],freq:"",dur:"",prec:[],prog:[],cpt:[]};
+  const p={id:`TP-${Date.now()}`,at:new Date().toISOString(),status:"pending_review",risk:"green",logicVersion:CLINICAL_LOGIC_VERSION,dx:[],goals:[],ex:[],adjuncts:[],freq:"",dur:"",prec:[],prog:[],cpt:[]};
   if(iciq.subtype.includes("Stress"))p.dx.push({c:"N39.3",d:"Stress incontinence"});
   else if(iciq.subtype.includes("Urge"))p.dx.push({c:"N39.41",d:"Urge incontinence"});
   else if(iciq.subtype.includes("Mixed"))p.dx.push({c:"N39.46",d:"Mixed incontinence"});
+  else if(iciq.total>0)p.dx.push({c:"R32",d:"Unspecified urinary incontinence"});
   if(pain.composite>=1)p.dx.push({c:"N94.89",d:"Pelvic pain condition"});
   if(pain.triggers.includes("dyspareunia"))p.dx.push({c:"N94.10",d:"Dyspareunia"});
   // GUPI total is displayed for PT review but does not auto-assign a dx code
@@ -380,21 +382,27 @@ function genPlan(iciq,pain,gupi,intake){
   const avoidImpact=avoidCount>=3;
   if(pain.current>3||iciq.severity==="Very Severe"||avoidImpact)p.risk="yellow";
   // Goals
-  p.goals=[`Reduce ICIQ from ${iciq.total} by ≥3 pts in 8 wks`,`Improve bladder control confidence`];
+  if(iciq.total>0){p.goals.push(`Reduce ICIQ from ${iciq.total} by ≥3 pts in 8 wks`);p.goals.push(`Improve bladder control confidence`)}
+  else{p.goals.push(`Strengthen pelvic floor function`);p.goals.push(`Improve symptom management`)}
   if(pain.composite>0)p.goals.push(`Reduce pain from ${pain.average}/10 to ≤${Math.max(0,pain.average-3)}/10`);
   if(avoidImpact)p.goals.push(`Resume ${avoidCount} avoided activity categories`);
   if(intake.patient_goal)p.goals.push(`Patient goal: "${intake.patient_goal}"`);
-  // 3-tier exercise system per Klovning severity bands
-  const tier=iciq.total>=13?"beginner":iciq.total>=6?"moderate":"advanced";
+  // 3-tier exercise system per Klovning severity bands; ICIQ=0 gets foundational PF program
+  const tier=iciq.total>=13?"beginner":iciq.total>=6?"moderate":iciq.total>0?"advanced":"foundation";
   if(tier==="beginner"){
     p.ex=[{n:"Supine PF Activation",s:2,r:8,h:"3-5s",f:"daily",d:"Gravity-eliminated pelvic floor awareness."},{n:"Diaphragmatic Breathing + PF",s:2,r:5,h:"full cycle",f:"2x/day",d:"Coordinated breathing for PF connection."},{n:"Gentle Bridge",s:2,r:10,h:"5s",f:"daily",d:"Supported bridge with PF engagement — PF activates FIRST, then hips lift."},{n:"Quick-Flick Kegels",s:2,r:8,h:"1s on/1s off",f:"daily",d:"Fast-twitch activation. Squeeze 1 second, release 1 second."},{n:"Endurance Kegels",s:2,r:8,h:"5s",f:"daily",d:"Side-lying sustained hold at 50-70% effort."}];
     p.freq="Daily HEP + PT review q3 days";p.dur="12 wks (reassess wk 2,4,8)";
   } else if(tier==="moderate"){
     p.ex=[{n:"Quick-Flick Kegels",s:3,r:10,h:"1s on/1s off",f:"daily",d:"Rapid PF contractions — 1s squeeze, 1s release."},{n:"Endurance Kegels",s:3,r:10,h:"5-10s",f:"daily",d:"Sustained PF contractions at 50-70% effort."},{n:"Bridge + PF",s:2,r:10,h:"5-10s",f:"3x/wk",d:"Exhale + PF first, then hips rise."},{n:"Diaphragmatic Breathing + PF",s:1,r:5,h:"full cycle",f:"daily",d:"PF relax on inhale, engage on exhale."}];
     p.freq="Daily HEP + weekly check-in";p.dur="8 wks (reassess wk 4,8)";
-  } else {
+  } else if(tier==="advanced"){
     p.ex=[{n:"Quick-Flick Kegels",s:3,r:12,h:"1s on/1s off",f:"daily",d:"Rapid PF contractions — high volume."},{n:"Endurance Kegels",s:3,r:12,h:"8-10s",f:"daily",d:"Sustained PF contractions — advanced."},{n:"Bridge + PF",s:3,r:12,h:"10s",f:"4x/wk",d:"Exhale + PF first, then hips rise. Build to marching bridge."},{n:"Diaphragmatic Breathing",s:1,r:5,h:"full cycle",f:"daily",d:"PF relax on inhale, engage on exhale."}];
     p.freq="Daily HEP + bi-weekly check-in";p.dur="6 wks (reassess wk 3,6)";
+  } else {
+    // Foundation tier: ICIQ=0 — no incontinence reported, focus on general PF health
+    p.ex=[{n:"Diaphragmatic Breathing + PF",s:2,r:5,h:"full cycle",f:"2x/day",d:"Coordinated breathing for PF connection."},{n:"Quick-Flick Kegels",s:2,r:10,h:"1s on/1s off",f:"daily",d:"Fast-twitch PF activation."},{n:"Endurance Kegels",s:2,r:10,h:"5-8s",f:"daily",d:"Sustained PF contractions at 50-70% effort."},{n:"Gentle Bridge",s:2,r:10,h:"5s",f:"3x/wk",d:"Bridge with PF engagement — PF activates FIRST, then hips lift."}];
+    p.freq="Daily HEP + PT review";p.dur="8 wks (reassess wk 4,8)";
+    p.review_flags=[...(p.review_flags||[]),{id:"NO_INCONTINENCE",sev:"info",text:"No urinary incontinence reported (ICIQ=0). Patient may be presenting with pain, prolapse, or other pelvic floor concerns. Review primary complaint and tailor plan accordingly."}];
   }
   if(pain.composite>=4)p.ex.unshift({n:"Pain De-Sensitization Breathing",s:1,r:3,h:"2 min",f:"as needed",d:"Prolonged diaphragmatic breathing for pain modulation."});
   // Adjunct recommendations
@@ -445,7 +453,7 @@ function genPlan(iciq,pain,gupi,intake){
     }
     if(!p.adjuncts.some(x=>x.n.includes("Pessary")))p.adjuncts.push({type:"device",n:"Pessary Evaluation",d:"Consider vaginal pessary for symptomatic prolapse support.",rx:"Discuss with PT at review. Refer to urogynecology if symptoms persist or worsen."});
   }
-  L("plan_generated",{planId:p.id,risk:p.risk,iciq:iciq.total,tier,prenatal:!!intake.prenatal_flag,review_flags:p.review_flags.map(f=>f.id)});return p;
+  L("plan_generated",{planId:p.id,risk:p.risk,iciq:iciq.total,tier,prenatal:!!intake.prenatal_flag,review_flags:p.review_flags.map(f=>f.id),logicVersion:CLINICAL_LOGIC_VERSION});return p;
 }
 
 const DPTS=[
@@ -716,7 +724,7 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
       </div>
     </div>}
   </div>;
-  if(q.type==="scale")return<div className="qc fi"><div className="qt">{q.text}</div><div className="scv">{ans[q.id]??q.min}</div><input className="slr"type="range"min={q.min}max={q.max}value={ans[q.id]??q.min}onChange={e=>set(q.id,parseInt(e.target.value))}/><div className="scl"><span>{q.lo}</span><span>{q.hi}</span></div></div>;
+  if(q.type==="scale")return<div className="qc fi"><div className="qt">{q.text}</div><div className="scv"style={ans[q.id]===undefined?{color:C.g400,fontStyle:"italic"}:{}}>{ans[q.id]!==undefined?ans[q.id]:"—"}</div><input className="slr"type="range"min={q.min}max={q.max}value={ans[q.id]??q.min}onChange={e=>set(q.id,parseInt(e.target.value))}/><div className="scl"><span>{q.lo}</span><span>{q.hi}</span></div></div>;
   if(q.type==="multi")return<div className="qc fi"><div className="qt">{q.text}</div><div style={{display:"flex",flexWrap:"wrap"}}>{q.opts.map(([l,v])=><div key={v}className={`mo ${(ans[q.id]||[]).includes(v)?"s":""}`}onClick={()=>togM(q.id,v)}>{(ans[q.id]||[]).includes(v)?"✓":"○"} {l}</div>)}</div></div>;
   if(q.type==="bristol"){
     const bsvg=[
@@ -1104,7 +1112,7 @@ function IdentityVerify({onDone,onBack}){
 // INTAKE
 function Intake({onDone,mainRef,initialEmail}){
   // Draft restore from localStorage
-  const initState=(()=>{const raw=localStorage.getItem("expect_draft");if(!raw)return null;try{const d=JSON.parse(raw);if(d.email===initialEmail&&Date.now()-d.ts<86400000)return d}catch(e){}return null})();
+  const initState=(()=>{const raw=sessionStorage.getItem("expect_draft");if(!raw)return null;try{const d=JSON.parse(raw);if(Date.now()-d.ts<86400000)return d}catch(e){}return null})();
   const[step,setStep]=useState(initState?initState.step:0);const[ans,setAns]=useState(initState?initState.ans:initialEmail?{email:initialEmail}:{});const[rfs,setRfs]=useState([]);
   const[safetyTriggered,setSafetyTriggered]=useState({});const[showSafetyModal,setShowSafetyModal]=useState(null);
   const[triedNext,setTriedNext]=useState(false);
@@ -1127,7 +1135,7 @@ function Intake({onDone,mainRef,initialEmail}){
     if(v==="never"||v==="none"){return{...p,[k]:[v]};}
     return{...p,[k]:[...cur.filter(x=>x!=="never"&&x!=="none"),v]};
   });
-  const goStep=(s)=>{setStep(s);setTriedNext(false);if(mainRef?.current)mainRef.current.scrollTop=0;try{localStorage.setItem("expect_draft",JSON.stringify({ans,step:s,email:initialEmail||ans.email,ts:Date.now()}))}catch(e){}
+  const goStep=(s)=>{setStep(s);setTriedNext(false);if(mainRef?.current)mainRef.current.scrollTop=0;try{const _da={...ans};["name_first","name_last","email","phone","dob","physician_name","physician_fax","physician_npi_id","insurance_id"].forEach(k=>delete _da[k]);sessionStorage.setItem("expect_draft",JSON.stringify({ans:_da,step:s,ts:Date.now()}))}catch(e){}
     // Progressive DB save — save draft after each section advance
     if(authSession){db("upsertPatient",{userId:authSession.userId,email:authSession.email||ans.email||"",name:(ans.name_first||"")+" "+(ans.name_last||""),ans,iciq:null,pain:null,gupi:null,fluts:null,fsex:null,popdi:null,plan:null,depressionFlag:null,prenatalFlag:!!ans.prenatal_flag,physicianName:ans.physician_name||"",physicianFax:ans.physician_fax||"",physicianNPI:ans.physician_npi_id||"",safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],status:"in_progress",createdAt:authSession.createdAt})}};
   const isMale=ans.sex_at_birth==="male";
@@ -1186,8 +1194,18 @@ function Intake({onDone,mainRef,initialEmail}){
   const screenerIncomplete=step===3&&(!ans.screen_pain||!ans.screen_sexual);
   // Block on POPDI-6 step: require all 6 yes/no answers + bother for each "yes"
   const popdiIncomplete=steps[step]?.qs===POPDI&&(POPDI[0].rows.some(r=>ans[r.id]===undefined)||POPDI[0].rows.some(r=>ans[r.id]==="yes"&&ans[r.id+"_bother"]===undefined));
+  // Block on ICIQ step: require Q1 at minimum; if Q1 > 0, require Q2+Q3+Q4
+  const iciqIncomplete=step===4&&(ans.iciq1===undefined||(ans.iciq1>0&&(ans.iciq2===undefined||ans.iciq3===undefined||!ans.iciq4||ans.iciq4.length===0)));
+  // Block on Bowel step: require frequency + Bristol
+  const bowelIncomplete=step===6&&(ans.bowel_frequency===undefined||ans.bristol_stool===undefined);
+  // Block on Pain step: require average pain rating
+  const painIncomplete=step===8&&ans.screen_pain==="yes"&&(ans.gupi4===undefined||ans.pain1===undefined);
+  // Block on Clinical Extra: require PHQ-2 (depression screening)
+  const phq2Incomplete=step===11&&(ans.phq2_interest===undefined||ans.phq2_mood===undefined);
+  // Block on Account step: require password
+  const acctIncomplete=step===12&&(!acctPw||acctPw.length<8||acctPw!==acctPwC||!/[A-Z]/.test(acctPw)||!/\d/.test(acctPw));
   // Block on safety (step 1) for ANY red flag, block on exclusions (step 2) for ANY exclusion
-  const blocked=(step===0&&(isUnder18||isMale||page1Incomplete))||(step===1&&hasAnyRF)||(step===2&&hasExclusion)||screenerIncomplete||popdiIncomplete;
+  const blocked=(step===0&&(isUnder18||isMale||page1Incomplete))||(step===1&&hasAnyRF)||(step===2&&hasExclusion)||screenerIncomplete||popdiIncomplete||iciqIncomplete||bowelIncomplete||painIncomplete||phq2Incomplete;
   const savePatientRef=useRef(null);// hold save args for retry
   useEffect(()=>{
     if(step!==steps.length||doneRef.current)return;doneRef.current=true;
@@ -1201,18 +1219,18 @@ function Intake({onDone,mainRef,initialEmail}){
       const saveArgs={userId:authSession.userId,email:authSession.email,name:sharedIntake.name,ans,iciq,pain,gupi,fluts,fsex,popdi,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,physicianName:ans.physician_name||"",physicianFax:ans.physician_fax||"",physicianNPI:ans.physician_npi_id||"",safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],status:"pending_review",createdAt:new Date().toISOString()};
       savePatientRef.current=saveArgs;
       setSaveState("saving");
-      (async()=>{for(let attempt=0;attempt<3;attempt++){try{await db("upsertPatient",saveArgs,{throw:true});try{localStorage.removeItem("expect_draft")}catch(e){}setSaveState("saved");if(onDone)onDone();return}catch(e){if(attempt<2)await new Promise(r=>setTimeout(r,1000))}}setSaveState("failed")})();
+      (async()=>{for(let attempt=0;attempt<3;attempt++){try{await db("upsertPatient",saveArgs,{throw:true});try{sessionStorage.removeItem("expect_draft")}catch(e){}setSaveState("saved");if(onDone)onDone();return}catch(e){if(attempt<2)await new Promise(r=>setTimeout(r,1000))}}setSaveState("failed")})();
     }else{if(onDone)onDone()}
   },[step]);
   if(step===steps.length){
     if(saveState==="saving")return<div className="fi"style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:36,marginBottom:16,animation:"pulse 1.5s ease-in-out infinite"}}>💾</div><div className="h1"style={{fontSize:22}}>Saving your assessment...</div><p style={{fontSize:14,color:C.g500,marginTop:8}}>Please don't close this page.</p></div>;
-    if(saveState==="failed")return<div className="fi"style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:36,marginBottom:16}}>⚠️</div><div className="h1"style={{fontSize:22,color:C.rd}}>Save failed</div><p style={{fontSize:14,color:C.g500,maxWidth:400,margin:"12px auto",lineHeight:1.7}}>We couldn't save your assessment. Your answers are safe in this browser — please try again.</p><button className="btn bpk"style={{marginTop:16}}onClick={()=>{if(!savePatientRef.current)return;setSaveState("saving");(async()=>{for(let attempt=0;attempt<3;attempt++){try{await db("upsertPatient",savePatientRef.current,{throw:true});try{localStorage.removeItem("expect_draft")}catch(e){}setSaveState("saved");if(onDone)onDone();return}catch(e){if(attempt<2)await new Promise(r=>setTimeout(r,1000))}}setSaveState("failed")})()}}>Retry Save</button></div>;
+    if(saveState==="failed")return<div className="fi"style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:36,marginBottom:16}}>⚠️</div><div className="h1"style={{fontSize:22,color:C.rd}}>Save failed</div><p style={{fontSize:14,color:C.g500,maxWidth:400,margin:"12px auto",lineHeight:1.7}}>We couldn't save your assessment. Your answers are safe in this browser — please try again.</p><button className="btn bpk"style={{marginTop:16}}onClick={()=>{if(!savePatientRef.current)return;setSaveState("saving");(async()=>{for(let attempt=0;attempt<3;attempt++){try{await db("upsertPatient",savePatientRef.current,{throw:true});try{sessionStorage.removeItem("expect_draft")}catch(e){}setSaveState("saved");if(onDone)onDone();return}catch(e){if(attempt<2)await new Promise(r=>setTimeout(r,1000))}}setSaveState("failed")})()}}>Retry Save</button></div>;
     return null;
   }
   return<div className="fi">
     {showDraftBanner&&<div className="ra"style={{background:"#EFF6FF",borderColor:C.blue,color:"#1E40AF",fontSize:14,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <span>We found your previous progress. You've been returned to where you left off.</span>
-      <button className="btn bsm"style={{fontSize:11,color:C.blue,background:"transparent",border:`1px solid ${C.blue}`,padding:"4px 10px"}}onClick={()=>{setShowDraftBanner(false);setStep(0);setAns(initialEmail?{email:initialEmail}:{});try{localStorage.removeItem("expect_draft")}catch(e){}}}>Start Over</button>
+      <button className="btn bsm"style={{fontSize:11,color:C.blue,background:"transparent",border:`1px solid ${C.blue}`,padding:"4px 10px"}}onClick={()=>{setShowDraftBanner(false);setStep(0);setAns(initialEmail?{email:initialEmail}:{});try{sessionStorage.removeItem("expect_draft")}catch(e){}}}>Start Over</button>
     </div>}
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
       <div><div className="h1">{steps[step].t}</div><div className="sub"style={{maxWidth:600}}>{steps[step].s}</div></div>
@@ -1226,8 +1244,12 @@ function Intake({onDone,mainRef,initialEmail}){
     {hasER&&step===1&&<div className="ra"style={{background:"#FEE2E2",borderColor:C.rd,color:"#991B1B",fontSize:15,fontWeight:600,marginBottom:14}}>⛔ STOP — Please call 911 or go to the nearest emergency room immediately.</div>}
     {hasAnyRF&&!hasER&&step===1&&<div className="ra"style={{background:"#FEF3C7",borderColor:C.or,color:"#92400E",fontSize:14,fontWeight:600,marginBottom:14}}>⚠ Based on your responses, you need to see your physician before starting this program. Please contact your doctor for evaluation.</div>}
     {hasExclusion&&step===2&&<div className="ra"style={{background:"#FEF3C7",borderColor:C.or,color:"#92400E",fontSize:14,fontWeight:600,marginBottom:14}}>⚠ Based on your responses, this program may not be appropriate for your condition. Please consult your physician or a specialist PT for in-person evaluation.</div>}
-    {triedNext&&screenerIncomplete&&step===3&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please answer all four screening questions to continue.</div>}
+    {triedNext&&screenerIncomplete&&step===3&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please answer both screening questions to continue.</div>}
     {triedNext&&popdiIncomplete&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please answer all six questions. For each "Yes" answer, please also select how much it bothers you.</div>}
+    {triedNext&&iciqIncomplete&&step===4&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please answer all bladder leakage questions to continue. {ans.iciq1>0&&ans.iciq3===undefined?"Use the slider to rate how much leaking interferes with your life.":""}</div>}
+    {triedNext&&bowelIncomplete&&step===6&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please answer the bowel frequency and stool type questions to continue.</div>}
+    {triedNext&&painIncomplete&&step===8&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please use the sliders to rate your current pain level and average pain to continue.</div>}
+    {triedNext&&phq2Incomplete&&step===11&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please answer both mental health screening questions to continue. These are a validated depression screen required for your care plan.</div>}
     {steps[step].custom==="account"?<div className="card"style={{borderColor:C.purp}}>
       <div className="chd">Your Login Credentials</div>
       <div style={{marginBottom:14}}><div className="il">Email</div><input className="inp"type="email"value={ans.email||""}readOnly style={{background:C.g50,color:C.g500}}/><div style={{fontSize:10,color:C.g400,marginTop:2}}>Email from your intake — cannot be changed here</div></div>
@@ -1358,7 +1380,7 @@ function Week8CheckIn({baseline,onComplete}){
     return<div key={q.id}className="qc">
       <div className="qt">{q.text}</div>
       {q.type==="scale"&&<div>
-        <div className="scv">{ans[q.id]??q.min}</div>
+        <div className="scv"style={ans[q.id]===undefined?{color:C.g400,fontStyle:"italic"}:{}}>{ans[q.id]!==undefined?ans[q.id]:"—"}</div>
         <input type="range"className="slr"min={q.min}max={q.max}value={ans[q.id]??q.min}onChange={e=>set(q.id,+e.target.value)}/>
         <div className="scl"><span>{q.lo}</span><span>{q.hi}</span></div>
       </div>}
@@ -3037,7 +3059,7 @@ function OAIPView(){
       </div>
       <div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:8}}>Worsening Rate by Tier</div>
       <div className="three">
-        {["Beginner","Moderate","Advanced"].map(t=>{const tc=completed.filter(r=>r.treatment.tier===t);const wn=tc.filter(r=>r.outcome.iciq_delta<0||r.outcome.pain_delta<0||r.outcome.bowel_change==="worse").length;const wr=tc.length>0?Math.round(wn/tc.length*100):0;
+        {["Beginner","Moderate","Advanced","Foundation"].map(t=>{const tc=completed.filter(r=>r.treatment.tier===t);const wn=tc.filter(r=>r.outcome.iciq_delta<0||r.outcome.pain_delta<0||r.outcome.bowel_change==="worse").length;const wr=tc.length>0?Math.round(wn/tc.length*100):0;
           return<div key={t}className="sc"><div className="scl2">{t}</div><div className="scv2"style={{color:wr>20?C.rd:wr>0?C.or:C.gn}}>{wr}%</div><div className="scs">{wn}/{tc.length}</div></div>})}
       </div>
     </div>}
@@ -3055,7 +3077,7 @@ function OAIPView(){
     {completed.length>0&&<div className="card"style={{marginTop:16}}>
       <div className="chd">Outcomes by Tier</div>
       <div className="three">
-        {["Beginner","Moderate","Advanced"].map(t=>{const tc=completed.filter(r=>r.treatment.tier===t);const md=tc.length>0?Math.round(tc.reduce((s,r)=>s+r.outcome.iciq_delta,0)/tc.length*10)/10:0;
+        {["Beginner","Moderate","Advanced","Foundation"].map(t=>{const tc=completed.filter(r=>r.treatment.tier===t);const md=tc.length>0?Math.round(tc.reduce((s,r)=>s+r.outcome.iciq_delta,0)/tc.length*10)/10:0;
           return<div key={t}className="sc"><div className="scl2">{t}</div><div className="scv2"style={{color:md>0?C.gn:C.or}}>{md>0?"+":""}{md}</div><div className="scs">n={tc.length}</div></div>})}
       </div>
     </div>}
