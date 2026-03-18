@@ -23,7 +23,7 @@ const log=[];let _lid=0;let authSession=null;let ptSessionToken=null;let ptIdent
 async function db(fn,args,opts){try{const hdrs={"Content-Type":"application/json"};const tok=ptSessionToken||authSession?.sessionToken;if(tok)hdrs["Authorization"]="Bearer "+tok;const r=await fetch("/api/db",{method:"POST",headers:hdrs,body:JSON.stringify({fn:"functions:"+fn,args:args||{}})});const d=await r.json();if(!r.ok)throw new Error(d.error);return d.result}catch(e){console.warn("[db]",fn,e.message);if(opts?.throw)throw e;return null}}
 function L(t,d){const uid=authSession?.userId||ptIdentity?.userId||null;const det=ptIdentity?{...d,ptEmail:ptIdentity.email,ptName:ptIdentity.name}:(d||{});const evt={id:`A${++_lid}`,ts:new Date().toISOString(),type:t,...d};log.unshift(evt);db("insertAuditEvent",{eventId:evt.id,ts:evt.ts,type:t,details:det,userId:uid})}
 // Shared audit event color map (used by PT AuditLog and OAIP audit stream)
-const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or,daily_adherence_entry:C.gn,checkin_week8_complete:C.blue,PT_ALERT_NO_ICIQ_PROGRESS:"#EA580C",BOWEL_REGRESSION:C.or,flutsex_improvement:C.gn,flutsex_regression:C.rd,RTM_setup_complete:C.purpL,phq2_resource_card_shown:C.or,FOLLOWUP_NONRESPONSE:"#DC2626",CLINICAL_ESCALATION:"#DC2626",surgical_avoidance_confirmed:C.gn,psi_referral:C.or,psi_referral_approved:C.gn,phq2_followup_email_queued:C.or,expansion_match:C.blueL,month12_checkin_complete:C.blue,CARE_PLAN_DOWNLOADED:C.blue,PRENATAL_PROTOCOL_APPLIED:C.gn,OUTCOME_RECORD_CREATED:C.purpL,OUTCOME_RECORD_COMPLETED:C.gn,PT_PLAN_MODIFIED:C.or,account_created:C.gn,session_timeout:C.rd,identity_verified:C.blue,pt_login:C.purp,oaip_login:C.purp,landing_email_collected:C.blueL};
+const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or,daily_adherence_entry:C.gn,checkin_week8_complete:C.blue,PT_ALERT_NO_ICIQ_PROGRESS:"#EA580C",BOWEL_REGRESSION:C.or,flutsex_improvement:C.gn,flutsex_regression:C.rd,RTM_setup_complete:C.purpL,phq2_resource_card_shown:C.or,FOLLOWUP_NONRESPONSE:"#DC2626",CLINICAL_ESCALATION:"#DC2626",surgical_avoidance_confirmed:C.gn,psi_referral:C.or,psi_referral_approved:C.gn,phq2_followup_email_queued:C.or,expansion_match:C.blueL,month12_checkin_complete:C.blue,CARE_PLAN_DOWNLOADED:C.blue,PRENATAL_PROTOCOL_APPLIED:C.gn,OUTCOME_RECORD_CREATED:C.purpL,OUTCOME_RECORD_COMPLETED:C.gn,PT_PLAN_MODIFIED:C.or,account_created:C.gn,session_timeout:C.rd,identity_verified:C.blue,pt_login:C.purp,oaip_login:C.purp,landing_email_collected:C.blueL,referral_initiated:C.pink,care_coordination_request:C.or};
 // PHI-sensitive audit keys that must be masked in auditor mode
 const PHI_KEYS=["patient","name","email","dob","date_of_birth","phone","fax","ssn","mrn","address","city","zip","account","license","npi","ip","device","photo","identifier","name_first","name_last","physicianName","physicianFax","physicianNPI"];
 // Shared PHI masking utility (used by PT AuditLog and OAIP audit stream)
@@ -105,26 +105,26 @@ function completeOutcomeRecord(recordId,baseline,week8){
   const seeds=[
     // Beginner tier (ICIQ 13-21) — 10 records
     [14,5,1,3,18,6,4,1,"stress",0,0,0,0,2,0,0,0,0,240,87,5,2,1,0,"better",8,"yes",null,"none"],
-    [16,6,2,5,22,8,5,2,"urge",1,0,0,0,3,0,1,0,0,310,78,4,2,2,1,"better",7,"partial",null,"none"],
+    [16,6,2,5,22,8,5,2,"urge",1,0,0,0,3,0,1,0,0,310,78,4,2,2,1,"better",7,"partially",null,"none"],
     [18,7,4,4,28,9,6,3,"mixed",2,0,0,0,4,1,1,1,0,195,65,6,3,1,2,"better",9,"yes",null,"mild"],
     [15,4,0,2,15,5,3,0,"stress",3,0,0,0,1,0,0,0,0,280,92,3,1,1,0,"same",8,"yes",null,"none"],
     [21,8,5,6,32,10,7,4,"mixed",4,0,0,0,5,1,1,1,1,105,45,7,4,2,3,"better",8,"yes",null,"moderate"],
     [13,3,0,1,12,4,2,1,"stress",0,0,0,0,0,0,0,0,0,350,95,3,1,0,0,"same",9,"yes",null,"none"],
-    [17,6,3,4,24,7,5,2,"urge",1,"postpartum",0,0,2,0,0,1,0,260,72,4,2,1,1,"better",7,"partial",null,"none"],
-    [19,7,1,3,20,8,4,3,"mixed",2,0,0,0,3,0,0,0,0,220,81,2,1,1,0,"same",6,"partial",null,"mild"],
-    [14,4,0,2,14,5,3,0,"stress",3,0,0,0,1,0,0,0,0,290,88,1,1,0,0,"same",7,"yes",null,"none"],
-    [20,8,2,5,30,9,6,4,"urge",4,0,1,0,4,0,1,0,0,180,72,3,1,1,0,"better",7,"partial","yes","none"],
+    [17,6,3,4,24,7,5,2,"urge",1,"postpartum",0,0,2,0,0,1,0,260,72,4,2,1,1,"better",7,"partially",null,"none"],
+    [19,7,1,3,20,8,4,3,"mixed",2,0,0,0,3,0,0,0,0,220,81,2,1,1,0,"same",6,"partially",null,"mild"],
+    [14,4,0,2,14,5,3,0,"stress",3,0,0,0,1,0,0,0,0,290,0,0,0,0,0,null,0,null,null,null],
+    [20,8,2,5,30,9,6,4,"urge",4,0,1,0,4,0,1,0,0,180,0,0,0,0,0,null,0,null,null,null],
     // Moderate tier (ICIQ 6-12) — 10 records
     [9,3,0,2,10,4,2,1,"stress",0,0,0,0,1,0,0,0,0,300,90,4,1,1,0,"better",9,"yes",null,"none"],
     [11,4,1,3,16,6,4,2,"urge",1,0,0,0,2,0,0,0,0,270,85,3,2,1,0,"better",8,"yes",null,"none"],
     [7,2,0,1,8,3,1,0,"stress",2,0,0,0,0,0,0,0,0,330,93,5,1,0,0,"better",9,"yes",null,"none"],
-    [12,5,3,4,20,7,5,3,"mixed",3,"active_pregnancy",0,0,3,0,0,1,0,200,70,3,2,1,1,"same",7,"partial",null,"mild"],
+    [12,5,3,4,20,7,5,3,"mixed",3,"active_pregnancy",0,0,3,0,0,1,0,200,70,3,2,1,1,"same",7,"partially",null,"mild"],
     [8,3,0,2,11,4,3,1,"urge",4,0,0,0,1,0,0,0,0,310,88,2,1,0,0,"same",8,"yes",null,"none"],
     [10,4,2,3,14,5,3,2,"mixed",0,0,0,0,2,1,1,0,0,250,76,4,2,1,1,"better",8,"yes",null,"none"],
     [6,2,0,1,7,3,2,4,"stress",1,"postpartum",0,0,0,0,0,0,0,340,91,3,1,0,0,"better",9,"yes",null,"none"],
-    [11,5,0,3,18,6,4,0,"urge",2,0,2,0,2,0,0,0,0,230,68,1,1,1,0,"same",6,"partial","yes","mild"],
-    [9,3,1,2,12,5,3,1,"stress",3,0,0,0,1,0,0,0,0,280,82,4,1,0,0,"better",8,"yes",null,"none"],
-    [12,6,0,4,22,8,5,3,"mixed",4,0,0,0,3,0,1,1,0,190,75,3,1,1,0,"better",7,"partial",null,"none"],
+    [11,5,0,3,18,6,4,0,"urge",2,0,2,0,2,0,0,0,0,230,68,1,1,1,0,"same",6,"partially","yes","mild"],
+    [9,3,1,2,12,5,3,1,"stress",3,0,0,0,1,0,0,0,0,280,0,0,0,0,0,null,0,null,null,null],
+    [12,6,0,4,22,8,5,3,"mixed",4,0,0,0,3,0,1,1,0,190,0,0,0,0,0,null,0,null,null,null],
     // Advanced tier (ICIQ 1-5) — 10 records
     [4,2,0,1,6,2,1,1,"stress",0,0,0,0,0,0,0,0,0,320,94,3,1,0,0,"better",9,"yes",null,"none"],
     [3,1,0,0,4,2,1,0,"stress",1,0,0,0,0,0,0,0,0,290,96,2,0,0,0,"same",9,"yes",null,"none"],
@@ -133,9 +133,9 @@ function completeOutcomeRecord(recordId,baseline,week8){
     [5,4,0,2,11,4,3,4,"mixed",4,0,0,0,2,0,0,0,0,260,83,3,2,1,0,"better",8,"yes",null,"none"],
     [1,1,0,0,2,1,0,1,"stress",0,0,0,0,0,0,0,0,0,350,98,1,0,0,0,"same",10,"yes",null,"none"],
     [4,2,0,1,7,3,2,2,"urge",1,"active_pregnancy",0,0,1,0,0,0,0,270,80,3,1,0,0,"better",8,"yes","not_applicable","none"],
-    [3,7,2,3,25,5,6,3,"mixed",2,0,0,1,3,0,1,0,0,210,62,2,3,1,1,"better",7,"partial",null,"moderate"],
-    [5,3,0,1,8,3,2,0,"stress",3,0,0,0,1,0,0,0,0,300,86,4,1,0,0,"better",9,"yes",null,"none"],
-    [2,1,0,0,3,1,1,4,"stress",4,0,0,0,0,0,0,0,0,330,95,2,1,0,0,"same",9,"yes",null,"none"],
+    [3,7,2,3,25,5,6,3,"mixed",2,0,0,1,3,0,1,0,0,210,62,2,3,1,1,"better",7,"partially",null,"moderate"],
+    [5,3,0,1,8,3,2,0,"stress",3,0,0,0,1,0,0,0,0,300,0,0,0,0,0,null,0,null,null,null],
+    [2,1,0,0,3,1,1,4,"stress",4,0,0,0,0,0,0,0,0,330,0,0,0,0,0,null,0,null,null,null],
     // Foundation tier (ICIQ 0) — 3 records
     [0,1,0,0,2,1,0,0,"stress",0,0,0,0,0,0,0,0,0,280,92,0,0,0,0,"same",9,"yes",null,"none"],
     [0,2,0,1,5,2,1,2,"stress",1,0,0,0,0,0,0,0,0,310,88,0,1,0,0,"better",8,"yes",null,"none"],
@@ -157,7 +157,7 @@ function completeOutcomeRecord(recordId,baseline,week8){
     OUTCOME_RECORDS.push(rec);
   });
   // Seed audit log events for OAIP dashboard — positive story for screenshots
-  const concerns=["none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","mild","mild","mild","mild","mild","mild","mild","mild"];
+  const concerns=["none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","mild","mild","mild","mild","mild","mild","mild"];
   concerns.forEach((c,i)=>log.push({id:`DEMO-L-W8-${i}`,ts:new Date(baseDate.getTime()+(i+7)*2*24*60*60*1000).toISOString(),type:"checkin_week8_complete",concern:c}));
   log.push({id:"DEMO-L-PF1",ts:"2026-02-15T10:00:00Z",type:"prolapse_followup_week8",status:"yes",patient:"Demo Patient"});
   log.push({id:"DEMO-L-PF2",ts:"2026-02-20T10:00:00Z",type:"prolapse_followup_week8",status:"yes",patient:"Demo Patient"});
@@ -536,6 +536,17 @@ function genPlan(iciq,pain,gupi,intake){
   }
   L("plan_generated",{planId:p.id,risk:p.risk,iciq:iciq.total,tier,prenatal:!!intake.prenatal_flag,review_flags:p.review_flags.map(f=>f.id),logicVersion:CLINICAL_LOGIC_VERSION});return p;
 }
+// Referral routing — deterministic check using existing genPlan flags
+function needsInPersonCare(plan,iciq,pain,popdi){
+  const reasons=[];
+  if(plan.review_flags?.some(f=>f.id==="PROLAPSE_REVIEW"))reasons.push({id:"prolapse",label:"Prolapse symptoms detected — pelvic exam recommended",urgency:"soon"});
+  if(plan.review_flags?.some(f=>f.id==="PUDENDAL_SUSPECTED"))reasons.push({id:"pudendal",label:"Suspected pudendal nerve involvement",urgency:"soon"});
+  if(plan.review_flags?.some(f=>f.id==="DEPRESSION_RISK"))reasons.push({id:"depression",label:"Depression screening positive — integrated care recommended",urgency:"standard"});
+  if(iciq.total>=13)reasons.push({id:"severe_iciq",label:"Severe incontinence — may benefit from hands-on assessment",urgency:"week4"});
+  if(pain.composite>=6)reasons.push({id:"high_pain",label:"Significant pelvic pain — in-person evaluation recommended",urgency:"soon"});
+  if(popdi&&popdi.bulge)reasons.push({id:"bulge",label:"Vaginal bulge/protrusion reported",urgency:"soon"});
+  return reasons.length>0?{needed:true,reasons,urgency:reasons.some(r=>r.urgency==="soon")?"soon":"standard"}:{needed:false,reasons:[]};
+}
 
 const DPTS=[
   {id:"P001",nm:"Sarah M.",age:32,ref:"OB/GYN",iciq:[{d:"01/15",s:14},{d:"01/29",s:11},{d:"02/12",s:8}],pain:[{d:"01/15",s:5},{d:"01/29",s:3.5},{d:"02/12",s:2}],adh:87,ps:"approved",nra:"02/26",msgs:[{fr:"pt",tx:"Great progress! ICIQ dropped 3 pts.",t:"2/12 10:30am"}],planApprovedDate:"2026-01-15",intake:{iciq:14,pain:6,phq2:2,fsex:3,constipation:true,avoid:["exercise","lifting","sexual"]},week8:{iciq:8,pain:3,phq2:1,fsex:1,bowel:"better",avoid_resumed:["exercise","lifting"],nps:9,date:"03/12",submitted:true},review_flags:[{id:"HIGH_SEVERITY_ICIQ",type:"always",label:"High Severity ICIQ"}]},
@@ -883,6 +894,10 @@ const MOCK_PROVIDERS=[
   {id:"P105",first:"Emily",last:"Davis",specialty:"OB/GYN",practice:"Intermountain Women's Care",city:"Murray",state:"UT",npi:"1234567895",fax:"8015550105",demo:true},
   {id:"P106",first:"Robert",last:"Garcia",specialty:"Urology",practice:"Utah Urology Associates",city:"Salt Lake City",state:"UT",npi:"1234567896",fax:"8015550106",demo:true},
 ];
+// Utah in-person referral partner directory — curated list, add providers as partnerships form
+const UTAH_PROVIDERS=[
+  {id:"reborn_pt",name:"Reborn Physical Therapy",provider:"Betty DeLass",credential:"PT",cities:["Lehi","Murray","Layton","Provo"],phone:"(801) 702-8475",telehealth:true,intakeMethod:"phone",payers:["BCBS","Tricare","EMI","Medicare","Select Health","Cash/HSA/FSA"],treats:["bladder","bowel","postpartum","prolapse","pain","sexual"],website:"https://rebornpt.com"},
+];
 function typoMatch(input,target){
   if(!input)return true;
   const a=input.toLowerCase(),b=target.toLowerCase();
@@ -1082,25 +1097,80 @@ function SessionWarningModal({cd,onDismiss}){
   </div>;
 }
 
+// REFERRAL CARD — reusable warm handoff component for in-person care routing
+function ReferralCard({referral,compact}){
+  if(!referral||!referral.needed)return null;
+  const[requested,setRequested]=useState(false);
+  return<div style={{background:"#FFF7ED",border:"1px solid #FDBA74",borderRadius:12,padding:compact?16:20,marginTop:compact?12:20}}>
+    <div style={{fontWeight:700,fontSize:compact?14:16,color:"#9A3412",marginBottom:8}}>We recommend in-person pelvic floor evaluation</div>
+    <div style={{fontSize:12,color:"#78350F",lineHeight:1.6,marginBottom:12}}>Based on your assessment, you may benefit from a hands-on evaluation in addition to your home exercise program. In-person care works alongside your digital plan, not instead of it.</div>
+    <div style={{marginBottom:12}}>
+      {referral.reasons.map((r,i)=><div key={i}style={{fontSize:12,color:"#92400E",marginBottom:4,display:"flex",alignItems:"flex-start",gap:6}}>
+        <span style={{color:"#EA580C",fontWeight:700,flexShrink:0}}>•</span><span>{r.label}</span>
+      </div>)}
+    </div>
+    {UTAH_PROVIDERS.map(prov=><div key={prov.id}style={{background:"#fff",border:"1px solid #E5E7EB",borderRadius:10,padding:14,marginBottom:10}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+        <div>
+          <div style={{fontWeight:700,fontSize:14,color:"#111827"}}>{prov.name}</div>
+          <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>{prov.provider}{prov.credential?`, ${prov.credential}`:""}</div>
+        </div>
+        <div style={{display:"flex",gap:4}}>
+          {prov.telehealth&&<span style={{background:"#DBEAFE",color:"#1D4ED8",fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:10}}>Telehealth</span>}
+          <span style={{background:"#D1FAE5",color:"#065F46",fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:10}}>In-Person</span>
+        </div>
+      </div>
+      <div style={{fontSize:12,color:"#6B7280",marginBottom:8}}>Locations: {prov.cities.join(" · ")}</div>
+      <div style={{fontSize:11,color:"#9CA3AF",marginBottom:10}}>Accepts: {prov.payers.join(", ")}</div>
+      <a href={"tel:"+prov.phone.replace(/[^\d]/g,"")}style={{display:"inline-flex",alignItems:"center",gap:8,background:C.pink,color:"#fff",padding:"8px 18px",borderRadius:8,fontWeight:600,fontSize:13,textDecoration:"none",cursor:"pointer"}}onClick={()=>L("referral_initiated",{provider:prov.id,reasons:referral.reasons.map(r=>r.id),method:"phone"})}>
+        Call to Schedule — {prov.phone}
+      </a>
+      <div style={{fontSize:11,color:"#78350F",marginTop:8,lineHeight:1.5}}>When you call, let them know you completed an Expect Health assessment. They do intake by phone.</div>
+    </div>)}
+    {!requested?<button style={{background:"none",border:`1px solid ${C.g300}`,borderRadius:8,padding:"8px 14px",fontSize:12,color:C.g600,cursor:"pointer",width:"100%",marginTop:4}}onClick={()=>{L("care_coordination_request",{reasons:referral.reasons.map(r=>r.id)});setRequested(true)}}>
+      Need help finding care? Request care coordination →
+    </button>:<div style={{background:"#D1FAE5",borderRadius:8,padding:"10px 14px",fontSize:12,color:"#065F46",textAlign:"center",marginTop:4}}>
+      Request received — our team will follow up with you.
+    </div>}
+  </div>;
+}
+
 // LANDING PAGE (Step 1 — Welcome)
 function LandingPage({onDone}){
-  const sub=PILOT_PHASE===1
-    ?"Get a personalized pelvic floor care plan created by AI and reviewed by a licensed Utah Physical Therapist."
-    :`Get a personalized pelvic floor care plan created by AI and clinically supervised by licensed Utah Physical Therapists — validated through ${PILOT_CASES_VALIDATED}+ supervised cases.`;
   const disc=PILOT_PHASE===1
     ?"This service utilizes AI to assist licensed professionals in care planning. All treatment decisions are finalized by a human clinician."
     :"This service utilizes AI validated through extensive clinical supervision to generate care plans. Complex cases receive direct PT review; all plans are audited for safety.";
+  const symptoms=[
+    {icon:"💧",text:"I leak when I sneeze, cough, or laugh"},
+    {icon:"🚽",text:"I can't make it to the bathroom in time"},
+    {icon:"⬇️",text:"I feel pressure or heaviness down there"},
+    {icon:"💔",text:"Sex is painful or uncomfortable"},
+    {icon:"😣",text:"I'm constipated or strain to go"},
+    {icon:"🤱",text:"I don't feel normal after having a baby"},
+  ];
   return<div className="fi"style={{maxWidth:600,margin:"0 auto"}}>
     <div style={{textAlign:"center",marginBottom:24}}>
-      <div className="h1"style={{fontSize:28}}>AI-Augmented Pelvic Floor Physical Therapy</div>
-      <div className="sub"style={{fontSize:15,maxWidth:480,margin:"8px auto 0",lineHeight:1.7}}>{sub}</div>
+      <div className="h1"style={{fontSize:28}}>Could pelvic floor therapy help you?</div>
+      <div className="sub"style={{fontSize:15,maxWidth:480,margin:"8px auto 0",lineHeight:1.7}}>Millions of women experience these symptoms. Most never get help. You can start here.</div>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:20}}>
+      {symptoms.map((s,i)=><div key={i}style={{background:C.g50,border:`1px solid ${C.g200}`,borderRadius:10,padding:"12px 14px",fontSize:13,color:C.g700,lineHeight:1.5,display:"flex",alignItems:"flex-start",gap:10}}>
+        <span style={{fontSize:18,flexShrink:0}}>{s.icon}</span><span>{s.text}</span>
+      </div>)}
+    </div>
+    <div style={{textAlign:"center",marginBottom:20}}>
+      <div style={{fontSize:14,color:C.purp,fontWeight:600}}>You don't need to know the medical name for the problem to get help.</div>
     </div>
     <div className="card"style={{borderColor:C.purp}}>
       <div style={{background:"rgba(76,44,132,.04)",border:`1px solid ${C.g200}`,borderRadius:8,padding:"12px 16px",marginBottom:16,fontSize:12,color:C.g600,lineHeight:1.6}}>
         {disc}
       </div>
-      <div className="chd">Get Started</div>
-      <p style={{fontSize:13,color:C.g500,marginBottom:14,lineHeight:1.6}}>Complete a quick intake assessment and get a personalized care plan. You'll be asked to review informed consent and verify your email before starting.</p>
+      <div className="chd">How It Works</div>
+      <div style={{fontSize:13,color:C.g500,marginBottom:14,lineHeight:1.7}}>
+        <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:8}}><span style={{background:C.purp,color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>1</span><span>Complete a quick intake assessment about your symptoms</span></div>
+        <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:8}}><span style={{background:C.purp,color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>2</span><span>A licensed Utah Physical Therapist reviews your results and personalizes your plan</span></div>
+        <div style={{display:"flex",alignItems:"flex-start",gap:10}}><span style={{background:C.purp,color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>3</span><span>Get a personalized exercise program — and if you need in-person care, we'll help connect you</span></div>
+      </div>
       <button className="btn bpk"style={{width:"100%",justifyContent:"center"}}onClick={onDone}>Begin Assessment →</button>
     </div>
     <div style={{textAlign:"center",marginTop:16}}>
@@ -1349,14 +1419,18 @@ function Intake({onDone,mainRef,initialEmail}){
 }
 
 function PatientWaiting({name}){
-  return<div className="fi"style={{textAlign:"center",padding:"60px 20px"}}>
-    <div style={{fontSize:48,marginBottom:16}}>✨</div>
-    <div className="h1"style={{fontSize:28}}>Thank you{name?`, ${name}`:""}</div>
-    <p style={{fontSize:15,color:C.g500,maxWidth:480,margin:"12px auto 0",lineHeight:1.7}}>Your assessment is complete. A licensed Physical Therapist will review your responses and create a personalized treatment plan.</p>
-    <div style={{marginTop:24,padding:16,background:C.g50,borderRadius:12,display:"inline-block"}}>
-      <div style={{fontSize:12,color:C.g400,marginBottom:4}}>What happens next</div>
-      <div style={{fontSize:13,color:C.g700}}>PT review within 24 hours → Your care plan will appear here</div>
+  const referral=sharedIntake?needsInPersonCare(sharedIntake.plan||{},sharedIntake.iciq||{total:0},sharedIntake.pain||{composite:0},sharedIntake.popdi||sPOPDI(sharedIntake.ans||{})):{needed:false,reasons:[]};
+  return<div className="fi"style={{maxWidth:560,margin:"0 auto",padding:"60px 20px"}}>
+    <div style={{textAlign:"center"}}>
+      <div style={{fontSize:48,marginBottom:16}}>✨</div>
+      <div className="h1"style={{fontSize:28}}>Thank you{name?`, ${name}`:""}</div>
+      <p style={{fontSize:15,color:C.g500,maxWidth:480,margin:"12px auto 0",lineHeight:1.7}}>Your assessment is complete. A licensed Physical Therapist will review your responses and create a personalized treatment plan.</p>
+      <div style={{marginTop:24,padding:16,background:C.g50,borderRadius:12,display:"inline-block"}}>
+        <div style={{fontSize:12,color:C.g400,marginBottom:4}}>What happens next</div>
+        <div style={{fontSize:13,color:C.g700}}>PT review within 24 hours → Your care plan will appear here</div>
+      </div>
     </div>
+    {referral.needed&&<ReferralCard referral={referral}/>}
   </div>;
 }
 function Week8CheckIn({baseline,onComplete}){
@@ -1620,6 +1694,7 @@ function Month12CheckIn(){
 
 function MyCareplan({data}){
   const{ans,iciq,pain,gupi,fluts,fsex,popdi:_popdiC,plan}=data;const popdi=_popdiC||sPOPDI(ans);
+  const referral=needsInPersonCare(plan,iciq,pain,popdi);
   const[tab,setTab]=useState("scores");
   const[expanded,setExpanded]=useState({});
   const toggle=(id)=>setExpanded(p=>({...p,[id]:!p[id]}));
@@ -1824,6 +1899,7 @@ function MyCareplan({data}){
   </div>;
 
   const AdjTab=()=><div>
+    {referral.needed&&<ReferralCard referral={referral} compact/>}
     {phq2>=2&&<div className="cp-card" style={{borderLeft:"4px solid #D97706",background:"#FFFBEB"}}>
       <div className="cp-card-title" style={{color:"#92400E"}}>Support Resources</div>
       <div className="cp-card-sub" style={{color:"#78350F"}}>Based on your responses, your PT wants to make sure you have access to these support resources.</div>
@@ -1913,6 +1989,11 @@ function MyCareplan({data}){
           <div className="cp-rpt-row"><span className="cp-rl">Goal</span><span className="cp-rv">{ans.patient_goal||"—"}</span></div>
           <div className="cp-rpt-row"><span className="cp-rl">Precautions</span><span className="cp-rv">{(plan.prec||[]).join(" · ")}</span></div>
         </div>
+        {referral.needed&&<div className="cp-rpt-section"><div className="cp-rpt-h">In-Person Evaluation Recommended</div>
+          {referral.reasons.map((r,i)=><div key={i}className="cp-rpt-row"><span className="cp-rl">{r.id}</span><span className="cp-rv">{r.label}</span></div>)}
+          <div className="cp-rpt-row"><span className="cp-rl">Recommended Provider</span><span className="cp-rv">{UTAH_PROVIDERS.map(p=>p.name+" — "+p.phone).join("; ")}</span></div>
+          <div style={{fontSize:11,color:C.g500,marginTop:8,lineHeight:1.5}}>This patient completed an Expect Health digital assessment. Full clinical data available upon request. Contact: support@expecthealth.com</div>
+        </div>}
         <div className="cp-att"><div className="cp-att-h">PT Attestation</div>
           <p>I have reviewed the AI-generated assessment, the patient's individual responses, and the treatment plan. This plan reflects my independent clinical judgment and is appropriate for this patient's presentation.</p>
           <p style={{marginTop:8}}><strong>Signed:</strong> Nicole L. Dugan, PT, DPT, WCS — {dateStr}</p>
@@ -2297,6 +2378,19 @@ function PTNewIntakeReview({data,onBack}){
         {!ans.concierge_pending&&ans.physician_fax&&ans.physician_fax_verified&&<div style={{fontSize:11,color:C.gn,fontWeight:600}}>✓ Auto-populated from NPI Registry</div>}
       </div>
     </div>
+
+    {/* IN-PERSON REFERRAL RECOMMENDATION */}
+    {(()=>{const ref=needsInPersonCare(editPlan||data.plan,data.iciq,data.pain,popdi);return ref.needed?<div className="card"style={{marginBottom:14,borderColor:C.or,background:"#FFF7ED"}}>
+      <div className="chd"style={{color:"#9A3412"}}>In-Person Referral Recommended</div>
+      <div style={{fontSize:12,color:"#78350F",marginBottom:8,lineHeight:1.6}}>Based on clinical flags, this patient may benefit from in-person pelvic floor evaluation. The patient will see this referral in their care plan.</div>
+      {ref.reasons.map((r,i)=><div key={i}style={{fontSize:12,color:"#92400E",marginBottom:3}}>• {r.label} <span style={{fontSize:10,color:C.g400}}>({r.urgency})</span></div>)}
+      <div style={{marginTop:10,background:"#fff",border:"1px solid #E5E7EB",borderRadius:8,padding:10}}>
+        {UTAH_PROVIDERS.map(prov=><div key={prov.id}style={{fontSize:12,color:C.g700}}>
+          <strong>{prov.name}</strong> — {prov.provider}, {prov.credential} · {prov.phone} · {prov.cities.join(", ")}
+          {prov.telehealth&&<span style={{background:"#DBEAFE",color:"#1D4ED8",fontSize:9,fontWeight:600,padding:"1px 6px",borderRadius:8,marginLeft:6}}>Telehealth</span>}
+        </div>)}
+      </div>
+    </div>:null})()}
 
     {/* PATIENT RESPONSES — collapsible */}
     <div style={{marginBottom:14}}>
