@@ -1155,12 +1155,12 @@ function LandingPage({onDone}){
   return<div className="fi"style={{maxWidth:560,margin:"0 auto"}}>
     {/* HERO */}
     <div style={{textAlign:"center",marginBottom:32,paddingTop:8}}>
-      <div className="h1"style={{fontSize:26,lineHeight:1.3,color:C.g900}}>You don't have to live with pelvic floor symptoms.</div>
+      <div className="h1"style={{fontSize:26,lineHeight:1.3,color:C.purp}}>Could pelvic floor therapy help you?</div>
       <div style={{fontSize:14,color:C.g500,maxWidth:460,margin:"12px auto 0",lineHeight:1.7}}>Leaks, pressure, painful sex, constipation, or not feeling like yourself after birth can all be signs that pelvic floor therapy may help.</div>
     </div>
     {/* SYMPTOM SELECTION */}
     <div style={{marginBottom:28}}>
-      <div style={{textAlign:"center",fontSize:14,fontWeight:600,color:C.g700,marginBottom:12}}>What sounds most like you?</div>
+      <div style={{textAlign:"center",fontSize:14,fontWeight:600,color:C.purp,marginBottom:12}}>What sounds most like you?</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
         {symptoms.map((s,i)=><div key={i}onClick={()=>toggleSym(i)}style={{background:sel.has(i)?"rgba(76,44,132,.06)":C.g50,border:`1.5px solid ${sel.has(i)?C.purp:C.g200}`,borderRadius:10,padding:"12px 14px",fontSize:13,color:sel.has(i)?C.purp:C.g600,lineHeight:1.5,cursor:"pointer",transition:"all .15s",fontWeight:sel.has(i)?600:400}}>
           {s}
@@ -1177,11 +1177,11 @@ function LandingPage({onDone}){
     </div>
     {/* HOW IT WORKS */}
     <div style={{marginBottom:28}}>
-      <div style={{textAlign:"center",fontSize:15,fontWeight:700,color:C.g800,marginBottom:16}}>How it works</div>
+      <div style={{textAlign:"center",fontSize:15,fontWeight:700,color:C.purp,marginBottom:16}}>How it works</div>
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         {steps.map(s=><div key={s.n}style={{display:"flex",gap:14,alignItems:"flex-start"}}>
           <span style={{background:C.purp,color:"#fff",borderRadius:"50%",width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,flexShrink:0}}>{s.n}</span>
-          <div><div style={{fontSize:14,fontWeight:600,color:C.g800,marginBottom:2}}>{s.t}</div><div style={{fontSize:12,color:C.g500,lineHeight:1.5}}>{s.d}</div></div>
+          <div><div style={{fontSize:14,fontWeight:600,color:C.purpD,marginBottom:2}}>{s.t}</div><div style={{fontSize:12,color:C.g500,lineHeight:1.5}}>{s.d}</div></div>
         </div>)}
       </div>
     </div>
