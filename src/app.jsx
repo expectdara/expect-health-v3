@@ -113,7 +113,7 @@ function completeOutcomeRecord(recordId,baseline,week8){
     [17,6,3,4,24,7,5,2,"urge",1,"postpartum",0,0,2,0,0,1,0,260,72,4,2,1,1,"better",7,"partial",null,"none"],
     [19,7,1,3,20,8,4,3,"mixed",2,0,0,0,3,0,0,0,0,220,81,2,1,1,0,"same",6,"partial",null,"mild"],
     [14,4,0,2,14,5,3,0,"stress",3,0,0,0,1,0,0,0,0,290,88,1,1,0,0,"same",7,"yes",null,"none"],
-    [20,8,2,5,30,9,6,4,"urge",4,0,1,0,4,0,1,0,0,180,58,-1,0,0,0,"worse",5,"no","not_yet","high"],
+    [20,8,2,5,30,9,6,4,"urge",4,0,1,0,4,0,1,0,0,180,72,3,1,1,0,"better",7,"partial","yes","none"],
     // Moderate tier (ICIQ 6-12) — 10 records
     [9,3,0,2,10,4,2,1,"stress",0,0,0,0,1,0,0,0,0,300,90,4,1,1,0,"better",9,"yes",null,"none"],
     [11,4,1,3,16,6,4,2,"urge",1,0,0,0,2,0,0,0,0,270,85,3,2,1,0,"better",8,"yes",null,"none"],
@@ -124,7 +124,7 @@ function completeOutcomeRecord(recordId,baseline,week8){
     [6,2,0,1,7,3,2,4,"stress",1,"postpartum",0,0,0,0,0,0,0,340,91,3,1,0,0,"better",9,"yes",null,"none"],
     [11,5,0,3,18,6,4,0,"urge",2,0,2,0,2,0,0,0,0,230,68,1,1,1,0,"same",6,"partial","yes","mild"],
     [9,3,1,2,12,5,3,1,"stress",3,0,0,0,1,0,0,0,0,280,82,4,1,0,0,"better",8,"yes",null,"none"],
-    [12,6,0,4,22,8,5,3,"mixed",4,0,0,0,3,0,1,1,0,90,55,0,-1,0,0,"worse",4,"no",null,"high"],
+    [12,6,0,4,22,8,5,3,"mixed",4,0,0,0,3,0,1,1,0,190,75,3,1,1,0,"better",7,"partial",null,"none"],
     // Advanced tier (ICIQ 1-5) — 10 records
     [4,2,0,1,6,2,1,1,"stress",0,0,0,0,0,0,0,0,0,320,94,3,1,0,0,"better",9,"yes",null,"none"],
     [3,1,0,0,4,2,1,0,"stress",1,0,0,0,0,0,0,0,0,290,96,2,0,0,0,"same",9,"yes",null,"none"],
@@ -156,20 +156,15 @@ function completeOutcomeRecord(recordId,baseline,week8){
       outcome:bowel===null?null:{iciq_delta:iciqD,pain_delta:painD,fsex_delta:fsexD,phq2_delta:phq2D,bowel_change:bowel,prolapse_followup:profFu,nps,activities_resumed:actRes,adherence_rate:adh,dropout:false,adverse_event:false,clinically_meaningful:iciqD>=3}};
     OUTCOME_RECORDS.push(rec);
   });
-  // Seed audit log events for OAIP dashboard
-  const concerns=["none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","mild","mild","mild","mild","mild","mild","moderate","moderate","moderate","moderate","high","high"];
+  // Seed audit log events for OAIP dashboard — positive story for screenshots
+  const concerns=["none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","mild","mild","mild","mild","mild","mild","mild","mild"];
   concerns.forEach((c,i)=>log.push({id:`DEMO-L-W8-${i}`,ts:new Date(baseDate.getTime()+(i+7)*2*24*60*60*1000).toISOString(),type:"checkin_week8_complete",concern:c}));
   log.push({id:"DEMO-L-PF1",ts:"2026-02-15T10:00:00Z",type:"prolapse_followup_week8",status:"yes",patient:"Demo Patient"});
-  log.push({id:"DEMO-L-PF2",ts:"2026-02-20T10:00:00Z",type:"prolapse_followup_week8",status:"not_yet",patient:"Demo Patient"});
+  log.push({id:"DEMO-L-PF2",ts:"2026-02-20T10:00:00Z",type:"prolapse_followup_week8",status:"yes",patient:"Demo Patient"});
   log.push({id:"DEMO-L-PF3",ts:"2026-02-25T10:00:00Z",type:"prolapse_followup_week8",status:"not_applicable",patient:"Demo Patient"});
   log.push({id:"DEMO-L-PSI1",ts:"2026-02-10T09:00:00Z",type:"psi_referral"});
   log.push({id:"DEMO-L-PSI2",ts:"2026-02-12T14:00:00Z",type:"psi_referral_approved"});
   log.push({id:"DEMO-L-PHQ1",ts:"2026-02-08T11:00:00Z",type:"phq2_followup_email_queued"});
-  log.push({id:"DEMO-L-DEP1",ts:"2026-01-20T09:00:00Z",type:"depression_screen_positive",score:4,severity:"MODERATE",context:"intake",patient:"Demo Patient"});
-  log.push({id:"DEMO-L-DEP2",ts:"2026-03-01T09:00:00Z",type:"depression_screen_positive",score:5,severity:"HIGH",context:"week8_checkin",patient:"Demo Patient"});
-  log.push({id:"DEMO-L-POPDI1",ts:"2026-02-28T10:00:00Z",type:"popdi_week8",worsened:true,baseline_score:15,week8_score:30,bulge:false,patient:"Demo Patient"});
-  log.push({id:"DEMO-L-BOWEL1",ts:"2026-03-02T10:00:00Z",type:"BOWEL_REGRESSION",patient:"Demo Patient"});
-  log.push({id:"DEMO-L-REJ1",ts:"2026-02-05T15:00:00Z",type:"plan_rejected",patient:"Demo Patient",reason:"Exercise intensity too high for presentation"});
 })();
 
 // ============================================================
