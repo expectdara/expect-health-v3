@@ -524,7 +524,7 @@ function genPlan(iciq,pain,gupi,intake){
   p.cpt=[{c:"97161",d:"PT Eval — Low Complexity",u:1}];
   // Review flags — always-review (Phase 2: mandatory PT review) + triggered (Phase 2: discretionary)
   const phq2=calcPHQ2(intake);
-  p.review_flags=[];
+  p.review_flags=[...(p.review_flags||[])];
   if(iciq.total>=13)p.review_flags.push({id:"HIGH_SEVERITY_ICIQ",type:"always",label:"High Severity ICIQ"});
   if(phq2>=3){p.review_flags.push({id:"DEPRESSION_RISK",type:"always",label:"Depression Risk"});p.risk="yellow"}
   if(intake.prenatal_flag){p.review_flags.push({id:"PRENATAL",type:"always",label:"Prenatal"});p.risk="yellow"}

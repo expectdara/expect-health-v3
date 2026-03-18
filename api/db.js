@@ -286,7 +286,7 @@ export default async function handler(req, res) {
       : await client.mutation(fn, args || {});
     res.status(200).json({ ok: true, result });
   } catch (e) {
-    console.error("Convex proxy error:", e.message);
-    res.status(502).json({ error: e.message || "Database unavailable" });
+    console.error("Convex proxy error:", fn, e.code || "UNKNOWN");
+    res.status(502).json({ error: "An internal error occurred" });
   }
 }
