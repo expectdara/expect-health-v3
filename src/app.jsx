@@ -1169,11 +1169,11 @@ function LandingPage({onDone}){
     </div>
     {/* TRUST STRIP */}
     <div style={{textAlign:"center",padding:"14px 0",marginBottom:24,borderTop:`1px solid ${C.g200}`,borderBottom:`1px solid ${C.g200}`}}>
-      <div style={{fontSize:13,color:C.purp,fontWeight:600,letterSpacing:.3}}>Clinician-reviewed care plans. Human-approved treatment decisions.</div>
+      <div style={{fontSize:13,color:C.purp,fontWeight:600,letterSpacing:.3}}>You don't need to know the medical name for the problem to get help.</div>
     </div>
     {/* CTA */}
     <div style={{textAlign:"center",marginBottom:32}}>
-      <button className="btn bpk"style={{width:"100%",maxWidth:360,justifyContent:"center",padding:"14px 24px",fontSize:15,fontWeight:700,borderRadius:12}}onClick={()=>{if(sel.size)L("symptom_self_select",{selected:symptoms.filter((_,i)=>sel.has(i))});onDone()}}>Start My 5-Minute Assessment</button>
+      <button className="btn bpk"style={{width:"100%",maxWidth:360,justifyContent:"center",padding:"14px 24px",fontSize:15,fontWeight:700,borderRadius:12}}onClick={()=>{if(sel.size)L("symptom_self_select",{selected:symptoms.filter((_,i)=>sel.has(i))});onDone()}}>Start My Assessment</button>
     </div>
     {/* HOW IT WORKS */}
     <div style={{marginBottom:28}}>
