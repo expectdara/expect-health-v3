@@ -1141,12 +1141,12 @@ function LandingPage({onDone}){
     ?"This service utilizes AI to assist licensed professionals in care planning. All treatment decisions are finalized by a human clinician."
     :"This service utilizes AI validated through extensive clinical supervision to generate care plans. Complex cases receive direct PT review; all plans are audited for safety.";
   const symptoms=[
-    {icon:"💧",text:"I leak when I sneeze, cough, or laugh"},
-    {icon:"🚽",text:"I can't make it to the bathroom in time"},
-    {icon:"⬇️",text:"I feel pressure or heaviness down there"},
-    {icon:"💔",text:"Sex is painful or uncomfortable"},
-    {icon:"😣",text:"I'm constipated or strain to go"},
-    {icon:"🤱",text:"I don't feel normal after having a baby"},
+    "I leak when I sneeze, cough, or laugh",
+    "I can't make it to the bathroom in time",
+    "I feel pressure or heaviness down there",
+    "Sex is painful or uncomfortable",
+    "I'm constipated or strain to go",
+    "I don't feel normal after having a baby",
   ];
   return<div className="fi"style={{maxWidth:600,margin:"0 auto"}}>
     <div style={{textAlign:"center",marginBottom:24}}>
@@ -1154,8 +1154,8 @@ function LandingPage({onDone}){
       <div className="sub"style={{fontSize:15,maxWidth:480,margin:"8px auto 0",lineHeight:1.7}}>Millions of women experience these symptoms. Most never get help. You can start here.</div>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:20}}>
-      {symptoms.map((s,i)=><div key={i}style={{background:C.g50,border:`1px solid ${C.g200}`,borderRadius:10,padding:"12px 14px",fontSize:13,color:C.g700,lineHeight:1.5,display:"flex",alignItems:"flex-start",gap:10}}>
-        <span style={{fontSize:18,flexShrink:0}}>{s.icon}</span><span>{s.text}</span>
+      {symptoms.map((s,i)=><div key={i}style={{background:C.g50,border:`1px solid ${C.g200}`,borderRadius:10,padding:"12px 14px",fontSize:13,color:C.g700,lineHeight:1.5}}>
+        {s}
       </div>)}
     </div>
     <div style={{textAlign:"center",marginBottom:20}}>
