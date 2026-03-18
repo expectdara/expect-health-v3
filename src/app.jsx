@@ -1144,7 +1144,7 @@ function LandingPage({onDone}){
     "I feel pressure or heaviness down there",
     "Sex is painful or uncomfortable",
     "I'm constipated or strain to go",
-    "I don't feel normal after having a baby",
+    "I'm dealing with bladder, bowel, or pelvic symptoms after birth",
   ];
   const toggleSym=(i)=>setSel(p=>{const n=new Set(p);n.has(i)?n.delete(i):n.add(i);return n});
   const steps=[
