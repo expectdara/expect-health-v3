@@ -1137,9 +1137,7 @@ function ReferralCard({referral,compact}){
 
 // LANDING PAGE (Step 1 — Welcome)
 function LandingPage({onDone}){
-  const disc=PILOT_PHASE===1
-    ?"This service utilizes AI to assist licensed professionals in care planning. All treatment decisions are finalized by a human clinician."
-    :"This service utilizes AI validated through extensive clinical supervision to generate care plans. Complex cases receive direct PT review; all plans are audited for safety.";
+  const[sel,setSel]=useState(new Set());
   const symptoms=[
     "I leak when I sneeze, cough, or laugh",
     "I can't make it to the bathroom in time",
@@ -1148,33 +1146,51 @@ function LandingPage({onDone}){
     "I'm constipated or strain to go",
     "I don't feel normal after having a baby",
   ];
-  return<div className="fi"style={{maxWidth:600,margin:"0 auto"}}>
-    <div style={{textAlign:"center",marginBottom:24}}>
-      <div className="h1"style={{fontSize:28}}>Could pelvic floor therapy help you?</div>
-      <div className="sub"style={{fontSize:15,maxWidth:480,margin:"8px auto 0",lineHeight:1.7}}>Millions of women experience these symptoms. Most never get help. You can start here.</div>
+  const toggleSym=(i)=>setSel(p=>{const n=new Set(p);n.has(i)?n.delete(i):n.add(i);return n});
+  const steps=[
+    {n:"1",t:"Answer a few quick questions",d:"A 5-minute assessment about your symptoms. No medical knowledge needed."},
+    {n:"2",t:"A licensed PT reviews your results",d:"A Utah Physical Therapist personalizes your care plan before you see it."},
+    {n:"3",t:"Get your plan — and support if you need more",d:"Personalized exercises at home. If you need in-person care, we'll help connect you."},
+  ];
+  return<div className="fi"style={{maxWidth:560,margin:"0 auto"}}>
+    {/* HERO */}
+    <div style={{textAlign:"center",marginBottom:32,paddingTop:8}}>
+      <div className="h1"style={{fontSize:26,lineHeight:1.3,color:C.g900}}>You don't have to live with pelvic floor symptoms.</div>
+      <div style={{fontSize:14,color:C.g500,maxWidth:460,margin:"12px auto 0",lineHeight:1.7}}>Leaks, pressure, painful sex, constipation, or not feeling like yourself after birth can all be signs that pelvic floor therapy may help.</div>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:20}}>
-      {symptoms.map((s,i)=><div key={i}style={{background:C.g50,border:`1px solid ${C.g200}`,borderRadius:10,padding:"12px 14px",fontSize:13,color:C.g700,lineHeight:1.5}}>
-        {s}
-      </div>)}
-    </div>
-    <div style={{textAlign:"center",marginBottom:20}}>
-      <div style={{fontSize:14,color:C.purp,fontWeight:600}}>You don't need to know the medical name for the problem to get help.</div>
-    </div>
-    <div className="card"style={{borderColor:C.purp}}>
-      <div style={{background:"rgba(76,44,132,.04)",border:`1px solid ${C.g200}`,borderRadius:8,padding:"12px 16px",marginBottom:16,fontSize:12,color:C.g600,lineHeight:1.6}}>
-        {disc}
+    {/* SYMPTOM SELECTION */}
+    <div style={{marginBottom:28}}>
+      <div style={{textAlign:"center",fontSize:14,fontWeight:600,color:C.g700,marginBottom:12}}>What sounds most like you?</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        {symptoms.map((s,i)=><div key={i}onClick={()=>toggleSym(i)}style={{background:sel.has(i)?"rgba(76,44,132,.06)":C.g50,border:`1.5px solid ${sel.has(i)?C.purp:C.g200}`,borderRadius:10,padding:"12px 14px",fontSize:13,color:sel.has(i)?C.purp:C.g600,lineHeight:1.5,cursor:"pointer",transition:"all .15s",fontWeight:sel.has(i)?600:400}}>
+          {s}
+        </div>)}
       </div>
-      <div className="chd">How It Works</div>
-      <div style={{fontSize:13,color:C.g500,marginBottom:14,lineHeight:1.7}}>
-        <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:8}}><span style={{background:C.purp,color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>1</span><span>Complete a quick intake assessment about your symptoms</span></div>
-        <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:8}}><span style={{background:C.purp,color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>2</span><span>A licensed Utah Physical Therapist reviews your results and personalizes your plan</span></div>
-        <div style={{display:"flex",alignItems:"flex-start",gap:10}}><span style={{background:C.purp,color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>3</span><span>Get a personalized exercise program — and if you need in-person care, we'll help connect you</span></div>
-      </div>
-      <button className="btn bpk"style={{width:"100%",justifyContent:"center"}}onClick={onDone}>Begin Assessment →</button>
     </div>
-    <div style={{textAlign:"center",marginTop:16}}>
-      <div style={{fontSize:11,color:C.g400}}>Utah OAIP Regulatory Sandbox Pilot · Expect Health Inc.</div>
+    {/* TRUST STRIP */}
+    <div style={{textAlign:"center",padding:"14px 0",marginBottom:24,borderTop:`1px solid ${C.g200}`,borderBottom:`1px solid ${C.g200}`}}>
+      <div style={{fontSize:13,color:C.purp,fontWeight:600,letterSpacing:.3}}>Clinician-reviewed care plans. Human-approved treatment decisions.</div>
+    </div>
+    {/* CTA */}
+    <div style={{textAlign:"center",marginBottom:32}}>
+      <button className="btn bpk"style={{width:"100%",maxWidth:360,justifyContent:"center",padding:"14px 24px",fontSize:15,fontWeight:700,borderRadius:12}}onClick={()=>{if(sel.size)L("symptom_self_select",{selected:symptoms.filter((_,i)=>sel.has(i))});onDone()}}>Start My 5-Minute Assessment</button>
+    </div>
+    {/* HOW IT WORKS */}
+    <div style={{marginBottom:28}}>
+      <div style={{textAlign:"center",fontSize:15,fontWeight:700,color:C.g800,marginBottom:16}}>How it works</div>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {steps.map(s=><div key={s.n}style={{display:"flex",gap:14,alignItems:"flex-start"}}>
+          <span style={{background:C.purp,color:"#fff",borderRadius:"50%",width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,flexShrink:0}}>{s.n}</span>
+          <div><div style={{fontSize:14,fontWeight:600,color:C.g800,marginBottom:2}}>{s.t}</div><div style={{fontSize:12,color:C.g500,lineHeight:1.5}}>{s.d}</div></div>
+        </div>)}
+      </div>
+    </div>
+    {/* COMPLIANCE NOTE */}
+    <div style={{textAlign:"center",padding:"16px 20px",background:"rgba(76,44,132,.03)",borderRadius:8,marginBottom:12}}>
+      <div style={{fontSize:11,color:C.g500,lineHeight:1.6}}>This service uses AI to assist licensed professionals in care planning. All treatment decisions are finalized by a human clinician.</div>
+    </div>
+    <div style={{textAlign:"center"}}>
+      <div style={{fontSize:10,color:C.g400}}>Utah OAIP Regulatory Sandbox Pilot · Expect Health Inc.</div>
     </div>
   </div>;
 }
