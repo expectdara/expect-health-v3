@@ -23,7 +23,7 @@ const log=[];let _lid=0;let authSession=null;let ptSessionToken=null;let ptIdent
 async function db(fn,args,opts){try{const hdrs={"Content-Type":"application/json"};const tok=ptSessionToken||authSession?.sessionToken;if(tok)hdrs["Authorization"]="Bearer "+tok;const r=await fetch("/api/db",{method:"POST",headers:hdrs,body:JSON.stringify({fn:"functions:"+fn,args:args||{}})});const d=await r.json();if(!r.ok)throw new Error(d.error);return d.result}catch(e){console.warn("[db]",fn,e.message);if(opts?.throw)throw e;return null}}
 function L(t,d){const uid=authSession?.userId||ptIdentity?.userId||null;const det=ptIdentity?{...d,ptEmail:ptIdentity.email,ptName:ptIdentity.name}:(d||{});const evt={id:`A${++_lid}`,ts:new Date().toISOString(),type:t,...d};log.unshift(evt);db("insertAuditEvent",{eventId:evt.id,ts:evt.ts,type:t,details:det,userId:uid})}
 // Shared audit event color map (used by PT AuditLog and OAIP audit stream)
-const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or,daily_adherence_entry:C.gn,checkin_week8_complete:C.blue,PT_ALERT_NO_ICIQ_PROGRESS:"#EA580C",BOWEL_REGRESSION:C.or,flutsex_improvement:C.gn,flutsex_regression:C.rd,RTM_setup_complete:C.purpL,phq2_resource_card_shown:C.or,FOLLOWUP_NONRESPONSE:"#DC2626",CLINICAL_ESCALATION:"#DC2626",surgical_avoidance_confirmed:C.gn,psi_referral:C.or,psi_referral_approved:C.gn,phq2_followup_email_queued:C.or,expansion_match:C.blueL,month12_checkin_complete:C.blue,CARE_PLAN_DOWNLOADED:C.blue,PRENATAL_PROTOCOL_APPLIED:C.gn,OUTCOME_RECORD_CREATED:C.purpL,OUTCOME_RECORD_COMPLETED:C.gn,PT_PLAN_MODIFIED:C.or,account_created:C.gn,session_timeout:C.rd,identity_verified:C.blue,pt_login:C.purp,oaip_login:C.purp,landing_email_collected:C.blueL,referral_initiated:C.pink,care_coordination_request:C.or,exclusion_referral_call:C.pink};
+const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or,daily_adherence_entry:C.gn,checkin_week8_complete:C.blue,PT_ALERT_NO_ICIQ_PROGRESS:"#EA580C",BOWEL_REGRESSION:C.or,flutsex_improvement:C.gn,flutsex_regression:C.rd,phq2_resource_card_shown:C.or,FOLLOWUP_NONRESPONSE:"#DC2626",CLINICAL_ESCALATION:"#DC2626",surgical_avoidance_confirmed:C.gn,psi_referral:C.or,psi_referral_approved:C.gn,phq2_followup_email_queued:C.or,expansion_match:C.blueL,month12_checkin_complete:C.blue,CARE_PLAN_DOWNLOADED:C.blue,PRENATAL_PROTOCOL_APPLIED:C.gn,OUTCOME_RECORD_CREATED:C.purpL,OUTCOME_RECORD_COMPLETED:C.gn,PT_PLAN_MODIFIED:C.or,account_created:C.gn,session_timeout:C.rd,identity_verified:C.blue,pt_login:C.purp,oaip_login:C.purp,landing_email_collected:C.blueL,referral_initiated:C.pink,care_coordination_request:C.or,exclusion_referral_call:C.pink};
 // PHI-sensitive audit keys that must be masked in auditor mode
 const PHI_KEYS=["patient","name","email","dob","date_of_birth","phone","fax","ssn","mrn","address","city","zip","account","license","npi","ip","device","photo","identifier","name_first","name_last","physicianName","physicianFax","physicianNPI"];
 // Shared PHI masking utility (used by PT AuditLog and OAIP audit stream)
@@ -564,7 +564,6 @@ const DPTS=[
   {id:"P003",nm:"Jennifer K.",age:35,ref:"Medicaid",iciq:[{d:"02/10",s:18}],pain:[{d:"02/10",s:6}],adh:0,ps:"pending_review",nra:"02/24",msgs:[],review_flags:[{id:"HIGH_SEVERITY_ICIQ",type:"always",label:"High Severity ICIQ"}]},
 ];
 const DEMO_ADHERENCE_LOG=[{date:"2026-02-10",status:"yes"},{date:"2026-02-11",status:"yes"},{date:"2026-02-12",status:"yes"},{date:"2026-02-13",status:"partial",note:"hip pain after bridges"},{date:"2026-02-14",status:"yes"},{date:"2026-02-15",status:"yes"},{date:"2026-02-16",status:"no",note:"traveling"},{date:"2026-02-17",status:"yes"},{date:"2026-02-18",status:"yes"},{date:"2026-02-19",status:"yes"},{date:"2026-02-20",status:"partial",note:"only did breathing"},{date:"2026-02-21",status:"yes"},{date:"2026-02-22",status:"yes"},{date:"2026-02-23",status:"yes"},{date:"2026-02-24",status:"no",note:"sick"},{date:"2026-02-25",status:"yes"},{date:"2026-02-26",status:"yes"},{date:"2026-02-27",status:"partial",note:"shortened session"},{date:"2026-02-28",status:"yes"},{date:"2026-03-01",status:"yes"},{date:"2026-03-02",status:"yes"},{date:"2026-03-03",status:"partial",note:"knee discomfort"},{date:"2026-03-04",status:"yes"},{date:"2026-03-05",status:"yes"},{date:"2026-03-06",status:"yes"},{date:"2026-03-07",status:"yes"},{date:"2026-03-08",status:"yes"},{date:"2026-03-09",status:"yes"},{date:"2026-03-10",status:"yes"},{date:"2026-03-11",status:"yes"}];
-const RTM_CODES={"98975":{name:"Initial Setup",desc:"Device/software setup + patient education",threshold:null},"98977":{name:"MSK Data Monitoring",desc:"≥16 days of data in calendar month",threshold:16},"98980":{name:"Treatment Management (20min)",desc:"Interactive communication ≥20min/month",threshold:20},"98981":{name:"Treatment Management (40min)",desc:"Interactive communication ≥40min/month",threshold:40}};
 // STYLES
 const css=`@font-face{font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;src:url('/fonts/inter.woff2') format('woff2')}
 @font-face{font-family:'DM Sans';font-style:normal;font-weight:400 700;font-display:swap;src:url('/fonts/dmsans.woff2') format('woff2')}
@@ -2286,7 +2285,7 @@ function PTReview(){
         <div><div style={{fontWeight:600}}>{p.nm}</div><div style={{fontSize:10,color:C.g400}}>Age {p.age} · {p.ref}</div>
           <div style={{display:"flex",gap:3,marginTop:3,flexWrap:"wrap"}}>
             {w8&&w8.submitted&&<span className="bdg"style={{background:`${C.gn}15`,color:C.gn,fontSize:9}}>Week 8 Complete</span>}
-            {p.adh>=80&&<span className="bdg"style={{background:`${C.gn}15`,color:C.gn,fontSize:9}}>98977 Met</span>}
+            {p.adh>=80&&<span className="bdg"style={{background:`${C.gn}15`,color:C.gn,fontSize:9}}>Adherence ≥80%</span>}
             {iciqProg!==null&&iciqProg<1&&<span className="bdg"style={{background:`${C.rd}15`,color:C.rd,fontSize:9}}>No ICIQ Progress</span>}
             {p.review_flags?.map(f=><span key={f.id}className="bdg"style={{background:f.type==="always"?`${C.rd}15`:`${C.or}15`,color:f.type==="always"?C.rd:C.or,fontSize:9}}>{f.label}</span>)}
           </div>
@@ -2364,7 +2363,7 @@ function PTNewIntakeReview({data,onBack}){
     setPlan(approvedPlan);
     if(data)data.plan=approvedPlan;
     if(data&&!data.outcomeRecordId){const orec=buildOutcomeRecord(data,approvedPlan,tSec);const ptDiffs=computePtDiffs(initPlan,editExs,editAdj,editGoals);orec.treatment.pt_diffs=ptDiffs;orec.treatment.pt_modified_exercises=ptDiffs.exercises.length>0;orec.treatment.pt_modified_adjuncts=ptDiffs.adjuncts.length>0;orec.treatment.pt_modified_goals=ptDiffs.goals.length>0;if(ptDiffs.exercises.length||ptDiffs.adjuncts.length||ptDiffs.goals.length)L("PT_PLAN_MODIFIED",{recordId:orec.id,exerciseChanges:ptDiffs.exercises.length,adjunctChanges:ptDiffs.adjuncts.length,goalChanges:ptDiffs.goals.length});data.outcomeRecordId=orec.id;db("insertOutcomeRecord",{recordId:orec.id,baseline:orec.baseline,treatment:orec.treatment,createdAt:orec.created})}
-    L("plan_reviewed",{patient:nm,action:"approved",time:tSec});L("encounter_note",{patient:nm,cpt:plan.cpt.map(c=>c.c),time:tSec});L("RTM_setup_complete",{patient:nm,code:"98975",note:"RTM episode initiated — 98975 billable."});
+    L("plan_reviewed",{patient:nm,action:"approved",time:tSec});L("encounter_note",{patient:nm,cpt:plan.cpt.map(c=>c.c),time:tSec});
     if(psiRefer)L("psi_referral_approved",{patient:nm,phq2Score:(ans.phq2_interest||0)+(ans.phq2_mood||0)});
     if(data){data.psiRefer=psiRefer;const uid=data.userId;if(uid)db("updatePatientPlan",{userId:uid,plan:approvedPlan,status:"approved",outcomeRecordId:data.outcomeRecordId,psiRefer:psiRefer||false})}};
 
@@ -2688,7 +2687,7 @@ function PTPatientDetail({pt,onBack}){
   // Status badge
   const getStatus=()=>{if(!w8||!intake)return null;const iciqDelta=intake.iciq-w8.iciq;if(iciqDelta>=3)return{label:"On Track",color:C.gn,bg:"#D1FAE5"};if(iciqDelta>=1)return{label:"Monitor",color:C.or,bg:"#FEF3C7"};return{label:"Clinical Review Required",color:C.rd,bg:"#FEE2E2"}};
   const status=getStatus();
-  // PT time for RTM (simulated from review timer)
+  // PT interaction time (simulated from review timer)
   const ptMinutes=pt.id==="P001"?32:0;
   return<div className="fi">
     <button className="btn bo bsm"onClick={onBack}style={{marginBottom:16}}>← Back to Patients</button>
@@ -2744,18 +2743,17 @@ ${w8.phq2>=3?`\n*** PHQ-2 POSITIVE (${w8.phq2}/6) ***\nReferring physician notif
 Adherence: ${pt.adh}% | Activities resumed: ${(w8.avoid_resumed||[]).join(", ")||"None"}`}
       </pre>
     </div>}
-    {/* RTM Billing Panel */}
+    {/* Engagement Metrics */}
     <div className="card"style={{marginBottom:14,borderColor:C.purpL}}>
-      <div className="chd">RTM Billing</div>
-      {[["98975","Initial Setup",pt.ps==="approved",pt.planApprovedDate||"—"],["98977","MSK Data Monitoring",adhDays>=16,`${adhDays}/16 days`],["98980","Treatment Mgmt (20min)",ptMinutes>=20,`${ptMinutes}/20 min`],["98981","Treatment Mgmt (40min)",ptMinutes>=40,`${ptMinutes}/40 min`]].map(([code,name,met,detail])=><div key={code}>
+      <div className="chd">Engagement Metrics</div>
+      {[["Adherence Days",adhDays>=16,`${adhDays} days this month`],["PT Interaction",ptMinutes>=20,`${ptMinutes} min this month`]].map(([name,met,detail])=><div key={name}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.g100}`}}>
-          <div><div style={{fontWeight:600,fontSize:13}}>{code} — {name}</div><div style={{fontSize:11,color:C.g400}}>{RTM_CODES[code].desc}</div></div>
+          <div style={{fontWeight:600,fontSize:13}}>{name}</div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <span style={{fontSize:12,color:C.g500}}>{detail}</span>
-            <span className="bdg"style={{background:met?`${C.gn}15`:`${C.g300}15`,color:met?C.gn:C.g400}}>{met?"Threshold Met":"In Progress"}</span>
+            <span className="bdg"style={{background:met?`${C.gn}15`:`${C.g300}15`,color:met?C.gn:C.g400}}>{met?"On Track":"Building"}</span>
           </div>
         </div>
-        {code==="98977"&&<div style={{marginTop:4,marginBottom:4}}><div style={{height:6,background:C.g200,borderRadius:3,overflow:"hidden"}}><div style={{height:6,background:adhDays>=16?C.gn:C.or,borderRadius:3,width:`${Math.min(100,adhDays/16*100)}%`}}/></div></div>}
       </div>)}
     </div>
     <div className="two">
