@@ -251,15 +251,21 @@ export default async function handler(req, res) {
       } catch (e) {
         return res.status(403).json({ error: "Invalid email or password" });
       }
-    } else if (returning && email) {
-      // Returning patient: email-verified re-login — look up patient by email
+    } else if (returning && email && password) {
+      // Returning patient: email + password re-login
       try {
         const patient = await client.query("functions:getPatientByEmail", { email: email.toLowerCase().trim() });
-        if (!patient) return res.status(403).json({ error: "No account found for this email" });
+        if (!patient || !patient.passwordHash) {
+          return res.status(403).json({ error: "Invalid email or password" });
+        }
+        const hash = await hashPassword(password, patient.salt);
+        if (hash !== patient.passwordHash) {
+          return res.status(403).json({ error: "Invalid email or password" });
+        }
         sessionArgs.userId = patient.userId;
         sessionArgs.email = patient.email;
       } catch (e) {
-        return res.status(403).json({ error: "Unable to verify account" });
+        return res.status(403).json({ error: "Invalid email or password" });
       }
     } else if (sessionArgs.userId && sessionArgs.userId.startsWith("usr_")) {
       // Patient: session created during intake account creation — email stays in sessionArgs
@@ -288,6 +294,15 @@ export default async function handler(req, res) {
       active: true,
       createdAt: new Date().toISOString(),
     };
+  }
+
+  // Hash patient password during upsert (strip plaintext, store hash+salt)
+  if (fn === "functions:upsertPatient" && args?.password) {
+    const salt = generateSalt();
+    const passwordHash = await hashPassword(args.password, salt);
+    delete args.password;
+    args.passwordHash = passwordHash;
+    args.salt = salt;
   }
 
   try {

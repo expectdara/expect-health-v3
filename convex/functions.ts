@@ -60,6 +60,8 @@ export const upsertPatient = mutation({
     physicianNPI: v.optional(v.string()),
     safetyAnswerChanged: v.boolean(),
     safetyChanges: v.any(),
+    passwordHash: v.optional(v.string()),
+    salt: v.optional(v.string()),
     status: v.string(),
     createdAt: v.string(),
   },

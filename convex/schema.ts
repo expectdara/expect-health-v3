@@ -24,6 +24,8 @@ export default defineSchema({
     outcomeRecordId: v.optional(v.string()),
     week8: v.optional(v.any()),
     psiRefer: v.optional(v.boolean()),
+    passwordHash: v.optional(v.string()),
+    salt: v.optional(v.string()),
     status: v.string(),
     isDemo: v.optional(v.boolean()),
     createdAt: v.string(),

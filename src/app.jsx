@@ -1293,6 +1293,7 @@ function IdentityVerify({onDone,onBack}){
 function PatientLogin({onDone,onBack}){
   const[st,setSt]=useState("input");
   const[addr,setAddr]=useState("");
+  const[pw,setPw]=useState("");
   const[code,setCode]=useState("");
   const[sentCode,setSentCode]=useState(null);
   const[err,setErr]=useState(null);
@@ -1300,6 +1301,7 @@ function PatientLogin({onDone,onBack}){
   const sendCode=()=>{
     const em=addr.trim().toLowerCase();
     if(!em||!em.includes("@")){setErr("Please enter a valid email address.");return}
+    if(!pw){setErr("Please enter your password.");return}
     const c=genCode();setSentCode(c);setSt("sent");setErr(null);
     L("patient_login_code_sent",{email:em});
   };
@@ -1310,7 +1312,7 @@ function PatientLogin({onDone,onBack}){
     try{
       const _uuid=()=>typeof crypto.randomUUID==="function"?crypto.randomUUID():([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^(crypto.getRandomValues(new Uint8Array(1))[0]&(15>>c/4))).toString(16));
       const tok="tok_"+_uuid();
-      await db("createSession",{returning:true,email:em,userId:"returning",sessionToken:tok,expiresAt:Date.now()+60*60*1000,createdAt:new Date().toISOString()},{throw:true});
+      await db("createSession",{returning:true,email:em,password:pw,userId:"returning",sessionToken:tok,expiresAt:Date.now()+60*60*1000,createdAt:new Date().toISOString()},{throw:true});
       const sess=await db("getSessionByToken",{sessionToken:tok});
       if(!sess)throw new Error("Session not found");
       authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,expiresAt:sess.expiresAt,createdAt:sess.createdAt};
@@ -1321,9 +1323,9 @@ function PatientLogin({onDone,onBack}){
       setSt("done");setTimeout(()=>onDone(),1200);
     }catch(e){
       const msg=e.message||"";
-      if(msg.includes("No account"))setErr("No account found for this email. Please check your email or start a new assessment.");
+      if(msg.includes("Invalid email or password"))setErr("Invalid email or password. Please try again.");
       else setErr("Unable to restore your session. Please try again.");
-      setSt("sent");
+      setSt("input");setPw("");
     }
   };
   return<div className="fi"style={{maxWidth:520,margin:"0 auto"}}>
@@ -1331,8 +1333,9 @@ function PatientLogin({onDone,onBack}){
     <div className="sub">Verify your email to access your care plan</div>
     <div className="card"style={{borderColor:C.blue,padding:32}}>
       {st==="input"&&<div>
-        <p style={{fontSize:13,color:C.g600,marginBottom:16,lineHeight:1.7}}>Enter the email address you used during your intake assessment. We'll send a verification code to confirm your identity.</p>
-        <input type="email"value={addr}onChange={e=>setAddr(e.target.value)}placeholder="you@email.com"style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,marginBottom:12,boxSizing:"border-box"}}/>
+        <p style={{fontSize:13,color:C.g600,marginBottom:16,lineHeight:1.7}}>Enter the email and password you created during your intake assessment.</p>
+        <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>Email</div><input type="email"value={addr}onChange={e=>setAddr(e.target.value)}placeholder="you@email.com"style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
+        <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>Password</div><input type="password"value={pw}onChange={e=>setPw(e.target.value)}placeholder="Your password"style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
         {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
         <button className="btn bbl"onClick={sendCode}style={{width:"100%"}}>Send Verification Code</button>
       </div>}
@@ -1471,7 +1474,7 @@ function Intake({onDone,mainRef,initialEmail}){
     sharedIntake={ans,iciq,pain,gupi,fluts,fsex,popdi,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,name:(ans.name_first||"")+" "+(ans.name_last||""),physicianName:ans.physician_name,physicianFax:ans.physician_fax,physicianNPI:ans.physician_npi_id,safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],userId:authSession?.userId,screeners:{pain:ans.screen_pain,sexual:ans.screen_sexual},pelvicHistory:ans.pelvic_history||[]};
     if(depressionFlag.positive)L("depression_screen_positive",{score:phq2Total,severity:phq2Total>=5?"HIGH":"MODERATE",patient:(ans.name_first||"")+" "+(ans.name_last||"")});
     if(authSession){
-      const saveArgs={userId:authSession.userId,email:authSession.email,name:sharedIntake.name,ans,iciq,pain,gupi,fluts,fsex,popdi,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,physicianName:ans.physician_name||"",physicianFax:ans.physician_fax||"",physicianNPI:ans.physician_npi_id||"",safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],status:"pending_review",createdAt:new Date().toISOString()};
+      const saveArgs={userId:authSession.userId,email:authSession.email,name:sharedIntake.name,ans,iciq,pain,gupi,fluts,fsex,popdi,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,physicianName:ans.physician_name||"",physicianFax:ans.physician_fax||"",physicianNPI:ans.physician_npi_id||"",safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],password:acctPw||undefined,status:"pending_review",createdAt:new Date().toISOString()};
       savePatientRef.current=saveArgs;
       setSaveState("saving");
       (async()=>{for(let attempt=0;attempt<3;attempt++){try{await db("upsertPatient",saveArgs,{throw:true});try{sessionStorage.removeItem("expect_draft")}catch(e){}setSaveState("saved");if(onDone)onDone();return}catch(e){if(attempt<2)await new Promise(r=>setTimeout(r,1000))}}setSaveState("failed")})();
