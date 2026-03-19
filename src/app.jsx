@@ -2307,7 +2307,7 @@ function PTReview(){
 }
 
 function PTNewIntakeReview({data,onBack}){
-  const{ans,iciq,pain,gupi,fluts,fsex,popdi:_popdi,plan:initPlan}=data;const popdi=_popdi||sPOPDI(ans||{});
+  const{ans,popdi:_popdi,plan:initPlan}=data;const iciq=data.iciq||sICIQ(ans||{});const pain=data.pain||sPain(ans||{});const gupi=data.gupi||sGUPI(ans||{});const fluts=data.fluts||sFLUTS(ans||{});const fsex=data.fsex||sFSEX(ans||{});const popdi=_popdi||sPOPDI(ans||{});
   if(!initPlan||!ans)return<div className="fi"style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:36,marginBottom:16}}>&#x26A0;&#xFE0F;</div><div className="h1"style={{fontSize:20}}>Incomplete Intake</div><p style={{fontSize:14,color:C.g500,maxWidth:400,margin:"12px auto",lineHeight:1.7}}>This patient's intake data is incomplete and cannot be reviewed. The patient may need to restart their assessment.</p><button className="btn bbl"onClick={onBack}>Back to Patients</button></div>;
   // Editable state for iterative review
   const[plan,setPlan]=useState(JSON.parse(JSON.stringify(initPlan)));
@@ -2434,7 +2434,7 @@ function PTNewIntakeReview({data,onBack}){
     </div>
 
     {/* IN-PERSON REFERRAL RECOMMENDATION */}
-    {(()=>{const ref=needsInPersonCare(editPlan||data.plan,data.iciq,data.pain,popdi);return ref.needed?<div className="card"style={{marginBottom:14,borderColor:C.or,background:"#FFF7ED"}}>
+    {(()=>{const ref=needsInPersonCare(plan||data.plan||{},data.iciq||{total:0},data.pain||{composite:0},popdi);return ref.needed?<div className="card"style={{marginBottom:14,borderColor:C.or,background:"#FFF7ED"}}>
       <div className="chd"style={{color:"#9A3412"}}>In-Person Referral Recommended</div>
       <div style={{fontSize:12,color:"#78350F",marginBottom:8,lineHeight:1.6}}>Based on clinical flags, this patient may benefit from in-person pelvic floor evaluation. The patient will see this referral in their care plan.</div>
       {ref.reasons.map((r,i)=><div key={i}style={{fontSize:12,color:"#92400E",marginBottom:3}}>• {r.label} <span style={{fontSize:10,color:C.g400}}>({r.urgency})</span></div>)}
