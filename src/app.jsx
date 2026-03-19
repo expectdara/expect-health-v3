@@ -2260,7 +2260,8 @@ function PTReview(){
   const[sel,setSel]=useState(null);const[viewNew,setViewNew]=useState(false);
   const[viewDbPt,setViewDbPt]=useState(null);
   const[dbPatients,setDbPatients]=useState([]);const[dbLoading,setDbLoading]=useState(true);
-  useEffect(()=>{(async()=>{try{const pts=await db("listPatients");if(pts)setDbPatients(pts)}catch(e){}finally{setDbLoading(false)}})()},[]);
+  const fetchPatients=async()=>{try{const pts=await db("listPatients");if(pts)setDbPatients(pts)}catch(e){}finally{setDbLoading(false)}};
+  useEffect(()=>{fetchPatients();const iv=setInterval(fetchPatients,15000);return()=>clearInterval(iv)},[]);
   // Filter out in-progress drafts and sharedIntake duplicates
   const filteredDb=dbPatients.filter(p=>p.status!=="in_progress"&&(!sharedIntake||!authSession||p.userId!==authSession.userId));
   if(viewDbPt)return<PTNewIntakeReview data={viewDbPt}onBack={()=>setViewDbPt(null)}/>;
