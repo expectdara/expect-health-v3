@@ -2262,8 +2262,8 @@ function PTReview(){
   const[dbPatients,setDbPatients]=useState([]);const[dbLoading,setDbLoading]=useState(true);
   const fetchPatients=async()=>{try{const pts=await db("listPatients");if(pts)setDbPatients(pts)}catch(e){}finally{setDbLoading(false)}};
   useEffect(()=>{fetchPatients();const iv=setInterval(fetchPatients,15000);return()=>clearInterval(iv)},[]);
-  // Filter out in-progress drafts and sharedIntake duplicates
-  const filteredDb=dbPatients.filter(p=>p.status!=="in_progress"&&(!sharedIntake||!authSession||p.userId!==authSession.userId));
+  // Filter out in-progress drafts, incomplete intakes (no plan), and sharedIntake duplicates
+  const filteredDb=dbPatients.filter(p=>p.status!=="in_progress"&&p.plan&&(!sharedIntake||!authSession||p.userId!==authSession.userId));
   if(viewDbPt)return<PTNewIntakeReview data={viewDbPt}onBack={()=>setViewDbPt(null)}/>;
   if(viewNew&&sharedIntake)return<PTNewIntakeReview data={sharedIntake}onBack={()=>setViewNew(false)}/>;
   if(sel)return<PTPatientDetail pt={sel}onBack={()=>setSel(null)}/>;
@@ -2307,7 +2307,8 @@ function PTReview(){
 }
 
 function PTNewIntakeReview({data,onBack}){
-  const{ans,iciq,pain,gupi,fluts,fsex,popdi:_popdi,plan:initPlan}=data;const popdi=_popdi||sPOPDI(ans);
+  const{ans,iciq,pain,gupi,fluts,fsex,popdi:_popdi,plan:initPlan}=data;const popdi=_popdi||sPOPDI(ans||{});
+  if(!initPlan||!ans)return<div className="fi"style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:36,marginBottom:16}}>&#x26A0;&#xFE0F;</div><div className="h1"style={{fontSize:20}}>Incomplete Intake</div><p style={{fontSize:14,color:C.g500,maxWidth:400,margin:"12px auto",lineHeight:1.7}}>This patient's intake data is incomplete and cannot be reviewed. The patient may need to restart their assessment.</p><button className="btn bbl"onClick={onBack}>Back to Patients</button></div>;
   // Editable state for iterative review
   const[plan,setPlan]=useState(JSON.parse(JSON.stringify(initPlan)));
   const[editGoals,setEditGoals]=useState(initPlan.goals.join("\n"));
