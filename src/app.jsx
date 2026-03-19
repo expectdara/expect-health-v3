@@ -144,7 +144,7 @@ function completeOutcomeRecord(recordId,baseline,week8){
     [15,5,1,3,19,7,4,2,"mixed",3,0,0,0,2,0,0,0,0,250,0,0,0,0,0,null,0,null,null,null],
     [8,3,0,2,10,4,2,1,"urge",4,0,0,0,1,0,0,0,0,280,0,0,0,0,0,null,0,null,null,null],
   ];
-  const baseDate=new Date("2026-01-10T08:00:00Z");
+  const baseDate=new Date("2026-02-01T08:00:00Z");
   seeds.forEach((s,i)=>{
     const[iciq,pain,phq2,fsex,gupi,flutsF,flutsV,ageIdx,subtype,cueIdx,preg,popdiPos,pudendal,avoid,medMod,ptEx,ptAdj,ptGoal,rvTime,adh,iciqD,painD,fsexD,phq2D,bowel,nps,actRes,profFu,concern]=s;
     const tier=iciq>=13?"Beginner":iciq>=6?"Moderate":iciq>0?"Advanced":"Foundation";
@@ -159,12 +159,12 @@ function completeOutcomeRecord(recordId,baseline,week8){
   // Seed audit log events for OAIP dashboard — positive story for screenshots
   const concerns=["none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","none","mild","mild","mild","mild","mild","mild","mild"];
   concerns.forEach((c,i)=>log.push({id:`DEMO-L-W8-${i}`,ts:new Date(baseDate.getTime()+(i+7)*2*24*60*60*1000).toISOString(),type:"checkin_week8_complete",concern:c}));
-  log.push({id:"DEMO-L-PF1",ts:"2026-02-15T10:00:00Z",type:"prolapse_followup_week8",status:"yes",patient:"Demo Patient"});
-  log.push({id:"DEMO-L-PF2",ts:"2026-02-20T10:00:00Z",type:"prolapse_followup_week8",status:"yes",patient:"Demo Patient"});
-  log.push({id:"DEMO-L-PF3",ts:"2026-02-25T10:00:00Z",type:"prolapse_followup_week8",status:"not_applicable",patient:"Demo Patient"});
-  log.push({id:"DEMO-L-PSI1",ts:"2026-02-10T09:00:00Z",type:"psi_referral"});
-  log.push({id:"DEMO-L-PSI2",ts:"2026-02-12T14:00:00Z",type:"psi_referral_approved"});
-  log.push({id:"DEMO-L-PHQ1",ts:"2026-02-08T11:00:00Z",type:"phq2_followup_email_queued"});
+  log.push({id:"DEMO-L-PF1",ts:"2026-03-05T10:00:00Z",type:"prolapse_followup_week8",status:"yes",patient:"Demo Patient"});
+  log.push({id:"DEMO-L-PF2",ts:"2026-03-10T10:00:00Z",type:"prolapse_followup_week8",status:"yes",patient:"Demo Patient"});
+  log.push({id:"DEMO-L-PF3",ts:"2026-03-14T10:00:00Z",type:"prolapse_followup_week8",status:"not_applicable",patient:"Demo Patient"});
+  log.push({id:"DEMO-L-PSI1",ts:"2026-03-01T09:00:00Z",type:"psi_referral"});
+  log.push({id:"DEMO-L-PSI2",ts:"2026-03-03T14:00:00Z",type:"psi_referral_approved"});
+  log.push({id:"DEMO-L-PHQ1",ts:"2026-02-28T11:00:00Z",type:"phq2_followup_email_queued"});
 })();
 
 // ============================================================
@@ -559,11 +559,11 @@ function needsInPersonCare(plan,iciq,pain,popdi){
 }
 
 const DPTS=[
-  {id:"P001",nm:"Sarah M.",age:32,ref:"OB/GYN",iciq:[{d:"01/15",s:14},{d:"01/29",s:11},{d:"02/12",s:8}],pain:[{d:"01/15",s:5},{d:"01/29",s:3.5},{d:"02/12",s:2}],adh:87,ps:"approved",nra:"02/26",msgs:[{fr:"pt",tx:"Great progress! ICIQ dropped 3 pts.",t:"2/12 10:30am"}],planApprovedDate:"2026-01-15",intake:{iciq:14,pain:6,phq2:2,fsex:3,constipation:true,avoid:["exercise","lifting","sexual"]},week8:{iciq:8,pain:3,phq2:1,fsex:1,bowel:"better",avoid_resumed:["exercise","lifting"],nps:9,date:"03/12",submitted:true},review_flags:[{id:"HIGH_SEVERITY_ICIQ",type:"always",label:"High Severity ICIQ"}]},
-  {id:"P002",nm:"Maria L.",age:28,ref:"Self",iciq:[{d:"01/22",s:9},{d:"02/05",s:7}],pain:[{d:"01/22",s:2},{d:"02/05",s:1}],adh:93,ps:"approved",nra:"02/19",msgs:[],review_flags:[]},
-  {id:"P003",nm:"Jennifer K.",age:35,ref:"Medicaid",iciq:[{d:"02/10",s:18}],pain:[{d:"02/10",s:6}],adh:0,ps:"pending_review",nra:"02/24",msgs:[],review_flags:[{id:"HIGH_SEVERITY_ICIQ",type:"always",label:"High Severity ICIQ"}]},
+  {id:"P001",nm:"Sarah M.",age:32,ref:"OB/GYN",iciq:[{d:"02/03",s:14},{d:"02/17",s:11},{d:"03/03",s:8}],pain:[{d:"02/03",s:5},{d:"02/17",s:3.5},{d:"03/03",s:2}],adh:87,ps:"approved",nra:"03/24",msgs:[{fr:"pt",tx:"Great progress! ICIQ dropped 6 pts since intake. Continue current HEP.",t:"3/03 10:30am"}],planApprovedDate:"2026-02-03",intake:{iciq:14,pain:6,phq2:2,fsex:3,constipation:true,avoid:["exercise","lifting","sexual"]},week8:{iciq:8,pain:3,phq2:1,fsex:1,bowel:"better",avoid_resumed:["exercise","lifting"],nps:9,date:"03/17",submitted:true},review_flags:[{id:"HIGH_SEVERITY_ICIQ",type:"always",label:"High Severity ICIQ"},{id:"ADHERENCE_GOOD",type:"triggered",label:"Adherence \u226580%"}]},
+  {id:"P002",nm:"Maria L.",age:28,ref:"Self",iciq:[{d:"02/10",s:9},{d:"02/24",s:7}],pain:[{d:"02/10",s:2},{d:"02/24",s:1}],adh:93,ps:"approved",nra:"03/21",msgs:[{fr:"pt",tx:"Excellent adherence. Bladder training on track — voiding interval up to 2.5 hrs.",t:"2/24 2:15pm"}],planApprovedDate:"2026-02-10",review_flags:[]},
+  {id:"P003",nm:"Jennifer K.",age:35,ref:"Medicaid",iciq:[{d:"03/10",s:18}],pain:[{d:"03/10",s:6}],adh:0,ps:"pending_review",nra:"03/24",msgs:[],review_flags:[{id:"HIGH_SEVERITY_ICIQ",type:"always",label:"High Severity ICIQ"},{id:"DEPRESSION_RISK",type:"always",label:"Depression Risk"}]},
 ];
-const DEMO_ADHERENCE_LOG=[{date:"2026-02-10",status:"yes"},{date:"2026-02-11",status:"yes"},{date:"2026-02-12",status:"yes"},{date:"2026-02-13",status:"partial",note:"hip pain after bridges"},{date:"2026-02-14",status:"yes"},{date:"2026-02-15",status:"yes"},{date:"2026-02-16",status:"no",note:"traveling"},{date:"2026-02-17",status:"yes"},{date:"2026-02-18",status:"yes"},{date:"2026-02-19",status:"yes"},{date:"2026-02-20",status:"partial",note:"only did breathing"},{date:"2026-02-21",status:"yes"},{date:"2026-02-22",status:"yes"},{date:"2026-02-23",status:"yes"},{date:"2026-02-24",status:"no",note:"sick"},{date:"2026-02-25",status:"yes"},{date:"2026-02-26",status:"yes"},{date:"2026-02-27",status:"partial",note:"shortened session"},{date:"2026-02-28",status:"yes"},{date:"2026-03-01",status:"yes"},{date:"2026-03-02",status:"yes"},{date:"2026-03-03",status:"partial",note:"knee discomfort"},{date:"2026-03-04",status:"yes"},{date:"2026-03-05",status:"yes"},{date:"2026-03-06",status:"yes"},{date:"2026-03-07",status:"yes"},{date:"2026-03-08",status:"yes"},{date:"2026-03-09",status:"yes"},{date:"2026-03-10",status:"yes"},{date:"2026-03-11",status:"yes"}];
+const DEMO_ADHERENCE_LOG=[{date:"2026-02-17",status:"yes"},{date:"2026-02-18",status:"yes"},{date:"2026-02-19",status:"yes"},{date:"2026-02-20",status:"partial",note:"hip pain after bridges"},{date:"2026-02-21",status:"yes"},{date:"2026-02-22",status:"yes"},{date:"2026-02-23",status:"no",note:"traveling"},{date:"2026-02-24",status:"yes"},{date:"2026-02-25",status:"yes"},{date:"2026-02-26",status:"yes"},{date:"2026-02-27",status:"partial",note:"only did breathing"},{date:"2026-02-28",status:"yes"},{date:"2026-03-01",status:"yes"},{date:"2026-03-02",status:"yes"},{date:"2026-03-03",status:"no",note:"sick"},{date:"2026-03-04",status:"yes"},{date:"2026-03-05",status:"yes"},{date:"2026-03-06",status:"partial",note:"shortened session"},{date:"2026-03-07",status:"yes"},{date:"2026-03-08",status:"yes"},{date:"2026-03-09",status:"yes"},{date:"2026-03-10",status:"partial",note:"knee discomfort"},{date:"2026-03-11",status:"yes"},{date:"2026-03-12",status:"yes"},{date:"2026-03-13",status:"yes"},{date:"2026-03-14",status:"yes"},{date:"2026-03-15",status:"yes"},{date:"2026-03-16",status:"yes"},{date:"2026-03-17",status:"yes"},{date:"2026-03-18",status:"yes"}];
 // STYLES
 const css=`@font-face{font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;src:url('/fonts/inter.woff2') format('woff2')}
 @font-face{font-family:'DM Sans';font-style:normal;font-weight:400 700;font-display:swap;src:url('/fonts/dmsans.woff2') format('woff2')}
