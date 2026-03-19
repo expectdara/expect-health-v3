@@ -3579,11 +3579,12 @@ const ors=await db("listOutcomeRecords",{});if(ors&&ors.length>0){const exIds=ne
       <div className="topnav-tabs">
         {modes.map(m=><div key={m.id}className={`tt ${mode===m.id?"a":""}`}onClick={()=>{if(mode!==m.id)setMode(m.id)}}>{m.l}</div>)}
       </div>
-      <div style={{display:"flex",alignItems:"center",gap:12}}>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginLeft:"auto"}}>
         {mode==="patient"&&authSession&&<span style={{fontSize:11,color:"rgba(255,255,255,.7)"}}>{authSession.email}</span>}
         {mode==="pt"&&ptIdentity&&<span style={{fontSize:11,color:"rgba(255,255,255,.7)"}}>{ptIdentity.name}</span>}
         {mode==="patient"&&rem!==null&&<span style={{fontSize:11,color:C.or,fontWeight:600}}>{Math.floor(rem/60)}:{String(rem%60).padStart(2,"0")}</span>}
         {mode==="patient"&&<ReportIssue pView={pView}/>}
+        {((mode==="patient"&&authSession)||(mode==="pt"&&ptAuthed)||(mode==="oaip"&&oaipAuthed))&&<button onClick={()=>{if(authSession){try{const tok=localStorage.getItem("expect_session");if(tok)db("deleteSession",{sessionToken:tok});localStorage.removeItem("expect_session")}catch(e){}}authSession=null;sharedIntake=null;L("manual_logout",{mode});setPView("landing");setPtAuthed(false);setOaipAuthed(false);ptIdentity=null;ptSessionToken=null;setConsentCk({});setRk(r=>r+1)}} style={{fontSize:11,color:"rgba(255,255,255,.7)",background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:6,padding:"4px 12px",cursor:"pointer"}}>Log Out</button>}
       </div>
     </div>
     <div ref={mainRef} style={{overflowY:"auto",maxHeight:"calc(100vh - 56px)"}}>
