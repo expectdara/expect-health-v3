@@ -285,6 +285,32 @@ export default async function handler(req, res) {
       ? await client.query(fn, args || {})
       : await client.mutation(fn, args || {});
     res.status(200).json({ ok: true, result });
+
+    // Email notification — fire-and-forget after response is sent
+    if (fn === "functions:upsertPatient" && args?.status === "pending_review") {
+      (async () => {
+        try {
+          if (!process.env.RESEND_API_KEY) return;
+          const { Resend } = await import("resend");
+          const resend = new Resend(process.env.RESEND_API_KEY);
+          const ptUsers = await client.query("functions:listPtUsers", {});
+          const activeEmails = (ptUsers || []).filter(p => p.active).map(p => p.email);
+          if (activeEmails.length === 0) return;
+          await resend.emails.send({
+            from: "Expect Health <notifications@expect.care>",
+            to: activeEmails,
+            subject: `New Patient Ready for Review — ${args.name || "Unknown"}`,
+            html: `<p>A new patient intake has been submitted and is ready for your review.</p>
+                   <p><strong>Patient:</strong> ${args.name || "—"}</p>
+                   <p><strong>Submitted:</strong> ${new Date().toLocaleString("en-US", {timeZone: "America/Denver"})}</p>
+                   <p><a href="https://expecthealth.com">Open PT Portal →</a></p>
+                   <p style="color:#6B7280;font-size:12px">Expect Health — Utah OAIP Pilot</p>`
+          });
+        } catch (e) {
+          console.error("Email notification error:", e.code || "UNKNOWN");
+        }
+      })();
+    }
   } catch (e) {
     console.error("Convex proxy error:", fn, e.code || "UNKNOWN");
     res.status(502).json({ error: "An internal error occurred" });
