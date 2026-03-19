@@ -1380,8 +1380,8 @@ function Intake({onDone,mainRef,initialEmail}){
   const bowelIncomplete=step===6&&(ans.bowel_frequency===undefined||ans.bristol_stool===undefined);
   // Block on FLUTS step (step 5): require all primary FLUTS questions + GUPI urinary questions
   const flutsIncomplete=step===5&&(ans.fl2a===undefined||ans.fl3a===undefined||ans.fl5a===undefined||ans.fl6a===undefined||ans.fl7a===undefined||ans.fl8a===undefined||ans.gupi5===undefined||ans.gupi6===undefined);
-  // Block on Pain step: require average pain rating
-  const painIncomplete=step===8&&ans.screen_pain==="yes"&&(ans.gupi4===undefined||ans.pain1===undefined);
+  // Block on Pain step: require pain1 always; gupi4 only when gupi3 > 0 (gupi4 is conditional)
+  const painIncomplete=step===8&&ans.screen_pain==="yes"&&(ans.pain1===undefined||(ans.gupi3!==undefined&&ans.gupi3!==0&&ans.gupi4===undefined));
   // Block on FLUTSsex step (step 9): require all primary sexual health questions
   const flutsexIncomplete=step===9&&ans.screen_sexual==="yes"&&(ans.fs2a===undefined||ans.fs3a===undefined||ans.fs4a===undefined||ans.fs5a===undefined);
   // Block on QOL step (step 10): require all 3 QOL questions
