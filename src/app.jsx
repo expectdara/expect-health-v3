@@ -1148,7 +1148,7 @@ function ReferralCard({referral,compact}){
 }
 
 // LANDING PAGE (Step 1 — Welcome)
-function LandingPage({onDone}){
+function LandingPage({onDone,onLogin}){
   const[sel,setSel]=useState(new Set());
   const symptoms=[
     "I leak when I sneeze, cough, or laugh",
@@ -1186,6 +1186,7 @@ function LandingPage({onDone}){
     {/* CTA */}
     <div style={{textAlign:"center",marginBottom:32}}>
       <button className="btn bpk"style={{width:"100%",maxWidth:360,justifyContent:"center",padding:"14px 24px",fontSize:15,fontWeight:700,borderRadius:12}}onClick={()=>{if(sel.size)L("symptom_self_select",{selected:symptoms.filter((_,i)=>sel.has(i))});onDone()}}>Start My Assessment</button>
+      {onLogin&&<div style={{textAlign:"center",marginTop:10}}><button onClick={onLogin}style={{fontSize:13,color:C.purp,background:"none",border:"none",cursor:"pointer",textDecoration:"underline"}}>Returning patient? Sign in here</button></div>}
     </div>
     {/* HOW IT WORKS */}
     <div style={{marginBottom:28}}>
@@ -1285,6 +1286,74 @@ function IdentityVerify({onDone,onBack}){
       </div>}
     </div>
     {onBack&&(st==="input"||st==="sent")&&<div style={{textAlign:"center",marginTop:12}}><button className="btn"onClick={onBack}style={{fontSize:12,color:C.g500}}>← Back to Consent</button></div>}
+  </div>;
+}
+
+// RETURNING PATIENT LOGIN
+function PatientLogin({onDone,onBack}){
+  const[st,setSt]=useState("input");
+  const[addr,setAddr]=useState("");
+  const[code,setCode]=useState("");
+  const[sentCode,setSentCode]=useState(null);
+  const[err,setErr]=useState(null);
+  const genCode=()=>{const arr=new Uint32Array(1);crypto.getRandomValues(arr);return String(100000+(arr[0]%900000))};
+  const sendCode=()=>{
+    const em=addr.trim().toLowerCase();
+    if(!em||!em.includes("@")){setErr("Please enter a valid email address.");return}
+    const c=genCode();setSentCode(c);setSt("sent");setErr(null);
+    L("patient_login_code_sent",{email:em});
+  };
+  const checkCode=async()=>{
+    if(code!==sentCode){setErr("Incorrect code. Please try again.");return}
+    setSt("verifying");setErr(null);
+    const em=addr.trim().toLowerCase();
+    try{
+      const _uuid=()=>typeof crypto.randomUUID==="function"?crypto.randomUUID():([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^(crypto.getRandomValues(new Uint8Array(1))[0]&(15>>c/4))).toString(16));
+      const tok="tok_"+_uuid();
+      await db("createSession",{returning:true,email:em,userId:"returning",sessionToken:tok,expiresAt:Date.now()+60*60*1000,createdAt:new Date().toISOString()},{throw:true});
+      const sess=await db("getSessionByToken",{sessionToken:tok});
+      if(!sess)throw new Error("Session not found");
+      authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,expiresAt:sess.expiresAt,createdAt:sess.createdAt};
+      try{localStorage.setItem("expect_session",tok)}catch(e){}
+      const pt=await db("getPatientByUserId",{userId:sess.userId});
+      if(pt){sharedIntake={ans:pt.ans,iciq:pt.iciq,pain:pt.pain,gupi:pt.gupi,fluts:pt.fluts,fsex:pt.fsex,popdi:pt.popdi,plan:pt.plan,depressionFlag:pt.depressionFlag,prenatalFlag:pt.prenatalFlag,name:pt.name,physicianName:pt.physicianName,physicianFax:pt.physicianFax,physicianNPI:pt.physicianNPI,safetyAnswerChanged:pt.safetyAnswerChanged,safetyChanges:pt.safetyChanges,outcomeRecordId:pt.outcomeRecordId,week8:pt.week8,psiRefer:pt.psiRefer,userId:pt.userId}}
+      L("patient_login_success",{email:em,userId:sess.userId});
+      setSt("done");setTimeout(()=>onDone(),1200);
+    }catch(e){
+      const msg=e.message||"";
+      if(msg.includes("No account"))setErr("No account found for this email. Please check your email or start a new assessment.");
+      else setErr("Unable to restore your session. Please try again.");
+      setSt("sent");
+    }
+  };
+  return<div className="fi"style={{maxWidth:520,margin:"0 auto"}}>
+    <div className="h1">Welcome Back</div>
+    <div className="sub">Verify your email to access your care plan</div>
+    <div className="card"style={{borderColor:C.blue,padding:32}}>
+      {st==="input"&&<div>
+        <p style={{fontSize:13,color:C.g600,marginBottom:16,lineHeight:1.7}}>Enter the email address you used during your intake assessment. We'll send a verification code to confirm your identity.</p>
+        <input type="email"value={addr}onChange={e=>setAddr(e.target.value)}placeholder="you@email.com"style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,marginBottom:12,boxSizing:"border-box"}}/>
+        {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
+        <button className="btn bbl"onClick={sendCode}style={{width:"100%"}}>Send Verification Code</button>
+      </div>}
+      {st==="sent"&&<div style={{textAlign:"center"}}>
+        <div style={{fontSize:14,color:C.g600,marginBottom:16}}>We sent a 6-digit code to <strong>{addr}</strong></div>
+        <div style={{background:"#FEF3C7",border:"1px solid #D97706",borderRadius:8,padding:12,marginBottom:16,fontSize:12,color:"#78350F"}}>Demo mode: Your code is <strong>{sentCode}</strong><br/><span style={{fontSize:11,color:"#92400E"}}>In production, this code is sent via email only.</span></div>
+        <input type="text"value={code}onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))}placeholder="000000"maxLength={6}style={{width:160,padding:"10px 14px",fontSize:24,textAlign:"center",letterSpacing:8,border:`1px solid ${C.g300}`,borderRadius:8,marginBottom:12}}/>
+        {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
+        <div><button className="btn bbl"onClick={checkCode}disabled={code.length!==6}style={{opacity:code.length===6?1:.4}}>Verify & Sign In</button></div>
+        <div style={{marginTop:12}}><button className="btn"onClick={()=>{setSt("input");setCode("");setSentCode(null);setErr(null)}}style={{fontSize:12,color:C.g500}}>Change email or resend</button></div>
+      </div>}
+      {st==="verifying"&&<div style={{textAlign:"center"}}>
+        <div style={{fontSize:36,marginBottom:12}}>&#x1F50D;</div>
+        <div style={{fontSize:14,color:C.g600,fontWeight:600}}>Restoring your care plan...</div>
+      </div>}
+      {st==="done"&&<div style={{textAlign:"center"}}>
+        <div style={{fontSize:40,marginBottom:12,color:C.gn}}>Welcome Back</div>
+        <div style={{fontSize:14,color:C.gn,fontWeight:600}}>Loading your care plan...</div>
+      </div>}
+    </div>
+    {onBack&&(st==="input"||st==="sent")&&<div style={{textAlign:"center",marginTop:12}}><button className="btn"onClick={onBack}style={{fontSize:12,color:C.g500}}>← Back</button></div>}
   </div>;
 }
 
@@ -3590,13 +3659,14 @@ const ors=await db("listOutcomeRecords",{});if(ors&&ors.length>0){const exIds=ne
     </div>
     <div ref={mainRef} style={{overflowY:"auto",maxHeight:"calc(100vh - 56px)"}}>
       <div className="mn" key={"p"+rk} style={{display:mode==="patient"?"block":"none"}}>
-        {pView==="landing"&&<LandingPage onDone={()=>setPView("consent")}/>}
+        {pView==="landing"&&<LandingPage onDone={()=>setPView("consent")} onLogin={()=>setPView("patientLogin")}/>}
+        {pView==="patientLogin"&&<PatientLogin onBack={()=>setPView("landing")} onDone={()=>setPView("done")}/>}
         {pView==="consent"&&<Consent ck={consentCk} setCk={setConsentCk} onBack={()=>setPView("landing")} onDone={()=>{L("consent_completed");setPView("verify")}}/>}
         {pView==="verify"&&<IdentityVerify onBack={()=>setPView("consent")} onDone={(em)=>{setLandingEmail(em);L("email_verified",{email:em});setPView("intake")}}/>}
         {pView==="intake"&&<Intake onDone={()=>setPView("done")}mainRef={mainRef}initialEmail={landingEmail}/>}
         {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status!=="approved"&&<PatientWaiting name={sharedIntake.ans?.name_first}/>}
         {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status==="approved"&&<MyCareplan data={sharedIntake}/>}
-        {pView==="done"&&(!sharedIntake||!sharedIntake.plan)&&<div className="fi"style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:48,marginBottom:16}}>&#x23F3;</div><div className="h1"style={{fontSize:22}}>Session Expired</div><p style={{fontSize:14,color:C.g500,maxWidth:400,margin:"12px auto",lineHeight:1.7}}>Your session could not be restored. Please start over.</p><button className="btn bpk"onClick={()=>setPView("landing")}>Start Over</button></div>}
+        {pView==="done"&&(!sharedIntake||!sharedIntake.plan)&&<div className="fi"style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:48,marginBottom:16}}>&#x23F3;</div><div className="h1"style={{fontSize:22}}>Session Expired</div><p style={{fontSize:14,color:C.g500,maxWidth:400,margin:"12px auto",lineHeight:1.7}}>Your session could not be restored. If you've already completed an assessment, you can sign back in to access your care plan.</p><div style={{display:"flex",gap:12,justifyContent:"center",marginTop:16}}><button className="btn bbl"onClick={()=>setPView("patientLogin")}>Sign In</button><button className="btn bo"onClick={()=>setPView("landing")}>Start New Assessment</button></div></div>}
       </div>
       {mode==="pt"&&(ptAuthed?<div className="mnw">
         <div style={{display:"flex",gap:0,marginBottom:20,borderBottom:`1px solid ${C.g200}`}}>

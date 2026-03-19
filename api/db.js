@@ -225,7 +225,7 @@ export default async function handler(req, res) {
 
   // Session creation — patients pass userId directly, PT uses email+password, OAIP uses shared access code
   if (fn === "functions:createSession") {
-    const { accessCode, email, password, ...sessionArgs } = args;
+    const { accessCode, email, password, returning, ...sessionArgs } = args;
 
     if (sessionArgs.userId === "oaip_user") {
       // OAIP: shared access code — fail closed if env var not configured
@@ -250,6 +250,16 @@ export default async function handler(req, res) {
         sessionArgs.ptName = ptUser.name;
       } catch (e) {
         return res.status(403).json({ error: "Invalid email or password" });
+      }
+    } else if (returning && email) {
+      // Returning patient: email-verified re-login — look up patient by email
+      try {
+        const patient = await client.query("functions:getPatientByEmail", { email: email.toLowerCase().trim() });
+        if (!patient) return res.status(403).json({ error: "No account found for this email" });
+        sessionArgs.userId = patient.userId;
+        sessionArgs.email = patient.email;
+      } catch (e) {
+        return res.status(403).json({ error: "Unable to verify account" });
       }
     } else if (sessionArgs.userId && sessionArgs.userId.startsWith("usr_")) {
       // Patient: session created during intake account creation — email stays in sessionArgs
