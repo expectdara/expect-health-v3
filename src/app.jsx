@@ -475,7 +475,7 @@ function genPlan(iciq,pain,gupi,intake){
   // Goals
   if(iciq.total>0){p.goals.push(`Reduce ICIQ from ${iciq.total} by ≥3 pts in 8 wks`);p.goals.push(`Improve bladder control confidence`)}
   else{p.goals.push(`Strengthen pelvic floor function`);p.goals.push(`Improve symptom management`)}
-  if(pain.composite>0)p.goals.push(`Reduce pain from ${pain.average}/10 to ≤${Math.max(0,pain.average-3)}/10`);
+  if(pain.composite>0)p.goals.push(`Reduce pain from ${pain.average??0}/10 to ≤${Math.max(0,(pain.average??0)-3)}/10`);
   if(avoidImpact)p.goals.push(`Resume ${avoidCount} avoided activity categories`);
   if(intake.patient_goal)p.goals.push(`Patient goal: "${intake.patient_goal}"`);
   // 3-tier exercise system per Klovning severity bands; ICIQ=0 gets foundational PF program
@@ -552,8 +552,8 @@ function needsInPersonCare(plan,iciq,pain,popdi){
   if(plan.review_flags?.some(f=>f.id==="PROLAPSE_REVIEW"))reasons.push({id:"prolapse",label:"Prolapse symptoms detected — pelvic exam recommended",urgency:"soon"});
   if(plan.review_flags?.some(f=>f.id==="PUDENDAL_SUSPECTED"))reasons.push({id:"pudendal",label:"Suspected pudendal nerve involvement",urgency:"soon"});
   if(plan.review_flags?.some(f=>f.id==="DEPRESSION_RISK"))reasons.push({id:"depression",label:"Depression screening positive — integrated care recommended",urgency:"standard"});
-  if(iciq.total>=13)reasons.push({id:"severe_iciq",label:"Severe incontinence — may benefit from hands-on assessment",urgency:"week4"});
-  if(pain.composite>=6)reasons.push({id:"high_pain",label:"Significant pelvic pain — in-person evaluation recommended",urgency:"soon"});
+  if((iciq?.total??0)>=13)reasons.push({id:"severe_iciq",label:"Severe incontinence — may benefit from hands-on assessment",urgency:"week4"});
+  if((pain?.composite??0)>=6)reasons.push({id:"high_pain",label:"Significant pelvic pain — in-person evaluation recommended",urgency:"soon"});
   if(popdi&&popdi.bulge)reasons.push({id:"bulge",label:"Vaginal bulge/protrusion reported",urgency:"soon"});
   return reasons.length>0?{needed:true,reasons,urgency:reasons.some(r=>r.urgency==="soon")?"soon":"standard"}:{needed:false,reasons:[]};
 }
@@ -1306,8 +1306,9 @@ function PatientLogin({onDone,onBack}){
     authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,expiresAt:sess.expiresAt,createdAt:sess.createdAt};
     try{localStorage.setItem("expect_session",tok)}catch(e){}
     const pt=await db("getPatientByUserId",{userId:sess.userId});
-    if(pt){sharedIntake={ans:pt.ans,iciq:pt.iciq,pain:pt.pain,gupi:pt.gupi,fluts:pt.fluts,fsex:pt.fsex,popdi:pt.popdi,plan:pt.plan,depressionFlag:pt.depressionFlag,prenatalFlag:pt.prenatalFlag,name:pt.name,physicianName:pt.physicianName,physicianFax:pt.physicianFax,physicianNPI:pt.physicianNPI,safetyAnswerChanged:pt.safetyAnswerChanged,safetyChanges:pt.safetyChanges,outcomeRecordId:pt.outcomeRecordId,week8:pt.week8,psiRefer:pt.psiRefer,userId:pt.userId}}
-    L("patient_login_success",{email:addr.trim().toLowerCase(),userId:sess.userId});
+    if(!pt){setErr("Could not load your patient data. Please try again.");setSt("input");return}
+    sharedIntake={ans:pt.ans,iciq:pt.iciq,pain:pt.pain,gupi:pt.gupi,fluts:pt.fluts,fsex:pt.fsex,popdi:pt.popdi,plan:pt.plan,depressionFlag:pt.depressionFlag,prenatalFlag:pt.prenatalFlag,name:pt.name,physicianName:pt.physicianName,physicianFax:pt.physicianFax,physicianNPI:pt.physicianNPI,safetyAnswerChanged:pt.safetyAnswerChanged,safetyChanges:pt.safetyChanges,outcomeRecordId:pt.outcomeRecordId,week8:pt.week8,psiRefer:pt.psiRefer,userId:pt.userId};
+    L("patient_login_success",{email:sess.email,userId:sess.userId});
     setSt("done");setTimeout(()=>onDone(),1200);
   };
   // Normal login: email + password → code → verify
@@ -2058,7 +2059,7 @@ function MyCareplan({data}){
       <div style={{background:ans.cue_preference==="imaginative"?"#EDE9FE":ans.cue_preference==="breathing"?"#E0F2FE":"#FEF3C7",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,lineHeight:1.5,color:ans.cue_preference==="imaginative"?"#4C1D95":ans.cue_preference==="breathing"?"#0C4A6E":"#78350F"}}>
         <strong>Your cueing style:</strong> When instructions say to engage your pelvic floor, use this cue: <em>"{cue.phrase}"</em>
       </div>
-      {plan.ex.map((ex,i)=>{const lib=PATIENT_EX[ex.n];const open=expanded["ex_"+i];return<div key={i}className="cp-exc">
+      {(plan.ex||[]).map((ex,i)=>{const lib=PATIENT_EX[ex.n];const open=expanded["ex_"+i];return<div key={i}className="cp-exc">
         <div className="cp-exh"onClick={()=>toggle("ex_"+i)}>
           <div><div className="cp-exn">{i+1}. {lib?lib.name:ex.n}{ex.prenatalModified&&<span style={{background:"#D1FAE5",color:"#065F46",fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:10,marginLeft:8}}>Prenatal-adapted</span>}</div><div style={{fontSize:11,color:"#9CA3AF",marginTop:2}}>{ex.f}</div></div>
           <div className="cp-exr">{ex.s}×{ex.r} · {ex.h} hold</div>
@@ -2095,7 +2096,7 @@ function MyCareplan({data}){
     <div className="cp-card">
       <div className="cp-card-title">Your Personalized Recommendations</div>
       <div className="cp-card-sub">Based on your assessment, your PT recommends the following additional support alongside your exercises.</div>
-      {plan.adjuncts.map((adj,i)=>{const lib=PATIENT_ADJ[adj.n];const icons={"behavioral":"🔄","device":"📊","referral":"🏥"};const bgs={"behavioral":"#E0F2FE","device":"#EDE9FE","referral":"#F3F4F6"};const displayText=adj.patientText||(lib?`${lib.what}${lib.why?` ${lib.why}`:""}`:(adj.d||""));return<div key={i}className="cp-adj-item">
+      {(plan.adjuncts||[]).map((adj,i)=>{const lib=PATIENT_ADJ[adj.n];const icons={"behavioral":"🔄","device":"📊","referral":"🏥"};const bgs={"behavioral":"#E0F2FE","device":"#EDE9FE","referral":"#F3F4F6"};const displayText=adj.patientText||(lib?`${lib.what}${lib.why?` ${lib.why}`:""}`:(adj.d||""));return<div key={i}className="cp-adj-item">
         <div className="cp-adj-icon"style={{background:bgs[adj.type]||"#F3F4F6"}}>{icons[adj.type]||"📋"}</div>
         <div><div style={{fontWeight:600,fontSize:13,color:"#111827"}}>{lib?lib.name:adj.n}</div><div style={{fontSize:12,color:"#4B5563",marginTop:2,lineHeight:1.5}}>{displayText}</div></div>
       </div>;})}
@@ -2154,10 +2155,10 @@ function MyCareplan({data}){
           <div className="cp-rpt-row"><span className="cp-rl">Medication Modification</span><span className="cp-rv">{(ans.med_modify??0)===1?"Yes":"No"}</span></div>
         </div>
         <div className="cp-rpt-section"><div className="cp-rpt-h">Exercise Prescription</div>
-          {plan.ex.map((ex,i)=>{const lib=PATIENT_EX[ex.n];return<div key={i}className="cp-rpt-row"><span className="cp-rl">{lib?lib.name:ex.n}</span><span className="cp-rv">{ex.r} reps × {ex.s} sets, {ex.h} hold, {ex.f}</span></div>})}
+          {(plan.ex||[]).map((ex,i)=>{const lib=PATIENT_EX[ex.n];return<div key={i}className="cp-rpt-row"><span className="cp-rl">{lib?lib.name:ex.n}</span><span className="cp-rv">{ex.r} reps × {ex.s} sets, {ex.h} hold, {ex.f}</span></div>})}
         </div>
         <div className="cp-rpt-section"><div className="cp-rpt-h">Adjunct Recommendations</div>
-          {plan.adjuncts.map((adj,i)=>{const lib=PATIENT_ADJ[adj.n];return<div key={i}className="cp-rpt-row"><span className="cp-rl">{lib?lib.name:adj.n}</span><span className="cp-rv">{adj.rx||lib?.what||""}</span></div>})}
+          {(plan.adjuncts||[]).map((adj,i)=>{const lib=PATIENT_ADJ[adj.n];return<div key={i}className="cp-rpt-row"><span className="cp-rl">{lib?lib.name:adj.n}</span><span className="cp-rv">{adj.rx||lib?.what||""}</span></div>})}
         </div>
         <div className="cp-rpt-section"><div className="cp-rpt-h">Plan Details</div>
           <div className="cp-rpt-row"><span className="cp-rl">Frequency</span><span className="cp-rv">{plan.freq}</span></div>
@@ -3692,7 +3693,7 @@ function App(){
   const[oaipAuthed,setOaipAuthed]=useState(false);
   useEffect(()=>{(async()=>{try{const tok=localStorage.getItem("expect_session");if(!tok)return;const sess=await db("getSessionByToken",{sessionToken:tok});if(!sess||sess.expiresAt<Date.now()){localStorage.removeItem("expect_session");return}// Restore PT/OAIP session
 if(sess.userId.startsWith("pt_")&&sess.userId!=="pt_user"){ptSessionToken=tok;ptIdentity={email:sess.email,name:sess.ptName||sess.email,userId:sess.userId};setPtAuthed(true);setMode("pt")}else if(sess.userId==="oaip_user"){ptSessionToken=tok;setOaipAuthed(true);setMode("oaip")}else{// Patient session
-authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,expiresAt:sess.expiresAt,createdAt:sess.createdAt};const pt=await db("getPatientByUserId",{userId:sess.userId});if(pt){sharedIntake={ans:pt.ans,iciq:pt.iciq,pain:pt.pain,gupi:pt.gupi,fluts:pt.fluts,fsex:pt.fsex,plan:pt.plan,depressionFlag:pt.depressionFlag,prenatalFlag:pt.prenatalFlag,name:pt.name,physicianName:pt.physicianName,physicianFax:pt.physicianFax,physicianNPI:pt.physicianNPI,safetyAnswerChanged:pt.safetyAnswerChanged,safetyChanges:pt.safetyChanges,outcomeRecordId:pt.outcomeRecordId,week8:pt.week8,psiRefer:pt.psiRefer};setPView("done")}}const events=await db("listAuditEvents",{limit:500});if(events&&events.length>0){const existing=new Set(log.map(e=>e.id));events.forEach(e=>{if(!existing.has(e.eventId))log.push({id:e.eventId,ts:e.ts,type:e.type,...(e.details||{})})});log.sort((a,b)=>b.ts.localeCompare(a.ts));_lid=Math.max(_lid,events.length)}// Hydrate outcome records for OAIP dashboard metrics
+authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,expiresAt:sess.expiresAt,createdAt:sess.createdAt};const pt=await db("getPatientByUserId",{userId:sess.userId});if(pt){sharedIntake={ans:pt.ans,iciq:pt.iciq,pain:pt.pain,gupi:pt.gupi,fluts:pt.fluts,fsex:pt.fsex,popdi:pt.popdi,plan:pt.plan,depressionFlag:pt.depressionFlag,prenatalFlag:pt.prenatalFlag,name:pt.name,physicianName:pt.physicianName,physicianFax:pt.physicianFax,physicianNPI:pt.physicianNPI,safetyAnswerChanged:pt.safetyAnswerChanged,safetyChanges:pt.safetyChanges,outcomeRecordId:pt.outcomeRecordId,week8:pt.week8,psiRefer:pt.psiRefer};setPView("done")}}const events=await db("listAuditEvents",{limit:500});if(events&&events.length>0){const existing=new Set(log.map(e=>e.id));events.forEach(e=>{if(!existing.has(e.eventId))log.push({id:e.eventId,ts:e.ts,type:e.type,...(e.details||{})})});log.sort((a,b)=>b.ts.localeCompare(a.ts));_lid=Math.max(_lid,events.length)}// Hydrate outcome records for OAIP dashboard metrics
 const ors=await db("listOutcomeRecords",{});if(ors&&ors.length>0){const exIds=new Set(OUTCOME_RECORDS.map(r=>r.id));ors.forEach(or=>{if(!exIds.has(or.recordId))OUTCOME_RECORDS.push({id:or.recordId,created:or.createdAt,baseline:or.baseline,treatment:or.treatment,outcome:or.outcome||null})});_orid=Math.max(_orid,OUTCOME_RECORDS.length)}}catch(e){console.warn("[hydrate]",e)}})()},[]);
   const{warn,cd,rem,dismiss}=useSessionTimeout(()=>{if(ptSessionToken){db("deleteSession",{sessionToken:ptSessionToken});ptSessionToken=null}ptIdentity=null;localStorage.removeItem("expect_session");setPView("landing");setMode("patient");setPtAuthed(false);setOaipAuthed(false);setConsentCk({});setRk(r=>r+1)});
   const modes=[{id:"patient",l:"Patient View"},{id:"pt",l:"PT Provider View"},{id:"oaip",l:"Utah OAIP View"}];
