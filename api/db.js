@@ -233,24 +233,6 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: "Invalid access code" });
       }
       sessionArgs.email = email || "oaip@expect.care";
-    } else if (email && password) {
-      // PT: individual email + password login
-      try {
-        const ptUser = await client.query("functions:getPtUserByEmail", { email: email.toLowerCase().trim() });
-        if (!ptUser || !ptUser.active) {
-          return res.status(403).json({ error: "Invalid email or password" });
-        }
-        const hash = await hashPassword(password, ptUser.salt);
-        if (hash !== ptUser.passwordHash) {
-          return res.status(403).json({ error: "Invalid email or password" });
-        }
-        // Set session identity to individual PT
-        sessionArgs.userId = "pt_" + ptUser.email;
-        sessionArgs.email = ptUser.email;
-        sessionArgs.ptName = ptUser.name;
-      } catch (e) {
-        return res.status(403).json({ error: "Invalid email or password" });
-      }
     } else if (resetPassword && email && password) {
       // Password reset: email-verified, set new password and create session
       try {
@@ -277,6 +259,24 @@ export default async function handler(req, res) {
         }
         sessionArgs.userId = patient.userId;
         sessionArgs.email = patient.email;
+      } catch (e) {
+        return res.status(403).json({ error: "Invalid email or password" });
+      }
+    } else if (email && password) {
+      // PT: individual email + password login
+      try {
+        const ptUser = await client.query("functions:getPtUserByEmail", { email: email.toLowerCase().trim() });
+        if (!ptUser || !ptUser.active) {
+          return res.status(403).json({ error: "Invalid email or password" });
+        }
+        const hash = await hashPassword(password, ptUser.salt);
+        if (hash !== ptUser.passwordHash) {
+          return res.status(403).json({ error: "Invalid email or password" });
+        }
+        // Set session identity to individual PT
+        sessionArgs.userId = "pt_" + ptUser.email;
+        sessionArgs.email = ptUser.email;
+        sessionArgs.ptName = ptUser.name;
       } catch (e) {
         return res.status(403).json({ error: "Invalid email or password" });
       }
