@@ -825,7 +825,7 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
       </div>
     </div>}
   </div>;
-  if(q.type==="scale")return<div className="qc fi"><div className="qt">{q.text}</div><div className="scv"style={ans[q.id]===undefined?{color:C.g400,fontStyle:"italic"}:{}}>{ans[q.id]!==undefined?ans[q.id]:"—"}</div><input className="slr"type="range"min={q.min}max={q.max}value={ans[q.id]??q.min}onChange={e=>set(q.id,parseInt(e.target.value))}/><div className="scl"><span>{q.lo}</span><span>{q.hi}</span></div></div>;
+  if(q.type==="scale")return<div className="qc fi"><div className="qt">{q.text}</div><div className="scv"style={ans[q.id]===undefined?{color:C.g400,fontStyle:"italic"}:{}}>{ans[q.id]!==undefined?ans[q.id]:"—"}</div><input className="slr"type="range"min={q.min}max={q.max}value={ans[q.id]??q.min}onPointerDown={e=>{if(ans[q.id]===undefined)set(q.id,parseInt(e.target.value))}}onChange={e=>set(q.id,parseInt(e.target.value))}/><div className="scl"><span>{q.lo}</span><span>{q.hi}</span></div></div>;
   if(q.type==="multi")return<div className="qc fi"><div className="qt">{q.text}</div><div style={{display:"flex",flexWrap:"wrap"}}>{q.opts.map(([l,v])=><div key={v}className={`mo ${(ans[q.id]||[]).includes(v)?"s":""}`}onClick={()=>togM(q.id,v)}>{(ans[q.id]||[]).includes(v)?"✓":"○"} {l}</div>)}</div></div>;
   if(q.type==="bristol"){
     const bsvg=[
@@ -1588,7 +1588,7 @@ function Week8CheckIn({baseline,onComplete}){
       <div className="qt">{q.text}</div>
       {q.type==="scale"&&<div>
         <div className="scv"style={ans[q.id]===undefined?{color:C.g400,fontStyle:"italic"}:{}}>{ans[q.id]!==undefined?ans[q.id]:"—"}</div>
-        <input type="range"className="slr"min={q.min}max={q.max}value={ans[q.id]??q.min}onChange={e=>set(q.id,+e.target.value)}/>
+        <input type="range"className="slr"min={q.min}max={q.max}value={ans[q.id]??q.min}onPointerDown={e=>{if(ans[q.id]===undefined)set(q.id,+e.target.value)}}onChange={e=>set(q.id,+e.target.value)}/>
         <div className="scl"><span>{q.lo}</span><span>{q.hi}</span></div>
       </div>}
       {q.opts&&!q.type&&q.opts.map(([l,v])=><button key={v}className={`ob ${ans[q.id]===v?"s":""}`}onClick={()=>set(q.id,v)}>{l}</button>)}
