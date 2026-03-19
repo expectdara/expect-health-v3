@@ -1291,13 +1291,26 @@ function IdentityVerify({onDone,onBack}){
 
 // RETURNING PATIENT LOGIN
 function PatientLogin({onDone,onBack}){
-  const[st,setSt]=useState("input");
+  const[st,setSt]=useState("input");// input|sent|verifying|done|forgot|resetCode|newpw
   const[addr,setAddr]=useState("");
   const[pw,setPw]=useState("");
+  const[pw2,setPw2]=useState("");
   const[code,setCode]=useState("");
   const[sentCode,setSentCode]=useState(null);
   const[err,setErr]=useState(null);
   const genCode=()=>{const arr=new Uint32Array(1);crypto.getRandomValues(arr);return String(100000+(arr[0]%900000))};
+  const _uuid=()=>typeof crypto.randomUUID==="function"?crypto.randomUUID():([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^(crypto.getRandomValues(new Uint8Array(1))[0]&(15>>c/4))).toString(16));
+  const restoreSession=async(tok)=>{
+    const sess=await db("getSessionByToken",{sessionToken:tok});
+    if(!sess)throw new Error("Session not found");
+    authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,expiresAt:sess.expiresAt,createdAt:sess.createdAt};
+    try{localStorage.setItem("expect_session",tok)}catch(e){}
+    const pt=await db("getPatientByUserId",{userId:sess.userId});
+    if(pt){sharedIntake={ans:pt.ans,iciq:pt.iciq,pain:pt.pain,gupi:pt.gupi,fluts:pt.fluts,fsex:pt.fsex,popdi:pt.popdi,plan:pt.plan,depressionFlag:pt.depressionFlag,prenatalFlag:pt.prenatalFlag,name:pt.name,physicianName:pt.physicianName,physicianFax:pt.physicianFax,physicianNPI:pt.physicianNPI,safetyAnswerChanged:pt.safetyAnswerChanged,safetyChanges:pt.safetyChanges,outcomeRecordId:pt.outcomeRecordId,week8:pt.week8,psiRefer:pt.psiRefer,userId:pt.userId}}
+    L("patient_login_success",{email:addr.trim().toLowerCase(),userId:sess.userId});
+    setSt("done");setTimeout(()=>onDone(),1200);
+  };
+  // Normal login: email + password → code → verify
   const sendCode=()=>{
     const em=addr.trim().toLowerCase();
     if(!em||!em.includes("@")){setErr("Please enter a valid email address.");return}
@@ -1308,19 +1321,10 @@ function PatientLogin({onDone,onBack}){
   const checkCode=async()=>{
     if(code!==sentCode){setErr("Incorrect code. Please try again.");return}
     setSt("verifying");setErr(null);
-    const em=addr.trim().toLowerCase();
     try{
-      const _uuid=()=>typeof crypto.randomUUID==="function"?crypto.randomUUID():([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^(crypto.getRandomValues(new Uint8Array(1))[0]&(15>>c/4))).toString(16));
       const tok="tok_"+_uuid();
-      await db("createSession",{returning:true,email:em,password:pw,userId:"returning",sessionToken:tok,expiresAt:Date.now()+60*60*1000,createdAt:new Date().toISOString()},{throw:true});
-      const sess=await db("getSessionByToken",{sessionToken:tok});
-      if(!sess)throw new Error("Session not found");
-      authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,expiresAt:sess.expiresAt,createdAt:sess.createdAt};
-      try{localStorage.setItem("expect_session",tok)}catch(e){}
-      const pt=await db("getPatientByUserId",{userId:sess.userId});
-      if(pt){sharedIntake={ans:pt.ans,iciq:pt.iciq,pain:pt.pain,gupi:pt.gupi,fluts:pt.fluts,fsex:pt.fsex,popdi:pt.popdi,plan:pt.plan,depressionFlag:pt.depressionFlag,prenatalFlag:pt.prenatalFlag,name:pt.name,physicianName:pt.physicianName,physicianFax:pt.physicianFax,physicianNPI:pt.physicianNPI,safetyAnswerChanged:pt.safetyAnswerChanged,safetyChanges:pt.safetyChanges,outcomeRecordId:pt.outcomeRecordId,week8:pt.week8,psiRefer:pt.psiRefer,userId:pt.userId}}
-      L("patient_login_success",{email:em,userId:sess.userId});
-      setSt("done");setTimeout(()=>onDone(),1200);
+      await db("createSession",{returning:true,email:addr.trim().toLowerCase(),password:pw,userId:"returning",sessionToken:tok,expiresAt:Date.now()+60*60*1000,createdAt:new Date().toISOString()},{throw:true});
+      await restoreSession(tok);
     }catch(e){
       const msg=e.message||"";
       if(msg.includes("Invalid email or password"))setErr("Invalid email or password. Please try again.");
@@ -1328,16 +1332,64 @@ function PatientLogin({onDone,onBack}){
       setSt("input");setPw("");
     }
   };
+  // Forgot password: email → code → new password → reset + login
+  const sendResetCode=()=>{
+    const em=addr.trim().toLowerCase();
+    if(!em||!em.includes("@")){setErr("Please enter your email address.");return}
+    const c=genCode();setSentCode(c);setSt("resetCode");setErr(null);setCode("");
+    L("patient_reset_code_sent",{email:em});
+  };
+  const checkResetCode=()=>{
+    if(code!==sentCode){setErr("Incorrect code. Please try again.");return}
+    setSt("newpw");setErr(null);setPw("");setPw2("");
+  };
+  const submitNewPassword=async()=>{
+    if(pw.length<8){setErr("Password must be at least 8 characters.");return}
+    if(!/[A-Z]/.test(pw)){setErr("Password must contain at least 1 uppercase letter.");return}
+    if(!/\d/.test(pw)){setErr("Password must contain at least 1 number.");return}
+    if(pw!==pw2){setErr("Passwords do not match.");return}
+    setSt("verifying");setErr(null);
+    try{
+      const tok="tok_"+_uuid();
+      await db("createSession",{resetPassword:true,email:addr.trim().toLowerCase(),password:pw,userId:"resetting",sessionToken:tok,expiresAt:Date.now()+60*60*1000,createdAt:new Date().toISOString()},{throw:true});
+      await restoreSession(tok);
+    }catch(e){
+      setErr("Unable to reset password. Please check your email and try again.");
+      setSt("forgot");setPw("");setPw2("");
+    }
+  };
   return<div className="fi"style={{maxWidth:520,margin:"0 auto"}}>
-    <div className="h1">Welcome Back</div>
-    <div className="sub">Verify your email to access your care plan</div>
+    <div className="h1">{st==="forgot"||st==="resetCode"||st==="newpw"?"Reset Password":"Welcome Back"}</div>
+    <div className="sub">{st==="forgot"||st==="resetCode"||st==="newpw"?"Verify your email to set a new password":"Sign in to access your care plan"}</div>
     <div className="card"style={{borderColor:C.blue,padding:32}}>
       {st==="input"&&<div>
         <p style={{fontSize:13,color:C.g600,marginBottom:16,lineHeight:1.7}}>Enter the email and password you created during your intake assessment.</p>
         <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>Email</div><input type="email"value={addr}onChange={e=>setAddr(e.target.value)}placeholder="you@email.com"style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
-        <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>Password</div><input type="password"value={pw}onChange={e=>setPw(e.target.value)}placeholder="Your password"style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
+        <div style={{marginBottom:4}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>Password</div><input type="password"value={pw}onChange={e=>setPw(e.target.value)}placeholder="Your password"onKeyDown={e=>e.key==="Enter"&&sendCode()}style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
+        <div style={{textAlign:"right",marginBottom:12}}><button onClick={()=>{setSt("forgot");setErr(null)}}style={{fontSize:12,color:C.purp,background:"none",border:"none",cursor:"pointer"}}>Forgot password?</button></div>
         {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
         <button className="btn bbl"onClick={sendCode}style={{width:"100%"}}>Send Verification Code</button>
+      </div>}
+      {st==="forgot"&&<div>
+        <p style={{fontSize:13,color:C.g600,marginBottom:16,lineHeight:1.7}}>Enter your email and we'll send a verification code to reset your password.</p>
+        <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>Email</div><input type="email"value={addr}onChange={e=>setAddr(e.target.value)}placeholder="you@email.com"style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
+        {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
+        <button className="btn bbl"onClick={sendResetCode}style={{width:"100%"}}>Send Reset Code</button>
+        <div style={{textAlign:"center",marginTop:12}}><button onClick={()=>{setSt("input");setErr(null)}}style={{fontSize:12,color:C.g500,background:"none",border:"none",cursor:"pointer"}}>Back to sign in</button></div>
+      </div>}
+      {st==="resetCode"&&<div style={{textAlign:"center"}}>
+        <div style={{fontSize:14,color:C.g600,marginBottom:16}}>We sent a 6-digit code to <strong>{addr}</strong></div>
+        <div style={{background:"#FEF3C7",border:"1px solid #D97706",borderRadius:8,padding:12,marginBottom:16,fontSize:12,color:"#78350F"}}>Demo mode: Your code is <strong>{sentCode}</strong><br/><span style={{fontSize:11,color:"#92400E"}}>In production, this code is sent via email only.</span></div>
+        <input type="text"value={code}onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))}placeholder="000000"maxLength={6}style={{width:160,padding:"10px 14px",fontSize:24,textAlign:"center",letterSpacing:8,border:`1px solid ${C.g300}`,borderRadius:8,marginBottom:12}}/>
+        {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
+        <div><button className="btn bbl"onClick={checkResetCode}disabled={code.length!==6}style={{opacity:code.length===6?1:.4}}>Verify</button></div>
+      </div>}
+      {st==="newpw"&&<div>
+        <p style={{fontSize:13,color:C.g600,marginBottom:16,lineHeight:1.7}}>Create a new password for your account.</p>
+        <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>New Password</div><input type="password"value={pw}onChange={e=>setPw(e.target.value)}placeholder="8+ characters, 1 uppercase, 1 number"style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
+        <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>Confirm Password</div><input type="password"value={pw2}onChange={e=>setPw2(e.target.value)}placeholder="Re-enter password"onKeyDown={e=>e.key==="Enter"&&submitNewPassword()}style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
+        {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
+        <button className="btn bbl"onClick={submitNewPassword}style={{width:"100%"}}>Set Password & Sign In</button>
       </div>}
       {st==="sent"&&<div style={{textAlign:"center"}}>
         <div style={{fontSize:14,color:C.g600,marginBottom:16}}>We sent a 6-digit code to <strong>{addr}</strong></div>
@@ -1356,7 +1408,7 @@ function PatientLogin({onDone,onBack}){
         <div style={{fontSize:14,color:C.gn,fontWeight:600}}>Loading your care plan...</div>
       </div>}
     </div>
-    {onBack&&(st==="input"||st==="sent")&&<div style={{textAlign:"center",marginTop:12}}><button className="btn"onClick={onBack}style={{fontSize:12,color:C.g500}}>← Back</button></div>}
+    {onBack&&(st==="input"||st==="forgot")&&<div style={{textAlign:"center",marginTop:12}}><button className="btn"onClick={onBack}style={{fontSize:12,color:C.g500}}>← Back</button></div>}
   </div>;
 }
 

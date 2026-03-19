@@ -225,7 +225,7 @@ export default async function handler(req, res) {
 
   // Session creation — patients pass userId directly, PT uses email+password, OAIP uses shared access code
   if (fn === "functions:createSession") {
-    const { accessCode, email, password, returning, ...sessionArgs } = args;
+    const { accessCode, email, password, returning, resetPassword, ...sessionArgs } = args;
 
     if (sessionArgs.userId === "oaip_user") {
       // OAIP: shared access code — fail closed if env var not configured
@@ -250,6 +250,19 @@ export default async function handler(req, res) {
         sessionArgs.ptName = ptUser.name;
       } catch (e) {
         return res.status(403).json({ error: "Invalid email or password" });
+      }
+    } else if (resetPassword && email && password) {
+      // Password reset: email-verified, set new password and create session
+      try {
+        const patient = await client.query("functions:getPatientByEmail", { email: email.toLowerCase().trim() });
+        if (!patient) return res.status(403).json({ error: "No account found for this email" });
+        const salt = generateSalt();
+        const passwordHash = await hashPassword(password, salt);
+        await client.mutation("functions:updatePatientPassword", { userId: patient.userId, passwordHash, salt });
+        sessionArgs.userId = patient.userId;
+        sessionArgs.email = patient.email;
+      } catch (e) {
+        return res.status(403).json({ error: "Unable to reset password" });
       }
     } else if (returning && email && password) {
       // Returning patient: email + password re-login

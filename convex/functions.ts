@@ -79,6 +79,19 @@ export const upsertPatient = mutation({
   },
 });
 
+export const updatePatientPassword = mutation({
+  args: { userId: v.string(), passwordHash: v.string(), salt: v.string() },
+  handler: async (ctx, args) => {
+    const patient = await ctx.db
+      .query("patients")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .first();
+    if (patient) {
+      await ctx.db.patch(patient._id, { passwordHash: args.passwordHash, salt: args.salt });
+    }
+  },
+});
+
 export const getPatientByUserId = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
