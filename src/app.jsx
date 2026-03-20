@@ -1,4 +1,3 @@
-import Vapi from "@vapi-ai/web";
 const { useState, useEffect, useRef } = React;
 
 
@@ -1572,7 +1571,10 @@ function VoiceIntake({initialAns,onBack,onDone}){
   const startCall=async()=>{
     setStatus("connecting");setErrMsg("");
     try{
-      const vapi=new Vapi(VAPI_PUBLIC_KEY);
+      // Load Vapi SDK from CDN at runtime (avoids esbuild bundling issues)
+      const VapiModule=await import("https://esm.sh/@vapi-ai/web@2.3.2");
+      const VapiClass=VapiModule.default;
+      const vapi=new VapiClass(VAPI_PUBLIC_KEY);
       vapiRef.current=vapi;
 
       vapi.on("call-start",()=>setStatus("active"));
@@ -1632,7 +1634,7 @@ function VoiceIntake({initialAns,onBack,onDone}){
       <button onClick={startCall}style={{width:80,height:80,borderRadius:"50%",background:`linear-gradient(135deg,${C.purp},${C.pink})`,border:"none",cursor:"pointer",color:"#fff",fontSize:32,display:"inline-flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 20px rgba(76,44,132,.3)",transition:"transform .15s"}}onMouseOver={e=>e.currentTarget.style.transform="scale(1.05)"}onMouseOut={e=>e.currentTarget.style.transform="scale(1)"}>
         🎤
       </button>
-      <div style={{fontSize:12,color:C.g500,marginTop:8}}>Tap to start speaking</div>
+      <div style={{fontSize:12,color:C.g500,marginTop:8}}>Tap to begin — the assistant will ask the first question</div>
     </div>}
 
     {status==="active"&&<div style={{textAlign:"center",marginBottom:24}}>
@@ -1812,7 +1814,7 @@ function Intake({onDone,mainRef,initialEmail}){
         <span style={{fontSize:28,flexShrink:0}}>📋</span>
         <div><div style={{fontSize:15,fontWeight:700,color:C.purpD}}>Standard Form</div><div style={{fontSize:12,color:C.g500,marginTop:2,lineHeight:1.5}}>Answer questions by selecting options and typing. Takes about 5 minutes.</div></div>
       </button>
-      <button onClick={()=>setVoiceMode("consent")}style={{display:"flex",alignItems:"center",gap:14,padding:"18px 20px",background:"rgba(76,44,132,.03)",border:`2px solid ${C.purpL}`,borderRadius:12,cursor:"pointer",textAlign:"left",transition:"all .15s"}}onMouseOver={e=>e.currentTarget.style.borderColor=C.pink}onMouseOut={e=>e.currentTarget.style.borderColor=C.purpL}>
+      <button onClick={()=>setVoiceMode("consent")}style={{display:"flex",alignItems:"center",gap:14,padding:"18px 20px",background:"#fff",border:`2px solid ${C.g200}`,borderRadius:12,cursor:"pointer",textAlign:"left",transition:"all .15s"}}onMouseOver={e=>e.currentTarget.style.borderColor=C.purp}onMouseOut={e=>e.currentTarget.style.borderColor=C.g200}>
         <span style={{fontSize:28,flexShrink:0}}>🎤</span>
         <div><div style={{fontSize:15,fontWeight:700,color:C.purpD}}>Voice Intake</div><div style={{fontSize:12,color:C.g500,marginTop:2,lineHeight:1.5}}>Speak your answers to an AI assistant. Same questions, conversational format.</div></div>
       </button>
