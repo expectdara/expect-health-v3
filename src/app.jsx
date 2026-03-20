@@ -1082,7 +1082,7 @@ function buildVoiceAssistant(initialAns){
   const name=(initialAns.name_first||"")+" "+(initialAns.name_last||"");
   const isPregnant=initialAns.pregnancy_status==="pregnant";
   return{
-    model:{provider:"anthropic",model:"claude-sonnet-4-20250514",
+    model:{provider:"openai",model:"gpt-4o",
       messages:[{role:"system",content:`You are a clinical intake assistant for Expect, a pelvic floor physical therapy platform. You ask structured health questions verbally. You NEVER diagnose or give medical advice. You collect data for a licensed Physical Therapist.
 
 CONTEXT: The patient has already completed demographics, safety screening, and eligibility screening via the web form. Their name is ${name}. ${isPregnant?"They are currently pregnant.":""}You are starting from the Symptom Screening section.
@@ -1191,8 +1191,7 @@ CLOSING: "That's everything, ${initialAns.name_first||""}! I'm now sending your 
     },
     voice:{provider:"11labs",voiceId:"21m00Tcm4TlvDq8ikWAM"},
     firstMessage:`Hi ${initialAns.name_first||"there"}, I'm your intake assistant. You've already completed the first part of your assessment. Now I'm going to ask you some questions about your symptoms so your physical therapist can create your care plan. You can take your time, and if you ever need me to repeat a question, just say so. Ready?`,
-    transcriber:{provider:"deepgram",model:"nova-2",language:"en"},
-    serverUrl:undefined
+    transcriber:{provider:"deepgram",model:"nova-2",language:"en-US"}
   };
 }
 let _flagVer=0;const flagListeners=new Set();
