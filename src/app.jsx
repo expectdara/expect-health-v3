@@ -1,3 +1,4 @@
+import Vapi from "@vapi-ai/web";
 const { useState, useEffect, useRef } = React;
 
 
@@ -1077,82 +1078,43 @@ let sharedIntake = null;
 // VAPI VOICE INTAKE — Phase 2
 const VAPI_PUBLIC_KEY="270b6390-cef2-4960-813c-b7cfa4a1d032";
 
-function buildVoiceAssistant(){
+function buildVoiceAssistant(initialAns){
+  const name=(initialAns.name_first||"")+" "+(initialAns.name_last||"");
+  const isPregnant=initialAns.pregnancy_status==="pregnant";
   return{
     model:{provider:"anthropic",model:"claude-sonnet-4-20250514",
-      messages:[{role:"system",content:`You are a clinical intake assistant for Expect, a pelvic floor physical therapy platform. You conduct a structured health intake by asking questions verbally. You NEVER diagnose or give medical advice. You collect data for a licensed Physical Therapist.
+      messages:[{role:"system",content:`You are a clinical intake assistant for Expect, a pelvic floor physical therapy platform. You ask structured health questions verbally. You NEVER diagnose or give medical advice. You collect data for a licensed Physical Therapist.
+
+CONTEXT: The patient has already completed demographics, safety screening, and eligibility screening via the web form. Their name is ${name}. ${isPregnant?"They are currently pregnant.":""}You are starting from the Symptom Screening section.
 
 RULES:
 1. Ask one question at a time. Wait for the answer before proceeding.
-2. ALWAYS confirm answers before recording, especially names, emails, and numeric values.
+2. ALWAYS confirm answers before recording, especially numeric values.
 3. After sensitive sections, say: "Thank you for sharing that. I'm collecting this information for your licensed physical therapist, who will review your case and design your care plan."
 4. Use the record_answer tool to save each answer after confirming it.
-5. Use record_answers to batch multiple answers when efficient (e.g., after a series of yes/no questions).
+5. Use record_answers to batch multiple answers when efficient.
 6. Respect all gating logic strictly.
 7. PHQ-2 wording is VALIDATED — use EXACT wording. "Several days" not "a few days".
 8. Bristol Stool Scale — read ALL 7 types. Do not paraphrase.
 9. Multi-select questions: list all options, ask "any others?" until patient says no.
 10. Bother scales: only ask if primary answer is > 0 or yes.
 11. Free text questions: transcribe verbatim. Do not summarize.
-12. Red flags/exclusions: if triggered, deliver the safety message and call complete_intake with status "excluded" or "red_flag".
-13. Pace yourself. Pause after each question. This is a clinical interaction.
-14. NEVER read back passwords. NEVER store passwords in transcript.
+12. Pace yourself. Pause after each question. This is a clinical interaction.
 
-OPENING:
-"Hi, I'm your intake assistant from Expect. I'm going to ask you some questions about your health so your physical therapist can create a personalized care plan for you. I won't be giving any medical advice — I'm just here to listen and make sure we capture everything accurately. You can take your time, and if you ever need me to repeat a question, just say so. Ready to get started?"
+START with this greeting: "Hi ${initialAns.name_first||"there"}, I'm your intake assistant. You've already completed the first part of your assessment. Now I'm going to ask you some questions about your symptoms so your physical therapist can create your care plan. You can take your time, and if you ever need me to repeat a question, just say so. Ready?"
 
-SECTION 1: LET'S GET TO KNOW YOU
-Q1 — "What is your first and last name?" → record_answer("name_first", ...) and record_answer("name_last", ...)
-  Confirm: "I have [first] [last] — is that correct?"
-Q2 — "What is your date of birth?" → record_answer("dob", ...)
-  Gate: age < 18 → "This program is designed for adults 18 and older." STOP.
-  Gate: age > 115 → "Could you double-check that for me?"
-Q3 — "What is your sex assigned at birth — female or male?" → record_answer("sex_at_birth", "female"|"male")
-  Gate: male → "Our male pelvic floor program is coming soon." STOP with complete_intake status "excluded".
-Q4 — (if female) "What is your current pregnancy status? Currently pregnant, postpartum 0-6 weeks, postpartum 6 weeks to 6 months, postpartum 6+ months, or not recently pregnant?" → record_answer("pregnancy_status", "pregnant"|"pp_early"|"pp_mid"|"pp_late"|"not_pregnant")
-Q5 — (if postpartum) "What was your most recent type of delivery?" → record_answer("delivery_type", "vaginal"|"assisted"|"csection_planned"|"csection_emergency")
-Q6 — (if postpartum) "Approximately when did you deliver?" → record_answer("delivery_date", ...)
-Q7 — "How many total deliveries have you had?" → record_answer("num_deliveries", number)
-Q8 — "What is your email address?" Spell it back. → record_answer("email", ...)
-Q9 — "What is your phone number?" → record_answer("phone", ...)
-Q10 — "How did you hear about us?" → record_answer("referral_source", "provider_referral"|"self"|"insurance_referral"|"expect_app"|"other")
-Q11 — "Do you have a physician you'd like us to coordinate with? If so, what is their name?" → record_answer("physician_name", ...)
-Q12 — "What type of insurance do you have?" → record_answer("insurance_type", "medicaid"|"medicare"|"commercial"|"self_pay"|"uninsured")
-Q13 — (if commercial) "What is your insurance company name?" → record_answer("insurance_carrier", ...)
-Q14 — (if not self_pay/uninsured) "What is your insurance member ID?" → record_answer("insurance_id", ...)
-
-Transition: "Thank you. Now I need to ask you a few quick safety questions."
-
-SECTION 2: SAFETY CHECK — answer yes or no
-rf_bleed — "Are you experiencing any unexplained vaginal bleeding?" → If YES → STOP: "Unexplained bleeding requires evaluation by your physician before starting PT." complete_intake status "red_flag"
-rf_fever — "Do you currently have a fever above 100.4 degrees?" → If YES → STOP: "Please call 911 or go to the nearest emergency room immediately." complete_intake status "red_flag"
-rf_chest — "Are you experiencing any chest pain or difficulty breathing?" → If YES → STOP: "Please call 911." complete_intake status "red_flag"
-rf_head — "Do you have a severe headache with vision changes?" → If YES → STOP: "Please call 911 immediately." complete_intake status "red_flag"
-rf_uti — "Burning during urination, blood in urine, or frequent urination with fever?" → If YES → STOP: "Please contact your physician before starting PT." complete_intake status "red_flag"
-
-Record each safety answer: record_answer("rf_bleed", "yes"|"no"), etc.
-
-Transition: "Good news — you've cleared the safety screening."
-
-SECTION 3: ELIGIBILITY — yes or no for each
-ex_neuro, ex_mesh, ex_prolapse, ex_cancer, ex_infection, ex_ic_hunner → record_answer for each
-(if pregnant) ex_highrisk_preg
-Any YES → STOP with complete_intake status "excluded"
-
-Transition: "Now let's move into the health questions."
-
-SECTION 4: SYMPTOM SCREENING
+SECTION 1: SYMPTOM SCREENING
 screen_pain — "Over the past month, have you felt pain, pressure, or discomfort in your lower stomach, pelvis, bladder, or genital area?" → record_answer("screen_pain", "yes"|"no"). Gates PAIN section.
-screen_sexual — "Do your pelvic floor symptoms ever interfere with any vaginal penetration?" → record_answer("screen_sexual", "yes"|"no"). Gates SEXUAL HEALTH section.
+screen_sexual — "Do your pelvic floor symptoms ever interfere with any vaginal penetration — for example, sexual activity or intimacy, tampon use, or doctor exams?" → record_answer("screen_sexual", "yes"|"no"). Gates SEXUAL HEALTH section.
 
-SECTION 5: BLADDER LEAKAGE (ICIQ-UI)
+SECTION 2: BLADDER LEAKAGE (ICIQ-UI)
 iciq1 — "How often do you leak urine? Never, about once a week or less, two or three times a week, about once a day, several times a day, or all the time." → 0-5
 If iciq1 = 0, SKIP iciq2, iciq3, iciq4.
 iciq2 — "How much urine do you usually leak? None, a small amount, a moderate amount, or a large amount?" → 0, 2, 4, or 6
 iciq3 — "Overall, how much does leaking urine interfere with your everyday life? Scale 0 to 10." → 0-10
 iciq4 — "Under what circumstances does urine leak?" Multi-select from: before_toilet, stress_cough, stress_exercise, after_urination, asleep, no_reason, continuous. Ask "any others?" until done.
 
-SECTION 6: URINARY SYMPTOMS
+SECTION 3: URINARY SYMPTOMS
 fl2a — nocturia frequency (0-4). If > 0 ask fl2b bother (0-10).
 fl3a — urgency frequency (0-4). If > 0 ask fl3b bother (0-10).
 fl5a — daytime frequency (0-4). If > 0 ask fl5b bother (0-10).
@@ -1162,12 +1124,19 @@ fl8a — intermittency (0-4). If > 0 ask fl8b bother (0-10).
 gupi5 — incomplete emptying (0-5).
 gupi6 — urinary frequency <2hr (0-5).
 
-SECTION 7: BOWEL HEALTH
+SECTION 4: BOWEL HEALTH
 bowel_constipation — 0-4
 bowel_frequency — 0-5
-bristol_stool — 1-7 (read ALL 7 types verbatim)
+bristol_stool — 1-7 (read ALL 7 types verbatim:
+- Type 1: Separate hard lumps, hard to pass.
+- Type 2: Sausage-shaped but lumpy.
+- Type 3: Sausage-shaped with cracks on the surface.
+- Type 4: Smooth and soft, like a sausage.
+- Type 5: Soft blobs with clear-cut edges.
+- Type 6: Fluffy pieces with ragged edges.
+- Type 7: Watery, no solid pieces.)
 
-SECTION 8: PROLAPSE (POPDI-6)
+SECTION 5: PROLAPSE (POPDI-6)
 For each: yes/no. If yes, ask bother (1-4: not at all, somewhat, moderately, quite a bit).
 popdi1/popdi1_bother — lower abdomen pressure
 popdi2/popdi2_bother — heaviness in pelvic area
@@ -1176,7 +1145,7 @@ popdi4/popdi4_bother — push to complete bowel movement
 popdi5/popdi5_bother — incomplete bladder emptying
 popdi6/popdi6_bother — push up on bulge to urinate
 
-SECTION 9: PAIN (only if screen_pain = "yes")
+SECTION 6: PAIN (only if screen_pain = "yes")
 gupi1a-d — pain locations (yes/no each): vaginal entrance, vagina, urethra, pubic/bladder area
 gupi2a-d — pain situations (yes/no each): during urination, during/after sex, as bladder fills, relieved by urinating
 gupi3 — pain frequency (0-5), only if any gupi1/gupi2 = yes
@@ -1185,23 +1154,23 @@ pain1 — current pain (0-10)
 pain3 — functional impact (0-4)
 symptoms_trigger — multi-select: during_urination, bladder_fills, sexual_activity, tampon, bowel_movements, sitting_long, none
 
-SECTION 10: SEXUAL HEALTH (only if screen_sexual = "yes")
+SECTION 7: SEXUAL HEALTH (only if screen_sexual = "yes")
 fs2a — vaginal dryness (0-3). If > 0 ask fs2b bother (0-10).
 fs3a — sex life impact (0-3). If > 0 ask fs3b bother (0-10).
 fs4a — pain during sex (0-4). If 1-3 ask fs4b bother (0-10).
 fs5a — leakage during sex (0-4). If 1-3 ask fs5b bother (0-10).
 
-SECTION 11: QUALITY OF LIFE
+SECTION 8: QUALITY OF LIFE
 gupi7 — activity limitation (0-3)
 gupi8 — symptom preoccupation (0-3)
 gupi9 — life satisfaction with symptoms (1-6)
 
-SECTION 12: HISTORY & GOALS
-caffeine_intake — (if urgency symptoms) 0-3
+SECTION 9: HISTORY & GOALS
+caffeine_intake — (if urgency: fl3a > 0) 0-3
 water_intake — (if urgency or constipation) 0-3
 phq2_interest — EXACT WORDING: "Over the past 2 weeks, how often have you been bothered by having little interest or pleasure in doing things? Not at all, several days, more than half the days, or nearly every day?" → 0-3
 phq2_mood — EXACT WORDING: "Over the past 2 weeks, how often have you been bothered by feeling down, depressed, or hopeless? Not at all, several days, more than half the days, or nearly every day?" → 0-3
-avoid_activities — multi-select
+avoid_activities — multi-select: exercise, social_events, travel, sexual_activity, lifting, none
 medications — free text
 med_modify — 0-2
 prior_treatment — multi-select
@@ -1210,20 +1179,18 @@ pelvic_history — multi-select
 patient_goal — free text (transcribe verbatim)
 catchall_pelvic — free text
 
-SECTION 13: WRAP UP
-Skip password creation during voice intake. Tell the patient: "When your care plan is ready, you'll receive an email with instructions to set up your password and access your plan."
+WRAP UP:
+After all questions, call complete_intake with status "complete".
 
-Then call complete_intake with status "complete".
-
-CLOSING: "That's everything! I'm now sending your responses to your physical therapist. They will review your information, finalize your care plan, and you'll be able to access it by logging into Expect with your email. Thank you for taking the time to complete this — you've taken an important step toward feeling better."`}],
+CLOSING: "That's everything, ${initialAns.name_first||""}! I'm now sending your responses to your physical therapist. They will review your information and finalize your care plan. You'll be able to access it by logging into Expect with your email. Thank you for taking the time — you've taken an important step toward feeling better."`}],
       tools:[
-        {type:"function","function":{name:"record_answer",description:"Record a single confirmed answer from the patient",parameters:{type:"object",properties:{questionId:{type:"string",description:"The answer key (e.g. iciq1, screen_pain, name_first)"},value:{description:"The answer value (string, number, or array for multi-select)"}},required:["questionId","value"]}}},
+        {type:"function","function":{name:"record_answer",description:"Record a single confirmed answer from the patient",parameters:{type:"object",properties:{questionId:{type:"string",description:"The answer key (e.g. iciq1, screen_pain)"},value:{description:"The answer value (string, number, or array for multi-select)"}},required:["questionId","value"]}}},
         {type:"function","function":{name:"record_answers",description:"Record multiple confirmed answers at once",parameters:{type:"object",properties:{answers:{type:"array",items:{type:"object",properties:{questionId:{type:"string"},value:{}},required:["questionId","value"]}}},required:["answers"]}}},
-        {type:"function","function":{name:"complete_intake",description:"Signal that the intake conversation is finished",parameters:{type:"object",properties:{status:{type:"string",enum:["complete","red_flag","excluded"],description:"Whether intake completed normally or was stopped"}},required:["status"]}}}
+        {type:"function","function":{name:"complete_intake",description:"Signal that the intake conversation is finished",parameters:{type:"object",properties:{status:{type:"string",enum:["complete"],description:"Intake completed"}},required:["status"]}}}
       ]
     },
     voice:{provider:"11labs",voiceId:"21m00Tcm4TlvDq8ikWAM"},
-    firstMessage:"Hi, I'm your intake assistant from Expect. I'm going to ask you some questions about your health so your physical therapist can create a personalized care plan for you. I won't be giving any medical advice — I'm just here to listen and make sure we capture everything accurately. You can take your time, and if you ever need me to repeat a question, just say so. Ready to get started?",
+    firstMessage:`Hi ${initialAns.name_first||"there"}, I'm your intake assistant. You've already completed the first part of your assessment. Now I'm going to ask you some questions about your symptoms so your physical therapist can create your care plan. You can take your time, and if you ever need me to repeat a question, just say so. Ready?`,
     transcriber:{provider:"deepgram",model:"nova-2",language:"en"},
     serverUrl:undefined
   };
@@ -1303,7 +1270,7 @@ function ReferralCard({referral,compact}){
 }
 
 // LANDING PAGE (Step 1 — Welcome)
-function LandingPage({onDone,onLogin,onVoice}){
+function LandingPage({onDone,onLogin}){
   const[sel,setSel]=useState(new Set());
   const symptoms=[
     "I leak when I sneeze, cough, or laugh",
@@ -1342,11 +1309,6 @@ function LandingPage({onDone,onLogin,onVoice}){
     <div style={{textAlign:"center",marginBottom:32}}>
       <button className="btn bpk"style={{width:"100%",maxWidth:360,justifyContent:"center",padding:"14px 24px",fontSize:15,fontWeight:700,borderRadius:12}}onClick={()=>{if(sel.size)L("symptom_self_select",{selected:symptoms.filter((_,i)=>sel.has(i))});onDone()}}>Start My Assessment</button>
       {onLogin&&<div style={{textAlign:"center",marginTop:10}}><button onClick={onLogin}style={{fontSize:13,color:C.purp,background:"none",border:"none",cursor:"pointer",textDecoration:"underline"}}>Returning patient? Sign in here</button></div>}
-      {onVoice&&<div style={{textAlign:"center",marginTop:16,paddingTop:16,borderTop:`1px solid ${C.g200}`}}>
-        <button onClick={onVoice}style={{display:"inline-flex",alignItems:"center",gap:8,padding:"10px 20px",fontSize:13,fontWeight:600,color:C.purp,background:"rgba(76,44,132,.05)",border:`1px solid ${C.purpL}`,borderRadius:10,cursor:"pointer",transition:"all .15s"}}onMouseOver={e=>{e.currentTarget.style.background="rgba(76,44,132,.1)"}}onMouseOut={e=>{e.currentTarget.style.background="rgba(76,44,132,.05)"}}>
-          <span style={{fontSize:18}}>🎤</span> Prefer to talk? Try voice intake
-        </button>
-      </div>}
     </div>
     {/* HOW IT WORKS */}
     <div style={{marginBottom:28}}>
@@ -1574,48 +1536,28 @@ function PatientLogin({onDone,onBack}){
 }
 
 // VOICE INTAKE — Phase 2 (Vapi AI voice agent)
-function VoiceIntake({onBack,onDone}){
-  const[status,setStatus]=useState("idle"); // idle|connecting|active|processing|done|error|stopped
-  const[ans,setAns]=useState({});
+function VoiceIntake({initialAns,onBack,onDone}){
+  const[status,setStatus]=useState("idle"); // idle|connecting|active|processing|done|error
+  const[voiceAns,setVoiceAns]=useState({});
   const[transcript,setTranscript]=useState([]);
   const[errMsg,setErrMsg]=useState("");
   const vapiRef=useRef(null);
-  const ansRef=useRef({});
+  const voiceAnsRef=useRef({});
   const doneRef=useRef(false);
 
-  // Keep ansRef in sync
-  useEffect(()=>{ansRef.current=ans},[ans]);
-
-  // Create auth session on mount
-  const sessionCreated=useRef(false);
-  useEffect(()=>{if(sessionCreated.current||authSession)return;sessionCreated.current=true;
-    const _uuid=()=>typeof crypto.randomUUID==="function"?crypto.randomUUID():([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^(crypto.getRandomValues(new Uint8Array(1))[0]&(15>>c/4))).toString(16));
-    authSession={userId:"usr_"+_uuid(),email:"",sessionToken:"tok_"+_uuid(),expiresAt:Date.now()+60*60*1000,createdAt:new Date().toISOString()};
-    db("createSession",{userId:authSession.userId,email:authSession.email,sessionToken:authSession.sessionToken,expiresAt:authSession.expiresAt,createdAt:authSession.createdAt});
-    try{localStorage.setItem("expect_session",authSession.sessionToken)}catch(e){}
-  },[]);
+  // Keep ref in sync
+  useEffect(()=>{voiceAnsRef.current=voiceAns},[voiceAns]);
 
   const recordAnswer=(qid,val)=>{
-    // Coerce numeric strings
     const v=typeof val==="string"&&/^\d+(\.\d+)?$/.test(val)?parseFloat(val):val;
-    setAns(prev=>{const next={...prev,[qid]:v};
-      // Handle pregnancy flag
-      if(qid==="pregnancy_status")next.prenatal_flag=v==="pregnant";
-      // Update email on auth session
-      if(qid==="email"&&authSession)authSession.email=v;
-      return next;
-    });
+    setVoiceAns(prev=>({...prev,[qid]:v}));
   };
 
-  const finishIntake=(exitStatus)=>{
+  const finishIntake=()=>{
     if(doneRef.current)return;doneRef.current=true;
-    const a=ansRef.current;
-    if(exitStatus==="red_flag"||exitStatus==="excluded"){
-      L("voice_intake_stopped",{reason:exitStatus});
-      setStatus("stopped");
-      return;
-    }
     setStatus("processing");
+    // Merge initial answers (demographics/safety/eligibility) with voice-collected answers
+    const a={...initialAns,...voiceAnsRef.current};
     const iciq=sICIQ(a),pain=sPain(a),gupi=sGUPI(a),fluts=sFLUTS(a),fsex=sFSEX(a),popdi=sPOPDI(a),plan=genPlan(iciq,pain,gupi,a);
     L("intake_done",{iciq:iciq.total,pain:pain.composite,gupi:gupi.total,modality:"voice"});
     const phq2Total=calcPHQ2(a);
@@ -1624,46 +1566,38 @@ function VoiceIntake({onBack,onDone}){
     if(depressionFlag.positive)L("depression_screen_positive",{score:phq2Total,severity:phq2Total>=5?"HIGH":"MODERATE",patient:(a.name_first||"")+" "+(a.name_last||"")});
     if(authSession){
       const saveArgs={userId:authSession.userId,email:authSession.email,name:sharedIntake.name,ans:a,iciq,pain,gupi,fluts,fsex,popdi,plan,depressionFlag,prenatalFlag:!!a.prenatal_flag,physicianName:a.physician_name||"",physicianFax:a.physician_fax||"",physicianNPI:a.physician_npi_id||"",safetyAnswerChanged:false,safetyChanges:[],status:"pending_review",createdAt:new Date().toISOString()};
-      (async()=>{for(let attempt=0;attempt<3;attempt++){try{await db("upsertPatient",saveArgs,{throw:true});setStatus("done");setTimeout(()=>onDone(),2000);return}catch(e){if(attempt<2)await new Promise(r=>setTimeout(r,1000))}}setStatus("error");setErrMsg("Could not save your assessment. Please try the web form instead.")})();
+      (async()=>{for(let attempt=0;attempt<3;attempt++){try{await db("upsertPatient",saveArgs,{throw:true});setStatus("done");setTimeout(()=>onDone(),2000);return}catch(e){if(attempt<2)await new Promise(r=>setTimeout(r,1000))}}setStatus("error");setErrMsg("Could not save your assessment. Please try the standard form instead.")})();
     }else{setStatus("done");setTimeout(()=>onDone(),2000)}
   };
 
   const startCall=async()=>{
-    if(VAPI_PUBLIC_KEY==="YOUR_VAPI_PUBLIC_KEY_HERE"){setErrMsg("Vapi public key not configured.");setStatus("error");return}
     setStatus("connecting");setErrMsg("");
     try{
-      const Vapi=(await import("@vapi-ai/web")).default;
       const vapi=new Vapi(VAPI_PUBLIC_KEY);
       vapiRef.current=vapi;
 
       vapi.on("call-start",()=>setStatus("active"));
       vapi.on("call-end",()=>{if(!doneRef.current){setStatus("idle")}});
-      vapi.on("error",(e)=>{setErrMsg(e?.message||"Voice connection error");setStatus("error")});
+      vapi.on("error",(e)=>{console.error("[Vapi error]",e);setErrMsg(typeof e==="string"?e:e?.message||e?.error?.message||"Voice connection error");setStatus("error")});
 
       vapi.on("message",(msg)=>{
-        // Transcript updates
-        if(msg.type==="transcript"){
-          if(msg.transcriptType==="final"){
-            setTranscript(prev=>[...prev,{role:msg.role,text:msg.transcript}]);
-          }
+        if(msg.type==="transcript"&&msg.transcriptType==="final"){
+          setTranscript(prev=>[...prev,{role:msg.role,text:msg.transcript}]);
         }
-        // Tool calls from the assistant
         if(msg.type==="function-call"){
-          const{name,parameters}=msg.functionCall||msg;
-          if(name==="record_answer"&&parameters){
-            recordAnswer(parameters.questionId,parameters.value);
-          }else if(name==="record_answers"&&parameters?.answers){
-            parameters.answers.forEach(a=>recordAnswer(a.questionId,a.value));
-          }else if(name==="complete_intake"&&parameters){
-            finishIntake(parameters.status);
-          }
+          const fn=msg.functionCall||msg;
+          const{name,parameters}=fn;
+          if(name==="record_answer"&&parameters)recordAnswer(parameters.questionId,parameters.value);
+          else if(name==="record_answers"&&parameters?.answers)parameters.answers.forEach(a=>recordAnswer(a.questionId,a.value));
+          else if(name==="complete_intake")finishIntake();
         }
       });
 
-      const assistantConfig=buildVoiceAssistant();
+      const assistantConfig=buildVoiceAssistant(initialAns);
       await vapi.start(assistantConfig);
     }catch(e){
-      setErrMsg(e?.message||"Could not start voice intake");
+      console.error("[Vapi start error]",e);
+      setErrMsg(e?.message||"Could not start voice intake. Check microphone permissions.");
       setStatus("error");
     }
   };
@@ -1673,56 +1607,42 @@ function VoiceIntake({onBack,onDone}){
     setStatus("idle");
   };
 
-  // Cleanup on unmount
   useEffect(()=>()=>{if(vapiRef.current){try{vapiRef.current.stop()}catch(e){}}},[]);
 
   const transcriptEndRef=useRef(null);
   useEffect(()=>{transcriptEndRef.current?.scrollIntoView({behavior:"smooth"})},[transcript]);
 
-  // Count recorded answers for progress
-  const ansCount=Object.keys(ans).filter(k=>!k.startsWith("_")).length;
+  const ansCount=Object.keys(voiceAns).length;
 
   return<div className="fi"style={{maxWidth:560,margin:"0 auto"}}>
-    {/* HEADER */}
     <div style={{textAlign:"center",marginBottom:24,paddingTop:8}}>
       <div className="h1"style={{fontSize:24,lineHeight:1.3,color:C.purp}}>Voice Intake</div>
-      <div style={{fontSize:13,color:C.g500,maxWidth:440,margin:"8px auto 0",lineHeight:1.6}}>Answer your intake questions by speaking with our AI assistant. Your licensed physical therapist will review everything.</div>
+      <div style={{fontSize:13,color:C.g500,maxWidth:440,margin:"8px auto 0",lineHeight:1.6}}>Answer your clinical intake questions by speaking with our AI assistant. Your licensed physical therapist will review everything.</div>
     </div>
 
-    {/* STATUS INDICATOR */}
     <div style={{textAlign:"center",marginBottom:20}}>
       <div style={{display:"inline-flex",alignItems:"center",gap:8,padding:"8px 16px",borderRadius:20,background:status==="active"?"#DCFCE7":status==="connecting"?"#FEF3C7":status==="processing"?"#EDE9FE":status==="error"?"#FEE2E2":C.g100}}>
         <div style={{width:8,height:8,borderRadius:"50%",background:status==="active"?C.gn:status==="connecting"?C.or:status==="processing"?C.purp:status==="error"?C.rd:C.g400,animation:status==="active"||status==="connecting"?"pulse 1.5s ease-in-out infinite":"none"}}/>
         <span style={{fontSize:12,fontWeight:600,color:status==="active"?"#166534":status==="connecting"?"#78350F":status==="processing"?"#4C1D95":status==="error"?"#991B1B":C.g600}}>
-          {status==="idle"?"Ready to start":status==="connecting"?"Connecting...":status==="active"?"Listening...":status==="processing"?"Saving your assessment...":status==="done"?"Complete!":status==="stopped"?"Intake stopped":status==="error"?"Error":""}
+          {status==="idle"?"Ready to start":status==="connecting"?"Connecting...":status==="active"?"Listening...":status==="processing"?"Saving your assessment...":status==="done"?"Complete!":status==="error"?"Error":""}
         </span>
       </div>
     </div>
 
-    {/* MIC BUTTON */}
     {(status==="idle"||status==="error")&&<div style={{textAlign:"center",marginBottom:24}}>
       <button onClick={startCall}style={{width:80,height:80,borderRadius:"50%",background:`linear-gradient(135deg,${C.purp},${C.pink})`,border:"none",cursor:"pointer",color:"#fff",fontSize:32,display:"inline-flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 20px rgba(76,44,132,.3)",transition:"transform .15s"}}onMouseOver={e=>e.currentTarget.style.transform="scale(1.05)"}onMouseOut={e=>e.currentTarget.style.transform="scale(1)"}>
         🎤
       </button>
-      <div style={{fontSize:12,color:C.g500,marginTop:8}}>Tap to start</div>
+      <div style={{fontSize:12,color:C.g500,marginTop:8}}>Tap to start speaking</div>
     </div>}
 
     {status==="active"&&<div style={{textAlign:"center",marginBottom:24}}>
-      <button onClick={stopCall}style={{width:64,height:64,borderRadius:"50%",background:C.rd,border:"none",cursor:"pointer",color:"#fff",fontSize:20,display:"inline-flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 20px rgba(239,68,68,.3)"}}>
-        ⏹
-      </button>
+      <button onClick={stopCall}style={{width:64,height:64,borderRadius:"50%",background:C.rd,border:"none",cursor:"pointer",color:"#fff",fontSize:20,display:"inline-flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 20px rgba(239,68,68,.3)"}}>⏹</button>
       <div style={{fontSize:12,color:C.g500,marginTop:8}}>Tap to stop</div>
     </div>}
 
     {errMsg&&<div style={{background:"#FEE2E2",border:"1px solid #FECACA",borderRadius:8,padding:"10px 14px",fontSize:12,color:"#991B1B",marginBottom:16,textAlign:"center"}}>{errMsg}</div>}
 
-    {/* STOPPED STATE */}
-    {status==="stopped"&&<div style={{textAlign:"center",padding:"20px 0",marginBottom:16}}>
-      <div style={{fontSize:14,fontWeight:600,color:C.or,marginBottom:8}}>Your intake was stopped because a safety or eligibility concern was identified.</div>
-      <div style={{fontSize:13,color:C.g500,lineHeight:1.6,maxWidth:400,margin:"0 auto"}}>Please follow the guidance provided by the assistant. If you have questions, contact your healthcare provider.</div>
-    </div>}
-
-    {/* DONE STATE */}
     {status==="done"&&<div style={{textAlign:"center",padding:"20px 0",marginBottom:16}}>
       <div style={{fontSize:40,marginBottom:8,color:C.gn}}>✓</div>
       <div style={{fontSize:16,fontWeight:700,color:"#166534",marginBottom:4}}>Assessment Complete</div>
@@ -1731,13 +1651,11 @@ function VoiceIntake({onBack,onDone}){
 
     {status==="processing"&&<div style={{textAlign:"center",padding:"40px 0"}}><div style={{fontSize:36,marginBottom:16,animation:"pulse 1.5s ease-in-out infinite"}}>💾</div><div className="h1"style={{fontSize:20}}>Saving your assessment...</div><p style={{fontSize:13,color:C.g500,marginTop:8}}>Please don't close this page.</p></div>}
 
-    {/* PROGRESS */}
     {ansCount>0&&status!=="done"&&status!=="processing"&&<div style={{background:C.g50,borderRadius:8,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <span style={{fontSize:12,color:C.g500}}>Answers recorded</span>
       <span style={{fontSize:13,fontWeight:700,color:C.purp}}>{ansCount}</span>
     </div>}
 
-    {/* TRANSCRIPT */}
     {transcript.length>0&&<div style={{background:"#fff",border:`1px solid ${C.g200}`,borderRadius:12,maxHeight:320,overflowY:"auto",marginBottom:16}}>
       <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.g200}`,fontSize:12,fontWeight:600,color:C.g500}}>Conversation</div>
       <div style={{padding:"8px 14px"}}>
@@ -1749,13 +1667,11 @@ function VoiceIntake({onBack,onDone}){
       </div>
     </div>}
 
-    {/* TRUST NOTE */}
     <div style={{textAlign:"center",padding:"12px 16px",background:"rgba(76,44,132,.03)",borderRadius:8,marginBottom:16}}>
       <div style={{fontSize:11,color:C.g500,lineHeight:1.6}}>Your answers are reviewed by a licensed Physical Therapist. The AI assistant collects information — it does not diagnose or give medical advice.</div>
     </div>
 
-    {/* BACK BUTTON */}
-    {(status==="idle"||status==="error"||status==="stopped")&&onBack&&<div style={{textAlign:"center"}}><button className="btn"onClick={onBack}style={{fontSize:12,color:C.g500}}>← Back</button></div>}
+    {(status==="idle"||status==="error")&&onBack&&<div style={{textAlign:"center"}}><button className="btn"onClick={onBack}style={{fontSize:12,color:C.g500}}>← Back to standard form</button></div>}
   </div>;
 }
 
@@ -1767,6 +1683,8 @@ function Intake({onDone,mainRef,initialEmail}){
   const[safetyTriggered,setSafetyTriggered]=useState({});const[showSafetyModal,setShowSafetyModal]=useState(null);
   const[triedNext,setTriedNext]=useState(false);
   const[acctPw,setAcctPw]=useState("");const[acctPwC,setAcctPwC]=useState("");const[acctErr,setAcctErr]=useState(null);const doneRef=useRef(false);
+  const[voiceMode,setVoiceMode]=useState(null); // null|"fork"|"consent"|"active"
+  const[voiceConsent,setVoiceConsent]=useState(false);
   const[saveState,setSaveState]=useState("idle");// idle|saving|saved|failed
   const[showDraftBanner,setShowDraftBanner]=useState(!!initState);
   // Create session on mount so we can save drafts to DB throughout intake
@@ -1884,6 +1802,46 @@ function Intake({onDone,mainRef,initialEmail}){
     if(saveState==="failed")return<div className="fi"style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:36,marginBottom:16}}>⚠️</div><div className="h1"style={{fontSize:22,color:C.rd}}>Save failed</div><p style={{fontSize:14,color:C.g500,maxWidth:400,margin:"12px auto",lineHeight:1.7}}>We couldn't save your assessment. Your answers are safe in this browser — please try again.</p><button className="btn bpk"style={{marginTop:16}}onClick={()=>{if(!savePatientRef.current)return;setSaveState("saving");(async()=>{for(let attempt=0;attempt<3;attempt++){try{await db("upsertPatient",savePatientRef.current,{throw:true});try{sessionStorage.removeItem("expect_draft")}catch(e){}setSaveState("saved");if(onDone)onDone();return}catch(e){if(attempt<2)await new Promise(r=>setTimeout(r,1000))}}setSaveState("failed")})()}}>Retry Save</button></div>;
     return null;
   }
+  // VOICE INTAKE FORK — shown after eligibility (step 2), before clinical questions
+  if(voiceMode==="fork")return<div className="fi"style={{maxWidth:560,margin:"0 auto"}}>
+    <div style={{textAlign:"center",marginBottom:28,paddingTop:8}}>
+      <div className="h1"style={{fontSize:22,color:C.purp}}>How would you like to complete your clinical intake?</div>
+      <div style={{fontSize:13,color:C.g500,marginTop:8,lineHeight:1.6}}>You've cleared the safety and eligibility screening. Now choose how you'd like to answer the clinical questions.</div>
+    </div>
+    <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:24}}>
+      <button onClick={()=>{setVoiceMode(null);goStep(nextVisibleStep(2))}}style={{display:"flex",alignItems:"center",gap:14,padding:"18px 20px",background:"#fff",border:`2px solid ${C.g200}`,borderRadius:12,cursor:"pointer",textAlign:"left",transition:"all .15s"}}onMouseOver={e=>e.currentTarget.style.borderColor=C.purp}onMouseOut={e=>e.currentTarget.style.borderColor=C.g200}>
+        <span style={{fontSize:28,flexShrink:0}}>📋</span>
+        <div><div style={{fontSize:15,fontWeight:700,color:C.purpD}}>Standard Form</div><div style={{fontSize:12,color:C.g500,marginTop:2,lineHeight:1.5}}>Answer questions by selecting options and typing. Takes about 5 minutes.</div></div>
+      </button>
+      <button onClick={()=>setVoiceMode("consent")}style={{display:"flex",alignItems:"center",gap:14,padding:"18px 20px",background:"rgba(76,44,132,.03)",border:`2px solid ${C.purpL}`,borderRadius:12,cursor:"pointer",textAlign:"left",transition:"all .15s"}}onMouseOver={e=>e.currentTarget.style.borderColor=C.pink}onMouseOut={e=>e.currentTarget.style.borderColor=C.purpL}>
+        <span style={{fontSize:28,flexShrink:0}}>🎤</span>
+        <div><div style={{fontSize:15,fontWeight:700,color:C.purpD}}>Voice Intake</div><div style={{fontSize:12,color:C.g500,marginTop:2,lineHeight:1.5}}>Speak your answers to an AI assistant. Same questions, conversational format.</div></div>
+      </button>
+    </div>
+    <div style={{textAlign:"center"}}><button className="btn"onClick={()=>{setVoiceMode(null)}}style={{fontSize:12,color:C.g500}}>← Back to eligibility</button></div>
+  </div>;
+  // VOICE CONSENT MODAL — Just-In-Time consent before voice starts
+  if(voiceMode==="consent")return<div className="fi"style={{maxWidth:520,margin:"0 auto"}}>
+    <div style={{textAlign:"center",marginBottom:20,paddingTop:8}}>
+      <div style={{fontSize:36,marginBottom:8}}>🎤</div>
+      <div className="h1"style={{fontSize:20,color:C.purp}}>Voice Intake Consent</div>
+    </div>
+    <div className="card"style={{borderColor:C.purp,marginBottom:20}}>
+      <div style={{fontSize:13,color:C.g700,lineHeight:1.8}}>
+        To make this easy, our Artificial Intelligence voice assistant will ask you a few quick questions and transcribe your answers.
+      </div>
+      <div style={{marginTop:16,padding:"14px 16px",background:"#F5F3FF",borderRadius:8}}>
+        <label style={{display:"flex",gap:10,cursor:"pointer",alignItems:"flex-start"}}>
+          <input type="checkbox"checked={voiceConsent}onChange={e=>setVoiceConsent(e.target.checked)}style={{marginTop:3,accentColor:C.purp,width:18,height:18,flexShrink:0}}/>
+          <span style={{fontSize:13,color:C.g700,lineHeight:1.7}}>I understand I am speaking to an AI, not a human doctor. I consent to my voice being processed in a secure, HIPAA-compliant system. It will never be used to train public AI models.</span>
+        </label>
+      </div>
+    </div>
+    <button className="btn bpk"disabled={!voiceConsent}onClick={()=>{L("voice_consent_given",{patient:(ans.name_first||"")+" "+(ans.name_last||"")});setVoiceMode("active")}}style={{width:"100%",justifyContent:"center",opacity:voiceConsent?1:.4}}>Begin Voice Intake</button>
+    <div style={{textAlign:"center",marginTop:12}}><button className="btn"onClick={()=>{setVoiceMode("fork");setVoiceConsent(false)}}style={{fontSize:12,color:C.g500}}>← Back to options</button></div>
+  </div>;
+  // VOICE ACTIVE — full VoiceIntake component
+  if(voiceMode==="active")return<VoiceIntake initialAns={ans} onBack={()=>{setVoiceMode("fork");setVoiceConsent(false)}} onDone={onDone}/>;
   return<div className="fi">
     {showDraftBanner&&<div className="ra"style={{background:"#EFF6FF",borderColor:C.blue,color:"#1E40AF",fontSize:14,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <span>We found your previous progress. You've been returned to where you left off.</span>
@@ -1937,7 +1895,7 @@ function Intake({onDone,mainRef,initialEmail}){
     {steps[step].qs.some(q=>q.id==="phq2_mood")&&phq2Score>=2&&<div style={{margin:"16px 0"}}><PsiResourceCard/></div>}
     <div style={{display:"flex",justifyContent:"space-between",marginTop:20}}>
       <button className="btn bo"onClick={()=>step>0&&goStep(prevVisibleStep(step))}disabled={step===0}>← Back</button>
-      <button className="btn bpk"onClick={async()=>{if(steps[step].custom==="account"){const email=ans.email||"";if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setAcctErr("Please enter a valid email in the demographics step.");return}if(acctPw.length<8){setAcctErr("Password must be at least 8 characters.");return}if(!/[A-Z]/.test(acctPw)){setAcctErr("Password must contain at least 1 uppercase letter.");return}if(!/[0-9]/.test(acctPw)){setAcctErr("Password must contain at least 1 number.");return}if(acctPw!==acctPwC){setAcctErr("Passwords do not match.");return}L("account_created",{email,userId:authSession?.userId});setAcctErr(null);goStep(nextVisibleStep(step))}else if(blocked){setTriedNext(true)}else{goStep(nextVisibleStep(step))}}}style={{opacity:blocked?0.4:1}}>{steps[step].custom==="account"?"Secure Account & Submit →":step===steps.length-1?"Submit Assessment →":"Continue →"}</button>
+      <button className="btn bpk"onClick={async()=>{if(steps[step].custom==="account"){const email=ans.email||"";if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setAcctErr("Please enter a valid email in the demographics step.");return}if(acctPw.length<8){setAcctErr("Password must be at least 8 characters.");return}if(!/[A-Z]/.test(acctPw)){setAcctErr("Password must contain at least 1 uppercase letter.");return}if(!/[0-9]/.test(acctPw)){setAcctErr("Password must contain at least 1 number.");return}if(acctPw!==acctPwC){setAcctErr("Passwords do not match.");return}L("account_created",{email,userId:authSession?.userId});setAcctErr(null);goStep(nextVisibleStep(step))}else if(blocked){setTriedNext(true)}else if(step===2){setVoiceMode("fork")}else{goStep(nextVisibleStep(step))}}}style={{opacity:blocked?0.4:1}}>{steps[step].custom==="account"?"Secure Account & Submit →":step===steps.length-1?"Submit Assessment →":"Continue →"}</button>
     </div></div>;
 }
 
@@ -4061,8 +4019,7 @@ const ors=await db("listOutcomeRecords",{});if(ors&&ors.length>0){const exIds=ne
     </div>
     <div ref={mainRef} style={{overflowY:"auto",maxHeight:"calc(100vh - 56px)"}}>
       <div className="mn" key={"p"+rk} style={{display:mode==="patient"?"block":"none"}}>
-        {pView==="landing"&&<LandingPage onDone={()=>setPView("consent")} onLogin={()=>setPView("patientLogin")} onVoice={()=>setPView("voiceIntake")}/>}
-        {pView==="voiceIntake"&&<VoiceIntake onBack={()=>setPView("landing")} onDone={()=>setPView("done")}/>}
+        {pView==="landing"&&<LandingPage onDone={()=>setPView("consent")} onLogin={()=>setPView("patientLogin")}/>}
         {pView==="patientLogin"&&<PatientLogin onBack={()=>setPView("landing")} onDone={()=>setPView("done")}/>}
         {pView==="consent"&&<Consent ck={consentCk} setCk={setConsentCk} onBack={()=>setPView("landing")} onDone={()=>{L("consent_completed");setPView("verify")}}/>}
         {pView==="verify"&&<IdentityVerify onBack={()=>setPView("consent")} onDone={(em)=>{setLandingEmail(em);L("email_verified",{email:em});setPView("intake")}}/>}
