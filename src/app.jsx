@@ -1766,6 +1766,7 @@ function Intake({onDone,mainRef,initialEmail}){
   const visibleIdx=visibleSteps.indexOf(step);
   // Block on demographics (step 0): under 18 OR required fields incomplete
   const page1Incomplete=step===0&&(!ans.name_first||!ans.name_last||!ans.dob||!ans.sex_at_birth||(!isMale&&!ans.pregnancy_status)||!ans.insurance_type||!ans.email);
+  const missingFields=step===0?[...(!ans.name_first||!ans.name_last?["name"]:[]),!ans.email?"email":"",!ans.dob?"date of birth":"",!ans.sex_at_birth?"sex":"",!isMale&&!ans.pregnancy_status?"pregnancy status":"",!ans.insurance_type?"insurance type":""].filter(Boolean):[];
   // Block on screener step: require all 4 screener answers
   const screenerIncomplete=step===3&&(!ans.screen_pain||!ans.screen_sexual);
   // Block on POPDI-6 step: require all 6 yes/no answers + bother for each "yes"
@@ -1917,7 +1918,7 @@ function Intake({onDone,mainRef,initialEmail}){
       <div style={{background:C.purp,color:C.white,padding:"6px 14px",borderRadius:20,fontSize:12,fontWeight:600,flexShrink:0}}>{visibleIdx+1} / {visibleSteps.length}</div>
     </div>
     <div style={{display:"flex",gap:3,marginBottom:20}}>{visibleSteps.map((si,vi)=><div key={si}style={{flex:1,height:4,borderRadius:2,background:si<=step?`linear-gradient(90deg,${C.pink},${C.purp})`:C.g200,transition:"all .3s"}}/>)}</div>
-    {triedNext&&page1Incomplete&&step===0&&!isUnder18&&!isMale&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please complete the required fields — name, email, date of birth, sex, pregnancy status, and insurance type — to continue.</div>}
+    {triedNext&&page1Incomplete&&step===0&&!isUnder18&&!isMale&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>{"Please complete: "+missingFields.join(", ")+"."}</div>}
     {isUnder18&&step===0&&<div className="ra"style={{background:"#FEE2E2",borderColor:C.rd,color:"#991B1B",fontSize:14,fontWeight:600,marginBottom:14}}>⛔ This program is designed for adults 18 years and older. Based on the date of birth you entered, you are under 18. If you believe this is an error, please correct your date of birth above.</div>}
     {isMale&&step===0&&<div className="ra"style={{background:"#EFF6FF",borderColor:C.blue,color:"#1E40AF",fontSize:14,fontWeight:500,marginBottom:14,lineHeight:1.7}}>Our male pelvic floor program is coming soon. In the meantime, please contact us at <strong>support@expecthealth.com</strong> for a referral to a pelvic floor PT in your area.</div>}
     {isOver115&&step===0&&<div className="ra"style={{background:"#FEF3C7",borderColor:C.or,color:"#92400E",fontSize:14,fontWeight:600,marginBottom:14}}>The date of birth you entered would make you over 115 years old. Could you double-check that your birth date is correct? Typos in the year are common.</div>}
@@ -1958,7 +1959,7 @@ function Intake({onDone,mainRef,initialEmail}){
     {step===0&&ans.prenatal_flag&&<div style={{background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:10,padding:"12px 16px",margin:"8px 0 12px",fontSize:13,color:"#166534",lineHeight:1.6}}>We'll tailor your care plan with prenatal-safe modifications so you can safely support your pelvic floor throughout your pregnancy.</div>}
     <ConsistencyAlerts ans={ans} currentQIds={steps[step].qs.map(q=>q.id)}/>
     {steps[step].qs.some(q=>q.id==="phq2_mood")&&phq2Score>=2&&<div style={{margin:"16px 0"}}><PsiResourceCard/></div>}
-    {triedNext&&page1Incomplete&&step===0&&!isUnder18&&!isMale&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>Please complete the required fields — name, email, date of birth, sex, pregnancy status, and insurance type — to continue.</div>}
+    {triedNext&&page1Incomplete&&step===0&&!isUnder18&&!isMale&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>{"Please complete: "+missingFields.join(", ")+"."}</div>}
     {triedNext&&screenerIncomplete&&step===3&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>Please answer both screening questions to continue.</div>}
     {triedNext&&popdiIncomplete&&step===7&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>Please answer all six questions. For each "Yes" answer, please also select how much it bothers you.</div>}
     {triedNext&&iciqIncomplete&&step===4&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>Please answer all bladder leakage questions to continue.</div>}
