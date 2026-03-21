@@ -1183,8 +1183,8 @@ After all questions, call complete_intake with status "complete".
 
 CLOSING: "That's everything, ${initialAns.name_first||""}! I'm now sending your responses to your physical therapist. They will review your information and finalize your care plan. You'll be able to access it by logging into Expect with your email. Thank you for taking the time — you've taken an important step toward feeling better."`}],
       tools:[
-        {type:"function","function":{name:"record_answer",description:"Record a single confirmed answer from the patient",parameters:{type:"object",properties:{questionId:{type:"string",description:"The answer key (e.g. iciq1, screen_pain)"},value:{description:"The answer value (string, number, or array for multi-select)"}},required:["questionId","value"]}}},
-        {type:"function","function":{name:"record_answers",description:"Record multiple confirmed answers at once",parameters:{type:"object",properties:{answers:{type:"array",items:{type:"object",properties:{questionId:{type:"string"},value:{}},required:["questionId","value"]}}},required:["answers"]}}},
+        {type:"function","function":{name:"record_answer",description:"Record a single confirmed answer from the patient",parameters:{type:"object",properties:{questionId:{type:"string",description:"The answer key (e.g. iciq1, screen_pain)"},value:{type:["string","number","integer","array"],description:"The answer value (string, number, or array for multi-select)"}},required:["questionId","value"]}}},
+        {type:"function","function":{name:"record_answers",description:"Record multiple confirmed answers at once",parameters:{type:"object",properties:{answers:{type:"array",items:{type:"object",properties:{questionId:{type:"string"},value:{type:["string","number","integer","array"]}},required:["questionId","value"]}}},required:["answers"]}}},
         {type:"function","function":{name:"complete_intake",description:"Signal that the intake conversation is finished",parameters:{type:"object",properties:{status:{type:"string",enum:["complete"],description:"Intake completed"}},required:["status"]}}}
       ]
     },
