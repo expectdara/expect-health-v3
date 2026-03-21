@@ -1689,7 +1689,7 @@ function Intake({onDone,mainRef,initialEmail}){
   const[acctPw,setAcctPw]=useState("");const[acctPwC,setAcctPwC]=useState("");const[acctErr,setAcctErr]=useState(null);const doneRef=useRef(false);
   const[voiceMode,setVoiceMode]=useState(null); // null|"fork"|"consent"|"active"
   const[voiceConsent,setVoiceConsent]=useState(false);
-  const[techStep,setTechStep]=useState(0);const[micLevel,setMicLevel]=useState(0);const[micOk,setMicOk]=useState(false);const[netMs,setNetMs]=useState(null);const[speakerPlaying,setSpeakerPlaying]=useState(false);
+  const[techStep,setTechStep]=useState(0);const[micLevel,setMicLevel]=useState(0);const[micOk,setMicOk]=useState(false);const[netMs,setNetMs]=useState(null);const[speakerPlaying,setSpeakerPlaying]=useState(false);const[micErr,setMicErr]=useState("");
   const techStreamRef=useRef(null);const techAudioRef=useRef(null);const techAnimRef=useRef(null);
   const[saveState,setSaveState]=useState("idle");// idle|saving|saved|failed
   const[showDraftBanner,setShowDraftBanner]=useState(!!initState);
@@ -1701,7 +1701,7 @@ function Intake({onDone,mainRef,initialEmail}){
     db("createSession",{userId:authSession.userId,email:authSession.email,sessionToken:authSession.sessionToken,expiresAt:authSession.expiresAt,createdAt:authSession.createdAt});
     try{localStorage.setItem("expect_session",authSession.sessionToken)}catch(e){}
   },[]);
-  useEffect(()=>{if(voiceMode!=="techcheck"){if(techAnimRef.current){cancelAnimationFrame(techAnimRef.current);techAnimRef.current=null}if(techAudioRef.current){try{techAudioRef.current.close()}catch(e){}techAudioRef.current=null}if(techStreamRef.current){techStreamRef.current.getTracks().forEach(t=>t.stop());techStreamRef.current=null}setMicLevel(0)}},[voiceMode]);
+  useEffect(()=>{if(voiceMode!=="techcheck"){if(techAnimRef.current){clearInterval(techAnimRef.current);techAnimRef.current=null}if(techAudioRef.current){try{techAudioRef.current.close()}catch(e){}techAudioRef.current=null}if(techStreamRef.current){techStreamRef.current.getTracks().forEach(t=>t.stop());techStreamRef.current=null}setMicLevel(0)}},[voiceMode]);
   const set=(k,v)=>{setAns(p=>{const next={...p,[k]:v};if(k==="pregnancy_status"){next.prenatal_flag=v==="pregnant";if(v==="pregnant")L("PRENATAL_PROTOCOL_APPLIED",{context:"PATIENT_INDICATED_ACTIVE_PREGNANCY"});if(v!=="pregnant"){delete next.ex_highrisk_preg;setRfs(r=>r.filter(f=>f.id!=="ex_highrisk_preg"));setSafetyTriggered(s=>{const n={...s};delete n.ex_highrisk_preg;return n})}}if(k==="screen_pain"&&v==="no"){["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d","gupi3","gupi4","pain1","pain3","symptoms_trigger"].forEach(key=>delete next[key])}if(k==="screen_sexual"&&v==="no"){["fs2a","fs2b","fs3a","fs3b","fs4a","fs4b","fs5a","fs5b"].forEach(key=>delete next[key])}if(k.startsWith("popdi")&&!k.includes("_bother")&&v==="no"){delete next[k+"_bother"]}return next})};
   const togM=(k,v)=>setAns(p=>{
     const cur=p[k]||[];
@@ -1844,15 +1844,26 @@ function Intake({onDone,mainRef,initialEmail}){
         </label>
       </div>
     </div>
-    <button className="btn bpk"disabled={!voiceConsent}onClick={()=>{L("voice_consent_given",{patient:(ans.name_first||"")+" "+(ans.name_last||"")});setTechStep(0);setMicOk(false);setNetMs(null);setVoiceMode("techcheck")}}style={{width:"100%",justifyContent:"center",opacity:voiceConsent?1:.4}}>Continue →</button>
+    <button className="btn bpk"disabled={!voiceConsent}onClick={()=>{L("voice_consent_given",{patient:(ans.name_first||"")+" "+(ans.name_last||"")});setTechStep(0);setMicOk(false);setNetMs(null);setMicErr("");setVoiceMode("techcheck")}}style={{width:"100%",justifyContent:"center",opacity:voiceConsent?1:.4}}>Continue →</button>
     <div style={{textAlign:"center",marginTop:12}}><button className="btn"onClick={()=>{setVoiceMode("fork");setVoiceConsent(false)}}style={{fontSize:12,color:C.g500}}>← Back to options</button></div>
     <div style={{textAlign:"center",marginTop:4}}><button className="btn"onClick={()=>{setVoiceMode(null);goStep(nextVisibleStep(2))}}style={{fontSize:12,color:C.g500}}>Switch to standard text form →</button></div>
   </div>;
   // TECH CHECK — speaker, mic + network, handoff
   if(voiceMode==="techcheck"){const switchToForm=()=>{setVoiceMode(null);goStep(nextVisibleStep(2))};
   const playTone=()=>{setSpeakerPlaying(true);const ctx=new(window.AudioContext||window.webkitAudioContext)();const osc=ctx.createOscillator();const g=ctx.createGain();osc.type="sine";osc.frequency.value=440;g.gain.value=0.3;osc.connect(g);g.connect(ctx.destination);osc.start();setTimeout(()=>{osc.stop();ctx.close();setSpeakerPlaying(false)},1500)};
-  const startMicCheck=async()=>{try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});techStreamRef.current=stream;const ctx=new(window.AudioContext||window.webkitAudioContext)();techAudioRef.current=ctx;await ctx.resume();const src=ctx.createMediaStreamSource(stream);const analyser=ctx.createAnalyser();analyser.fftSize=256;src.connect(analyser);const buf=new Uint8Array(analyser.fftSize);let detected=false;const loop=()=>{analyser.getByteTimeDomainData(buf);let peak=0;for(let i=0;i<buf.length;i++){const v=Math.abs(buf[i]-128);if(v>peak)peak=v}setMicLevel(Math.min(peak/80,1));if(peak>3&&!detected){detected=true;setMicOk(true)}techAnimRef.current=requestAnimationFrame(loop)};loop();const t0=performance.now();try{await fetch(window.location.origin,{method:"HEAD",cache:"no-store"});setNetMs(Math.round(performance.now()-t0))}catch(e){setNetMs(-1)}}catch(e){setNetMs(-1)}};
-  const cleanupMic=()=>{if(techAnimRef.current){cancelAnimationFrame(techAnimRef.current);techAnimRef.current=null}if(techAudioRef.current){try{techAudioRef.current.close()}catch(e){}techAudioRef.current=null}if(techStreamRef.current){techStreamRef.current.getTracks().forEach(t=>t.stop());techStreamRef.current=null}};
+  const startMicCheck=async()=>{setMicErr("");
+    // Create AudioContext NOW in user-gesture context so it auto-resumes
+    const AC=window.AudioContext||window.webkitAudioContext;const ctx=new AC();techAudioRef.current=ctx;
+    let stream;try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(e){setMicErr("Microphone access denied. Please allow mic access in your browser and try again.");try{ctx.close()}catch(x){}return}
+    techStreamRef.current=stream;if(ctx.state==="suspended")try{await ctx.resume()}catch(e){}
+    const src=ctx.createMediaStreamSource(stream);const analyser=ctx.createAnalyser();analyser.fftSize=2048;analyser.smoothingTimeConstant=0.3;src.connect(analyser);
+    const buf=new Float32Array(analyser.fftSize);let detected=false;
+    // Poll at 10fps with setInterval — reliable, low CPU
+    const id=setInterval(()=>{analyser.getFloatTimeDomainData(buf);let sum=0;for(let i=0;i<buf.length;i++)sum+=buf[i]*buf[i];const rms=Math.sqrt(sum/buf.length);setMicLevel(Math.min(rms*8,1));if(rms>0.01&&!detected){detected=true;setMicOk(true)}},100);
+    techAnimRef.current=id;
+    // Network ping (separate from mic)
+    try{const t0=performance.now();await fetch(window.location.origin,{method:"HEAD",cache:"no-store"});setNetMs(Math.round(performance.now()-t0))}catch(e){setNetMs(-1)}};
+  const cleanupMic=()=>{if(techAnimRef.current){clearInterval(techAnimRef.current);techAnimRef.current=null}if(techAudioRef.current){try{techAudioRef.current.close()}catch(e){}techAudioRef.current=null}if(techStreamRef.current){techStreamRef.current.getTracks().forEach(t=>t.stop());techStreamRef.current=null}};
   return<div className="fi"style={{maxWidth:520,margin:"0 auto"}}>
     <div style={{textAlign:"center",marginBottom:20,paddingTop:8}}>
       <div className="h1"style={{fontSize:20,color:C.purp}}>Equipment Check</div>
@@ -1877,9 +1888,11 @@ function Intake({onDone,mainRef,initialEmail}){
       <div style={{fontSize:15,fontWeight:700,color:C.purpD,marginBottom:8}}>Microphone Check</div>
       <div style={{fontSize:13,color:C.g600,lineHeight:1.6,marginBottom:16}}>Say something — you should see the bar move.</div>
       <div style={{height:12,background:C.g100,borderRadius:6,overflow:"hidden",marginBottom:16}}><div style={{height:"100%",width:`${Math.max(micLevel*100,2)}%`,background:micOk?`linear-gradient(90deg,${C.gn},#34D399)`:`linear-gradient(90deg,${C.purp},${C.pink})`,borderRadius:6,transition:"width .1s"}}/></div>
+      {micErr&&<div style={{fontSize:12,color:C.rd,fontWeight:600,marginBottom:8}}>{micErr}</div>}
+      {micErr&&<button className="btn"onClick={()=>{setMicErr("");startMicCheck()}}style={{margin:"0 auto 12px",display:"flex",justifyContent:"center",color:C.purp,fontSize:12,fontWeight:600}}>Try again</button>}
       {micOk&&<div style={{fontSize:12,color:C.gn,fontWeight:600,marginBottom:8}}>✓ Microphone detected</div>}
       {netMs!==null&&netMs>0&&<div style={{fontSize:12,color:netMs>500?C.or:C.gn,fontWeight:600,marginBottom:8}}>Network latency: {netMs}ms {netMs>500?"— voice may be slow":"— looks good"}</div>}
-      {netMs===-1&&<div style={{fontSize:12,color:C.or,fontWeight:600,marginBottom:8}}>Could not reach voice server — check your connection</div>}
+      {netMs===-1&&<div style={{fontSize:12,color:C.or,fontWeight:600,marginBottom:8}}>Network check failed — voice may still work</div>}
       {netMs>500&&<div style={{background:"#FEF3C7",border:"1px solid #FDE68A",borderRadius:8,padding:"10px 14px",fontSize:12,color:"#78350F",lineHeight:1.6,marginBottom:12}}>Your connection seems slow. Voice intake may not work well. Consider using the standard text form instead.</div>}
       <button className="btn bpk"onClick={()=>{cleanupMic();setTechStep(2)}}disabled={!micOk}style={{margin:"0 auto",display:"flex",justifyContent:"center",opacity:micOk?1:.4}}>My mic is working →</button>
     </div>}
@@ -1890,7 +1903,7 @@ function Intake({onDone,mainRef,initialEmail}){
       <button className="btn bpk"onClick={()=>setVoiceMode("active")}style={{margin:"0 auto",display:"flex",justifyContent:"center",fontSize:16,padding:"14px 32px"}}>🎤 Start Intake</button>
     </div>}
     <div style={{textAlign:"center",marginTop:16}}><button className="btn"onClick={switchToForm}style={{fontSize:12,color:C.g500}}>Switch to standard text form →</button></div>
-    <div style={{textAlign:"center",marginTop:4}}><button className="btn"onClick={()=>{cleanupMic();setTechStep(0);setMicOk(false);setNetMs(null);setVoiceMode("consent")}}style={{fontSize:12,color:C.g500}}>← Back</button></div>
+    <div style={{textAlign:"center",marginTop:4}}><button className="btn"onClick={()=>{cleanupMic();setTechStep(0);setMicOk(false);setNetMs(null);setMicErr("");setVoiceMode("consent")}}style={{fontSize:12,color:C.g500}}>← Back</button></div>
   </div>}
   // VOICE ACTIVE — full VoiceIntake component
   if(voiceMode==="active")return<VoiceIntake initialAns={ans} onBack={()=>{setVoiceMode("fork");setVoiceConsent(false)}} onDone={onDone} onSwitchToForm={()=>{setVoiceMode(null);goStep(nextVisibleStep(2))}}/>;
