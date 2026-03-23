@@ -1958,7 +1958,13 @@ function Intake({onDone,mainRef,initialEmail}){
     <div style={{display:"flex",gap:3,marginBottom:20}}>{visibleSteps.map((si,vi)=><div key={si}style={{flex:1,height:4,borderRadius:2,background:si<=step?`linear-gradient(90deg,${C.pink},${C.purp})`:C.g200,transition:"all .3s"}}/>)}</div>
     {triedNext&&page1Incomplete&&step===0&&!isUnder18&&!isMale&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>{"Please complete: "+missingFields.join(", ")+"."}</div>}
     {isUnder18&&step===0&&<div className="ra"style={{background:"#FEE2E2",borderColor:C.rd,color:"#991B1B",fontSize:14,fontWeight:600,marginBottom:14}}>⛔ This program is designed for adults 18 years and older. Based on the date of birth you entered, you are under 18. If you believe this is an error, please correct your date of birth above.</div>}
-    {isMale&&step===0&&<div className="ra"style={{background:"#EFF6FF",borderColor:C.blue,color:"#1E40AF",fontSize:14,fontWeight:500,marginBottom:14,lineHeight:1.7}}>Our male pelvic floor program is coming soon. In the meantime, please contact us at <strong>support@expecthealth.com</strong> for a referral to a pelvic floor PT in your area.</div>}
+    {isMale&&step===0&&<div style={{background:"#EFF6FF",border:"2px solid #3B82F6",borderRadius:12,padding:"32px 24px",textAlign:"center",margin:"20px 0"}}>
+      <div style={{fontSize:36,marginBottom:12}}>👋</div>
+      <div style={{fontSize:18,fontWeight:700,color:"#1E40AF",marginBottom:12}}>Male Pelvic Floor Program Coming Soon</div>
+      <p style={{fontSize:14,color:"#1E3A5F",lineHeight:1.7,maxWidth:480,margin:"0 auto 20px"}}>We're building a dedicated program for male pelvic floor health — including post-prostatectomy recovery, chronic pelvic pain, and more. In the meantime, we can help connect you with a specialist in your area.</p>
+      <a href="mailto:support@expecthealth.com"style={{display:"inline-flex",alignItems:"center",gap:8,background:"#3B82F6",color:"#fff",padding:"12px 24px",borderRadius:8,fontSize:14,fontWeight:600,textDecoration:"none"}}>Contact support@expecthealth.com</a>
+      <div style={{fontSize:12,color:"#64748B",marginTop:16,lineHeight:1.6}}>If you selected Male by mistake, choose Female above to continue.</div>
+    </div>}
     {isOver115&&step===0&&<div className="ra"style={{background:"#FEF3C7",borderColor:C.or,color:"#92400E",fontSize:14,fontWeight:600,marginBottom:14}}>The date of birth you entered would make you over 115 years old. Could you double-check that your birth date is correct? Typos in the year are common.</div>}
     {hasER&&step===1&&<div className="ra"style={{background:"#FEE2E2",borderColor:C.rd,color:"#991B1B",fontSize:15,fontWeight:600,marginBottom:14}}>⛔ STOP — Please call 911 or go to the nearest emergency room immediately.</div>}
     {hasAnyRF&&!hasER&&step===1&&<div className="ra"style={{background:"#FEF3C7",borderColor:C.or,color:"#92400E",fontSize:14,fontWeight:600,marginBottom:14}}>⚠ Based on your responses, you need to see your physician before starting this program. Please contact your doctor for evaluation.</div>}
@@ -1993,7 +1999,7 @@ function Intake({onDone,mainRef,initialEmail}){
       <div style={{marginBottom:14}}><div className="il">Confirm Password</div><input className="inp"type="password"value={acctPwC}onChange={e=>{setAcctPwC(e.target.value);setAcctErr(null)}}placeholder="Re-enter password"/></div>
       {acctErr&&<div style={{color:C.rd,fontSize:12,marginBottom:8,padding:"6px 10px",background:`${C.rd}10`,borderRadius:6}}>{acctErr}</div>}
       <div style={{fontSize:11,color:C.g400,lineHeight:1.5}}>Your password must be at least 8 characters with at least 1 uppercase letter and 1 number. This account will be used to access your care plan securely.</div>
-    </div>:steps[step].qs.map(q=><Q key={q.id}q={q}ans={ans}set={set}togM={togM}rfs={rfs}setRfs={setRfs}safetyTriggered={safetyTriggered}setSafetyTriggered={setSafetyTriggered}showSafetyModal={showSafetyModal}setShowSafetyModal={setShowSafetyModal}/>)}
+    </div>:(isMale&&step===0?steps[step].qs.filter(q=>["name","dob","sex_at_birth"].includes(q.id)):steps[step].qs).map(q=><Q key={q.id}q={q}ans={ans}set={set}togM={togM}rfs={rfs}setRfs={setRfs}safetyTriggered={safetyTriggered}setSafetyTriggered={setSafetyTriggered}showSafetyModal={showSafetyModal}setShowSafetyModal={setShowSafetyModal}/>)}
     {step===0&&ans.prenatal_flag&&<div style={{background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:10,padding:"12px 16px",margin:"8px 0 12px",fontSize:13,color:"#166534",lineHeight:1.6}}>We'll tailor your care plan with prenatal-safe modifications so you can safely support your pelvic floor throughout your pregnancy.</div>}
     <ConsistencyAlerts ans={ans} currentQIds={steps[step].qs.map(q=>q.id)}/>
     {steps[step].qs.some(q=>q.id==="phq2_mood")&&phq2Score>=2&&<div style={{margin:"16px 0"}}><PsiResourceCard/></div>}
@@ -2004,10 +2010,10 @@ function Intake({onDone,mainRef,initialEmail}){
     {triedNext&&bowelIncomplete&&step===6&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>Please answer the bowel frequency and stool type questions to continue.</div>}
     {triedNext&&painIncomplete&&step===8&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>Please use the sliders to rate your current pain level and average pain to continue.</div>}
     {triedNext&&phq2Incomplete&&step===11&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>Please answer both mental health screening questions to continue.</div>}
-    <div style={{display:"flex",justifyContent:"space-between",marginTop:20}}>
+    {!(isMale&&step===0)&&<div style={{display:"flex",justifyContent:"space-between",marginTop:20}}>
       <button className="btn bo"onClick={()=>step>0&&goStep(prevVisibleStep(step))}disabled={step===0}>← Back</button>
       <button className="btn bpk"onClick={async()=>{if(steps[step].custom==="account"){const email=ans.email||"";if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setAcctErr("Please enter a valid email in the demographics step.");return}if(acctPw.length<8){setAcctErr("Password must be at least 8 characters.");return}if(!/[A-Z]/.test(acctPw)){setAcctErr("Password must contain at least 1 uppercase letter.");return}if(!/[0-9]/.test(acctPw)){setAcctErr("Password must contain at least 1 number.");return}if(acctPw!==acctPwC){setAcctErr("Passwords do not match.");return}L("account_created",{email,userId:authSession?.userId});setAcctErr(null);goStep(nextVisibleStep(step))}else if(blocked){setTriedNext(true)}else if(step===2){setVoiceMode("fork")}else{goStep(nextVisibleStep(step))}}}style={{opacity:blocked?0.4:1}}>{steps[step].custom==="account"?"Secure Account & Submit →":step===steps.length-1?"Submit Assessment →":"Continue →"}</button>
-    </div></div>;
+    </div>}</div>;
 }
 
 function PatientWaiting({name}){
