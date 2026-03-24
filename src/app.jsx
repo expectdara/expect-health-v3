@@ -1580,27 +1580,33 @@ function VoiceIntake({initialAns,onBack,onDone,onSwitchToForm}){
       vapiRef.current=vapi;
 
       const assistantConfig=buildVoiceAssistant(initialAns);
-      // Pre-populate transcript with the known firstMessage (avoids phonetic STT issues)
-      const greetingAdded={current:false};
+      const greetingText=assistantConfig.firstMessage.toLowerCase();
+      let connected=false;
 
-      vapi.on("call-start",()=>{setStatus("active");if(!greetingAdded.current){greetingAdded.current=true;setTranscript([{role:"assistant",text:assistantConfig.firstMessage}])}});
+      // Pre-populate transcript with firstMessage on call-start (avoids phonetic STT)
+      setTranscript([{role:"assistant",text:assistantConfig.firstMessage}]);
+
+      vapi.on("call-start",()=>{connected=true;setStatus("active")});
       vapi.on("call-end",()=>{if(!doneRef.current){setStatus("idle")}});
       vapi.on("error",(e)=>{console.error("[Vapi error]",e);setErrMsg(typeof e==="string"?e:e?.message||e?.error?.message||"Voice connection error");setStatus("error")});
 
-      // Connection timeout — if stuck connecting for 20s, show error
-      const connectTimeout=setTimeout(()=>{if(!doneRef.current&&vapiRef.current){setErrMsg("Connection is taking too long. Try reloading the page or switch to the standard text form.");setStatus("error");try{vapiRef.current.stop()}catch(e){}}},20000);
+      // Connection timeout — 45s to allow greeting to finish speaking
+      const connectTimeout=setTimeout(()=>{if(!connected&&!doneRef.current){setErrMsg("Connection is taking too long. Try reloading the page or switch to the standard text form.");setStatus("error");try{vapiRef.current.stop()}catch(e){}}},45000);
       vapi.on("call-start",()=>clearTimeout(connectTimeout));
       vapi.on("error",()=>clearTimeout(connectTimeout));
 
       vapi.on("message",(msg)=>{
-        // For user speech: use Deepgram transcript
+        // User speech: show Deepgram transcript
         if(msg.type==="transcript"&&msg.transcriptType==="final"&&msg.role==="user"){
           setTranscript(prev=>[...prev,{role:"user",text:msg.transcript}]);
         }
-        // For AI responses: use model text output (not phonetic STT of TTS)
+        // AI speech: skip Deepgram STT fragments that are part of the firstMessage greeting
+        // (greeting is already pre-populated). Only show NEW AI responses.
         if(msg.type==="transcript"&&msg.transcriptType==="final"&&msg.role==="assistant"){
-          if(!greetingAdded.current){greetingAdded.current=true;setTranscript(prev=>[...prev,{role:"assistant",text:assistantConfig.firstMessage}])}
-          else{setTranscript(prev=>[...prev,{role:"assistant",text:msg.transcript}])}
+          const frag=msg.transcript.toLowerCase().trim();
+          if(frag.length>3&&!greetingText.includes(frag)){
+            setTranscript(prev=>[...prev,{role:"assistant",text:msg.transcript}]);
+          }
         }
         if(msg.type==="function-call"){
           const fn=msg.functionCall||msg;
