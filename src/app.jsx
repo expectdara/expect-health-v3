@@ -1854,8 +1854,15 @@ function Intake({onDone,mainRef,initialEmail}){
   if(voiceMode==="techcheck"){const switchToForm=()=>{setVoiceMode(null);goStep(nextVisibleStep(2))};
   const playTone=()=>{setSpeakerPlaying(true);const ctx=new(window.AudioContext||window.webkitAudioContext)();const osc=ctx.createOscillator();const g=ctx.createGain();osc.type="sine";osc.frequency.value=440;g.gain.value=0.3;osc.connect(g);g.connect(ctx.destination);osc.start();setTimeout(()=>{osc.stop();ctx.close();setSpeakerPlaying(false)},1500)};
   const startMicCheck=async(deviceId)=>{setMicErr("");setMicPhase("idle");
+    /* Pre-check: if browser already denied mic, skip getUserMedia (it won't prompt again) */
+    try{if(navigator.permissions&&navigator.permissions.query){const perm=await navigator.permissions.query({name:"microphone"});if(perm.state==="denied"){setMicErr("BLOCKED");return}}}catch(e){}
     const constraints={audio:deviceId?{deviceId:{exact:deviceId}}:true};
-    let stream;try{stream=await navigator.mediaDevices.getUserMedia(constraints)}catch(e){setMicErr("Microphone access denied. Please allow mic access in your browser and try again.");return}
+    let stream;try{stream=await navigator.mediaDevices.getUserMedia(constraints)}catch(e){
+      if(e.name==="NotFoundError"||e.name==="DevicesNotFoundError"){setMicErr("NO_MIC")}
+      else if(e.name==="NotAllowedError"||e.name==="PermissionDeniedError"){setMicErr("BLOCKED")}
+      else if(e.name==="NotReadableError"||e.name==="TrackStartError"){setMicErr("IN_USE")}
+      else{setMicErr("MIC_ERR")}
+      return}
     techStreamRef.current=stream;
     try{const devs=await navigator.mediaDevices.enumerateDevices();const mics=devs.filter(d=>d.kind==="audioinput");setMicDevices(mics);if(!deviceId&&mics.length>0)setSelectedDeviceId(mics[0].deviceId)}catch(e){}
     try{const t0=performance.now();await fetch(window.location.origin,{method:"HEAD",cache:"no-store"});setNetMs(Math.round(performance.now()-t0))}catch(e){setNetMs(-1)}};
@@ -1892,7 +1899,28 @@ function Intake({onDone,mainRef,initialEmail}){
     {techStep===1&&<div className="card"style={{borderColor:C.purp,textAlign:"center"}}>
       <div style={{fontSize:36,marginBottom:12}}>🎤</div>
       <div style={{fontSize:15,fontWeight:700,color:C.purpD,marginBottom:8}}>Microphone Check</div>
-      {micErr&&<div style={{fontSize:12,color:C.rd,fontWeight:600,marginBottom:12}}>{micErr}</div>}
+      {micErr==="BLOCKED"&&<div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:8,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#991B1B",marginBottom:8}}>Microphone permission blocked</div>
+        <div style={{fontSize:12,color:"#7F1D1D",lineHeight:1.7}}>
+          Your browser is blocking mic access. To fix this:<br/>
+          <strong>1.</strong> Click the <strong>lock icon</strong> (or site settings icon) in your browser's address bar<br/>
+          <strong>2.</strong> Find <strong>Microphone</strong> and change it to <strong>Allow</strong><br/>
+          <strong>3.</strong> Reload the page and try again<br/><br/>
+          <strong>On Mac?</strong> Also check: <em>System Settings → Privacy & Security → Microphone</em> — make sure your browser (Chrome/Safari) is toggled ON.
+        </div>
+      </div>}
+      {micErr==="NO_MIC"&&<div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:8,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#991B1B",marginBottom:8}}>No microphone found</div>
+        <div style={{fontSize:12,color:"#7F1D1D",lineHeight:1.7}}>We couldn't detect a microphone on your device. Please plug in a headset or external mic and try again.</div>
+      </div>}
+      {micErr==="IN_USE"&&<div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:8,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#991B1B",marginBottom:8}}>Microphone is in use</div>
+        <div style={{fontSize:12,color:"#7F1D1D",lineHeight:1.7}}>Another app (Zoom, Teams, FaceTime, etc.) may be using your microphone. Close those apps and try again.</div>
+      </div>}
+      {micErr==="MIC_ERR"&&<div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:8,padding:"14px 16px",marginBottom:16,textAlign:"left"}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#991B1B",marginBottom:8}}>Microphone error</div>
+        <div style={{fontSize:12,color:"#7F1D1D",lineHeight:1.7}}>Something went wrong accessing your microphone. Try reloading the page or using a different browser (Chrome works best).</div>
+      </div>}
       {micErr&&<button className="btn"onClick={()=>startMicCheck(selectedDeviceId)}style={{margin:"0 auto 12px",display:"flex",justifyContent:"center",color:C.purp,fontSize:12,fontWeight:600}}>Try again</button>}
       {micPhase==="idle"&&<>
         <div style={{fontSize:13,color:C.g600,lineHeight:1.6,marginBottom:16}}>Say "Microphone check, 1, 2, 3" and we'll play it back so you can confirm it sounds clear.</div>
