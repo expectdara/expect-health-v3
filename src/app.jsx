@@ -1099,8 +1099,10 @@ RULES:
 10. Bother scales: only ask if primary answer is > 0 or yes.
 11. Free text questions: transcribe verbatim. Do not summarize.
 12. Pace yourself. Pause after each question. This is a clinical interaction.
+13. If the patient says "Repeat", repeat the last question exactly as you asked it.
+14. Wait for the patient to say "yes" or "ready" before starting the first question after your greeting.
 
-START with this greeting: "Hi ${initialAns.name_first||"there"}, I'm your intake assistant. You've already completed the first part of your assessment. Now I'm going to ask you some questions about your symptoms so we can build your personalized care plan. You can take your time, and if you ever need me to repeat a question, just say so. Ready?"
+START with this greeting: "Hi ${initialAns.name_first||"there"}, I'm your intake assistant. You've already completed the first part of your assessment. Now I'm going to ask you some questions about your symptoms so we can build your personalized care plan. You can take your time, and if you ever need me to repeat a question, just say 'Repeat.' Ready?"
 
 SECTION 1: SYMPTOM SCREENING
 screen_pain — "Over the past month, have you felt pain, pressure, or discomfort in your lower stomach, pelvis, bladder, or genital area?" → record_answer("screen_pain", "yes"|"no"). Gates PAIN section.
@@ -1189,7 +1191,7 @@ CLOSING: "That's everything, ${initialAns.name_first||""}! Your responses are be
       ]
     },
     voice:{provider:"11labs",voiceId:"21m00Tcm4TlvDq8ikWAM"},
-    firstMessage:`Hi ${initialAns.name_first||"there"}, I'm your intake assistant. You've already completed the first part of your assessment. Now I'm going to ask you some questions about your symptoms so we can build your personalized care plan. You can take your time, and if you ever need me to repeat a question, just say so. Ready?`,
+    firstMessage:`Hi ${initialAns.name_first||"there"}, I'm your intake assistant. You've already completed the first part of your assessment. Now I'm going to ask you some questions about your symptoms so we can build your personalized care plan. You can take your time, and if you ever need me to repeat a question, just say "Repeat." Ready?`,
     transcriber:{provider:"deepgram",model:"nova-2",language:"en-US"}
   };
 }
@@ -1569,21 +1571,36 @@ function VoiceIntake({initialAns,onBack,onDone,onSwitchToForm}){
   };
 
   const startCall=async()=>{
-    setStatus("connecting");setErrMsg("");
+    setStatus("connecting");setErrMsg("");setTranscript([]);
     try{
       // Load Vapi SDK from CDN at runtime (avoids esbuild bundling issues)
-      const VapiModule=await import("https://esm.sh/@vapi-ai/web@2.3.2");
+      const VapiModule=await import("https://esm.sh/@vapi-ai/web@2.5.2");
       const VapiClass=VapiModule.default;
       const vapi=new VapiClass(VAPI_PUBLIC_KEY);
       vapiRef.current=vapi;
 
-      vapi.on("call-start",()=>setStatus("active"));
+      const assistantConfig=buildVoiceAssistant(initialAns);
+      // Pre-populate transcript with the known firstMessage (avoids phonetic STT issues)
+      const greetingAdded={current:false};
+
+      vapi.on("call-start",()=>{setStatus("active");if(!greetingAdded.current){greetingAdded.current=true;setTranscript([{role:"assistant",text:assistantConfig.firstMessage}])}});
       vapi.on("call-end",()=>{if(!doneRef.current){setStatus("idle")}});
       vapi.on("error",(e)=>{console.error("[Vapi error]",e);setErrMsg(typeof e==="string"?e:e?.message||e?.error?.message||"Voice connection error");setStatus("error")});
 
+      // Connection timeout — if stuck connecting for 20s, show error
+      const connectTimeout=setTimeout(()=>{if(!doneRef.current&&vapiRef.current){setErrMsg("Connection is taking too long. Try reloading the page or switch to the standard text form.");setStatus("error");try{vapiRef.current.stop()}catch(e){}}},20000);
+      vapi.on("call-start",()=>clearTimeout(connectTimeout));
+      vapi.on("error",()=>clearTimeout(connectTimeout));
+
       vapi.on("message",(msg)=>{
-        if(msg.type==="transcript"&&msg.transcriptType==="final"){
-          setTranscript(prev=>[...prev,{role:msg.role,text:msg.transcript}]);
+        // For user speech: use Deepgram transcript
+        if(msg.type==="transcript"&&msg.transcriptType==="final"&&msg.role==="user"){
+          setTranscript(prev=>[...prev,{role:"user",text:msg.transcript}]);
+        }
+        // For AI responses: use model text output (not phonetic STT of TTS)
+        if(msg.type==="transcript"&&msg.transcriptType==="final"&&msg.role==="assistant"){
+          if(!greetingAdded.current){greetingAdded.current=true;setTranscript(prev=>[...prev,{role:"assistant",text:assistantConfig.firstMessage}])}
+          else{setTranscript(prev=>[...prev,{role:"assistant",text:msg.transcript}])}
         }
         if(msg.type==="function-call"){
           const fn=msg.functionCall||msg;
@@ -1594,7 +1611,6 @@ function VoiceIntake({initialAns,onBack,onDone,onSwitchToForm}){
         }
       });
 
-      const assistantConfig=buildVoiceAssistant(initialAns);
       await vapi.start(assistantConfig);
     }catch(e){
       console.error("[Vapi start error]",e);
