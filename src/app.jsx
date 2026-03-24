@@ -1089,7 +1089,7 @@ CONTEXT: The patient has already completed demographics, safety screening, and e
 RULES:
 1. Ask one question at a time. Wait for the answer before proceeding.
 2. ALWAYS confirm answers before recording, especially numeric values.
-3. After sensitive sections, say: "Thank you for sharing that. I'm collecting this information for your licensed physical therapist, who will review your case and design your care plan."
+3. After sensitive sections, say: "Thank you for sharing that. This information helps us build the most accurate care plan for you."
 4. Use the record_answer tool to save each answer after confirming it.
 5. Use record_answers to batch multiple answers when efficient.
 6. Respect all gating logic strictly.
@@ -1100,7 +1100,7 @@ RULES:
 11. Free text questions: transcribe verbatim. Do not summarize.
 12. Pace yourself. Pause after each question. This is a clinical interaction.
 
-START with this greeting: "Hi ${initialAns.name_first||"there"}, I'm your intake assistant. You've already completed the first part of your assessment. Now I'm going to ask you some questions about your symptoms so your physical therapist can create your care plan. You can take your time, and if you ever need me to repeat a question, just say so. Ready?"
+START with this greeting: "Hi ${initialAns.name_first||"there"}, I'm your intake assistant. You've already completed the first part of your assessment. Now I'm going to ask you some questions about your symptoms so we can build your personalized care plan. You can take your time, and if you ever need me to repeat a question, just say so. Ready?"
 
 SECTION 1: SYMPTOM SCREENING
 screen_pain — "Over the past month, have you felt pain, pressure, or discomfort in your lower stomach, pelvis, bladder, or genital area?" → record_answer("screen_pain", "yes"|"no"). Gates PAIN section.
@@ -1181,7 +1181,7 @@ catchall_pelvic — free text
 WRAP UP:
 After all questions, call complete_intake with status "complete".
 
-CLOSING: "That's everything, ${initialAns.name_first||""}! I'm now sending your responses to your physical therapist. They will review your information and finalize your care plan. You'll be able to access it by logging into Expect with your email. Thank you for taking the time — you've taken an important step toward feeling better."`}],
+CLOSING: "That's everything, ${initialAns.name_first||""}! Your responses are being processed now. A licensed physical therapist will review everything before your care plan is finalized. You'll be able to access it by logging into Expect with your email. Thank you for taking the time — you've taken an important step toward feeling better."`}],
       tools:[
         {type:"function","function":{name:"record_answer",description:"Record a single confirmed answer from the patient",parameters:{type:"object",properties:{questionId:{type:"string",description:"The answer key (e.g. iciq1, screen_pain)"},value:{type:["string","number","integer","array"],description:"The answer value (string, number, or array for multi-select)"}},required:["questionId","value"]}}},
         {type:"function","function":{name:"record_answers",description:"Record multiple confirmed answers at once",parameters:{type:"object",properties:{answers:{type:"array",items:{type:"object",properties:{questionId:{type:"string"},value:{type:["string","number","integer","array"]}},required:["questionId","value"]}}},required:["answers"]}}},
@@ -1189,7 +1189,7 @@ CLOSING: "That's everything, ${initialAns.name_first||""}! I'm now sending your 
       ]
     },
     voice:{provider:"11labs",voiceId:"21m00Tcm4TlvDq8ikWAM"},
-    firstMessage:`Hi ${initialAns.name_first||"there"}, I'm your intake assistant. You've already completed the first part of your assessment. Now I'm going to ask you some questions about your symptoms so your physical therapist can create your care plan. You can take your time, and if you ever need me to repeat a question, just say so. Ready?`,
+    firstMessage:`Hi ${initialAns.name_first||"there"}, I'm your intake assistant. You've already completed the first part of your assessment. Now I'm going to ask you some questions about your symptoms so we can build your personalized care plan. You can take your time, and if you ever need me to repeat a question, just say so. Ready?`,
     transcriber:{provider:"deepgram",model:"nova-2",language:"en-US"}
   };
 }
@@ -1647,7 +1647,7 @@ function VoiceIntake({initialAns,onBack,onDone,onSwitchToForm}){
     {status==="done"&&<div style={{textAlign:"center",padding:"20px 0",marginBottom:16}}>
       <div style={{fontSize:40,marginBottom:8,color:C.gn}}>✓</div>
       <div style={{fontSize:16,fontWeight:700,color:"#166534",marginBottom:4}}>Assessment Complete</div>
-      <div style={{fontSize:13,color:C.g500}}>Your physical therapist will review your responses and finalize your care plan.</div>
+      <div style={{fontSize:13,color:C.g500}}>Your responses are being processed. A licensed PT will review everything before your care plan is finalized.</div>
     </div>}
 
     {status==="processing"&&<div style={{textAlign:"center",padding:"40px 0"}}><div style={{fontSize:36,marginBottom:16,animation:"pulse 1.5s ease-in-out infinite"}}>💾</div><div className="h1"style={{fontSize:20}}>Saving your assessment...</div><p style={{fontSize:13,color:C.g500,marginTop:8}}>Please don't close this page.</p></div>}
