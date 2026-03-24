@@ -1959,10 +1959,9 @@ function Intake({onDone,mainRef,initialEmail}){
     {triedNext&&page1Incomplete&&step===0&&!isUnder18&&!isMale&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>{"Please complete: "+missingFields.join(", ")+"."}</div>}
     {isUnder18&&step===0&&<div className="ra"style={{background:"#FEE2E2",borderColor:C.rd,color:"#991B1B",fontSize:14,fontWeight:600,marginBottom:14}}>⛔ This program is designed for adults 18 years and older. Based on the date of birth you entered, you are under 18. If you believe this is an error, please correct your date of birth above.</div>}
     {isMale&&step===0&&<div style={{background:"#EFF6FF",border:"2px solid #3B82F6",borderRadius:12,padding:"32px 24px",textAlign:"center",margin:"20px 0"}}>
-      <div style={{fontSize:36,marginBottom:12}}>👋</div>
       <div style={{fontSize:18,fontWeight:700,color:"#1E40AF",marginBottom:12}}>Male Pelvic Floor Program Coming Soon</div>
       <p style={{fontSize:14,color:"#1E3A5F",lineHeight:1.7,maxWidth:480,margin:"0 auto 20px"}}>We're building a dedicated program for male pelvic floor health — including post-prostatectomy recovery, chronic pelvic pain, and more. In the meantime, we can help connect you with a specialist in your area.</p>
-      <a href="mailto:support@expecthealth.com"style={{display:"inline-flex",alignItems:"center",gap:8,background:"#3B82F6",color:"#fff",padding:"12px 24px",borderRadius:8,fontSize:14,fontWeight:600,textDecoration:"none"}}>Contact support@expecthealth.com</a>
+      <a href="mailto:team@expect.care"style={{display:"inline-flex",alignItems:"center",gap:8,background:"#3B82F6",color:"#fff",padding:"12px 24px",borderRadius:8,fontSize:14,fontWeight:600,textDecoration:"none"}}>Contact team@expect.care</a>
       <div style={{fontSize:12,color:"#64748B",marginTop:16,lineHeight:1.6}}>If you selected Male by mistake, choose Female above to continue.</div>
     </div>}
     {isOver115&&step===0&&<div className="ra"style={{background:"#FEF3C7",borderColor:C.or,color:"#92400E",fontSize:14,fontWeight:600,marginBottom:14}}>The date of birth you entered would make you over 115 years old. Could you double-check that your birth date is correct? Typos in the year are common.</div>}
