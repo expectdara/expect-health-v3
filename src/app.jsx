@@ -1187,8 +1187,8 @@ After all questions, call complete_intake with status "complete".
 
 CLOSING: "That's everything, ${initialAns.name_first||""}! Your responses are being processed now. A licensed physical therapist will review everything before your care plan is finalized. You'll be able to access it by logging into Expect with your email. Thank you for taking the time — you've taken an important step toward feeling better."`}],
       tools:[
-        {type:"function","function":{name:"record_answer",description:"Record a single confirmed answer from the patient",parameters:{type:"object",properties:{questionId:{type:"string",description:"The answer key (e.g. iciq1, screen_pain)"},value:{type:["string","number","integer","array"],description:"The answer value (string, number, or array for multi-select)"}},required:["questionId","value"]}}},
-        {type:"function","function":{name:"record_answers",description:"Record multiple confirmed answers at once",parameters:{type:"object",properties:{answers:{type:"array",items:{type:"object",properties:{questionId:{type:"string"},value:{type:["string","number","integer","array"]}},required:["questionId","value"]}}},required:["answers"]}}},
+        {type:"function","function":{name:"record_answer",description:"Record a single confirmed answer from the patient. For numeric answers send the number as a string (e.g. '3'). For multi-select send a JSON array as a string (e.g. '[\"stress_cough\",\"stress_exercise\"]').",parameters:{type:"object",properties:{questionId:{type:"string",description:"The answer key (e.g. iciq1, screen_pain)"},value:{type:"string",description:"The answer value as a string"}},required:["questionId","value"]}}},
+        {type:"function","function":{name:"record_answers",description:"Record multiple confirmed answers at once. Values should be strings (numbers as strings, arrays as JSON strings).",parameters:{type:"object",properties:{answers:{type:"array",items:{type:"object",properties:{questionId:{type:"string"},value:{type:"string"}},required:["questionId","value"]}}},required:["answers"]}}},
         {type:"function","function":{name:"complete_intake",description:"Signal that the intake conversation is finished",parameters:{type:"object",properties:{status:{type:"string",enum:["complete"],description:"Intake completed"}},required:["status"]}}}
       ]
     },
@@ -1553,7 +1553,8 @@ function VoiceIntake({initialAns,onBack,onDone,onSwitchToForm}){
   useEffect(()=>{voiceAnsRef.current=voiceAns},[voiceAns]);
 
   const recordAnswer=(qid,val)=>{
-    const v=typeof val==="string"&&/^\d+(\.\d+)?$/.test(val)?parseFloat(val):val;
+    let v=val;
+    if(typeof val==="string"){if(/^\d+(\.\d+)?$/.test(val)){v=parseFloat(val)}else if(/^\[/.test(val)){try{v=JSON.parse(val)}catch(e){}}}
     setVoiceAns(prev=>({...prev,[qid]:v}));
   };
 
