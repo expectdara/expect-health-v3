@@ -1194,7 +1194,9 @@ CLOSING: "That's everything, ${initialAns.name_first||""}! Your responses are be
     },
     voice:{provider:"11labs",voiceId:"21m00Tcm4TlvDq8ikWAM"},
     firstMessage:`Hi ${initialAns.name_first||"there"}, I'm your intake assistant. You've already completed the first part of your assessment. Now I'm going to ask you some questions about your symptoms so we can build your personalized care plan. You can take your time, and if you ever need me to repeat a question, just say "Repeat." Ready?`,
-    transcriber:{provider:"deepgram",model:"nova-2",language:"en-US"}
+    transcriber:{provider:"deepgram",model:"nova-2",language:"en-US"},
+    silenceTimeoutSeconds:60,
+    maxDurationSeconds:1800
   };
 }
 let _flagVer=0;const flagListeners=new Set();
@@ -1575,6 +1577,9 @@ function VoiceIntake({initialAns,onBack,onDone,onSwitchToForm}){
   const startCall=async()=>{
     setStatus("connecting");setErrMsg("");setTranscript([]);
     try{
+      // Release any lingering mic streams (tech check) before Vapi claims the mic
+      try{const streams=await navigator.mediaDevices.getUserMedia({audio:true});streams.getTracks().forEach(t=>t.stop());console.log("[Vapi] pre-cleared mic tracks")}catch(e){console.log("[Vapi] mic pre-clear skipped:",e.name)}
+      await new Promise(r=>setTimeout(r,300)); // brief delay for OS to release audio device
       // Load Vapi SDK from CDN at runtime (avoids esbuild bundling issues)
       const VapiModule=await import("https://esm.sh/@vapi-ai/web@2.5.2");
       const VapiClass=VapiModule.default;
@@ -1596,7 +1601,7 @@ function VoiceIntake({initialAns,onBack,onDone,onSwitchToForm}){
       vapi.on("speech-start",()=>{console.log("[Vapi] speech-start");markActive()});
       vapi.on("speech-end",()=>console.log("[Vapi] speech-end"));
       vapi.on("call-end",()=>{console.log("[Vapi] call-end");if(!doneRef.current){setStatus("idle")}});
-      vapi.on("error",(e)=>{connected=true;clearTimeout(connectTimeout);console.error("[Vapi error]",e);setErrMsg(typeof e==="string"?e:e?.message||e?.error?.message||"Voice connection error");setStatus("error")});
+      vapi.on("error",(e)=>{connected=true;clearTimeout(connectTimeout);console.error("[Vapi error]",e);try{console.error("[Vapi error detail]",JSON.stringify(e,null,2))}catch(x){}setErrMsg(typeof e==="string"?e:e?.message||e?.error?.message||"Voice connection error");setStatus("error")});
       vapi.on("volume-level",(vol)=>{if(!window._vapiVolLogged){window._vapiVolLogged=true;console.log("[Vapi] volume-level events firing — mic is active")}});
 
       // Connection timeout — 45s to allow greeting to finish speaking
@@ -1605,7 +1610,7 @@ function VoiceIntake({initialAns,onBack,onDone,onSwitchToForm}){
       vapi.on("message",(msg)=>{
         // Any message means the call is live — mark active
         markActive();
-        console.log("[Vapi msg]",msg.type,msg.transcriptType||"",msg.role||"",msg.transcript?.substring(0,50)||"");
+        console.log("[Vapi msg]",msg.type,msg.transcriptType||"",msg.role||"",msg.transcript?.substring(0,50)||msg.status||"");
         // User speech: show Deepgram transcript
         if(msg.type==="transcript"&&msg.transcriptType==="final"&&msg.role==="user"){
           setTranscript(prev=>[...prev,{role:"user",text:msg.transcript}]);
