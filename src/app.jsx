@@ -1882,7 +1882,7 @@ function Intake({onDone,mainRef,initialEmail}){
   const playTone=()=>{setSpeakerPlaying(true);const ctx=new(window.AudioContext||window.webkitAudioContext)();const osc=ctx.createOscillator();const g=ctx.createGain();osc.type="sine";osc.frequency.value=440;g.gain.value=0.3;osc.connect(g);g.connect(ctx.destination);osc.start();setTimeout(()=>{osc.stop();ctx.close();setSpeakerPlaying(false)},1500)};
   const startMicCheck=async(deviceId)=>{setMicErr("");setMicPhase("idle");
     /* Pre-check: if browser already denied mic, skip getUserMedia (it won't prompt again) */
-    try{if(navigator.permissions&&navigator.permissions.query){const perm=await navigator.permissions.query({name:"microphone"});if(perm.state==="denied"){setMicErr("BLOCKED");return}}}catch(e){}
+    /* Let getUserMedia handle the permission prompt directly — permissions.query can give false "denied" */
     const constraints={audio:deviceId?{deviceId:{exact:deviceId}}:true};
     let stream;try{stream=await navigator.mediaDevices.getUserMedia(constraints)}catch(e){
       if(e.name==="NotFoundError"||e.name==="DevicesNotFoundError"){setMicErr("NO_MIC")}
