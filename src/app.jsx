@@ -1657,7 +1657,7 @@ function VoiceIntake({initialAns,onBack,onDone,onSwitchToForm}){
   return<div className="fi"style={{maxWidth:560,margin:"0 auto"}}>
     <div style={{textAlign:"center",marginBottom:24,paddingTop:8}}>
       <div className="h1"style={{fontSize:24,lineHeight:1.3,color:C.purp}}>Voice Intake</div>
-      <div style={{fontSize:13,color:C.g500,maxWidth:440,margin:"8px auto 0",lineHeight:1.6}}>Answer your clinical intake questions by speaking with our AI assistant. Your licensed physical therapist will review everything.</div>
+      <div style={{fontSize:13,color:C.g500,maxWidth:440,margin:"8px auto 0",lineHeight:1.6}}>Answer your clinical intake questions by speaking with our AI assistant. This typically takes 15-25 minutes. Your licensed physical therapist will review everything.</div>
     </div>
 
     <div style={{textAlign:"center",marginBottom:20}}>
@@ -1863,7 +1863,7 @@ function Intake({onDone,mainRef,initialEmail}){
       </button>
       <button onClick={()=>setVoiceMode("consent")}style={{display:"flex",alignItems:"center",gap:14,padding:"18px 20px",background:"#fff",border:`2px solid ${C.g200}`,borderRadius:12,cursor:"pointer",textAlign:"left",transition:"all .15s"}}onMouseOver={e=>e.currentTarget.style.borderColor=C.purp}onMouseOut={e=>e.currentTarget.style.borderColor=C.g200}>
         <span style={{fontSize:28,flexShrink:0}}>🎤</span>
-        <div><div style={{fontSize:15,fontWeight:700,color:C.purpD}}>Voice Intake</div><div style={{fontSize:12,color:C.g500,marginTop:2,lineHeight:1.5}}>Speak your answers to an AI assistant. Same questions, conversational format.</div></div>
+        <div><div style={{fontSize:15,fontWeight:700,color:C.purpD}}>Voice Intake</div><div style={{fontSize:12,color:C.g500,marginTop:2,lineHeight:1.5}}>Speak your answers to an AI assistant. Same questions, conversational format. Takes about 15-25 minutes.</div></div>
       </button>
     </div>
     <div style={{textAlign:"center"}}><button className="btn"onClick={()=>{setVoiceMode(null)}}style={{fontSize:12,color:C.g500}}>← Back to eligibility</button></div>
@@ -1876,7 +1876,7 @@ function Intake({onDone,mainRef,initialEmail}){
     </div>
     <div className="card"style={{borderColor:C.purp,marginBottom:20}}>
       <div style={{fontSize:13,color:C.g700,lineHeight:1.8}}>
-        To make this easy, our Artificial Intelligence voice assistant will ask you a few quick questions and transcribe your answers.
+        To make this easy, our AI voice assistant will walk you through your clinical intake questions and transcribe your answers. This typically takes <strong>15-25 minutes</strong> depending on your symptoms.
       </div>
       <div style={{marginTop:16,padding:"14px 16px",background:"#F5F3FF",borderRadius:8}}>
         <label style={{display:"flex",gap:10,cursor:"pointer",alignItems:"flex-start"}}>
