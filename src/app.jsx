@@ -1601,7 +1601,7 @@ function VoiceIntake({initialAns,onBack,onDone,onSwitchToForm}){
       vapi.on("speech-start",()=>{console.log("[Vapi] speech-start");markActive()});
       vapi.on("speech-end",()=>console.log("[Vapi] speech-end"));
       vapi.on("call-end",()=>{console.log("[Vapi] call-end");if(!doneRef.current){setStatus("idle")}});
-      vapi.on("error",(e)=>{connected=true;clearTimeout(connectTimeout);console.error("[Vapi error]",e);try{console.error("[Vapi error detail]",JSON.stringify(e,null,2))}catch(x){}setErrMsg(typeof e==="string"?e:e?.message||e?.error?.message||"Voice connection error");setStatus("error")});
+      vapi.on("error",(e)=>{connected=true;clearTimeout(connectTimeout);console.error("[Vapi error]",e);try{console.error("[Vapi error detail]",JSON.stringify(e,null,2))}catch(x){}const emsg=typeof e==="string"?e:e?.errorMsg||e?.message||e?.error?.msg||e?.error?.message||"Voice connection error";setErrMsg(typeof emsg==="string"?emsg:String(emsg));setStatus("error")});
       vapi.on("volume-level",(vol)=>{if(!window._vapiVolLogged){window._vapiVolLogged=true;console.log("[Vapi] volume-level events firing — mic is active")}});
 
       // Connection timeout — 45s to allow greeting to finish speaking
