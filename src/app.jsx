@@ -1592,10 +1592,12 @@ function VoiceIntake({initialAns,onBack,onDone,onSwitchToForm}){
 
       const markActive=()=>{if(!connected){connected=true;clearTimeout(connectTimeout);setStatus("active")}};
 
-      vapi.on("call-start",markActive);
-      vapi.on("speech-start",markActive);
-      vapi.on("call-end",()=>{if(!doneRef.current){setStatus("idle")}});
+      vapi.on("call-start",()=>{console.log("[Vapi] call-start");markActive()});
+      vapi.on("speech-start",()=>{console.log("[Vapi] speech-start");markActive()});
+      vapi.on("speech-end",()=>console.log("[Vapi] speech-end"));
+      vapi.on("call-end",()=>{console.log("[Vapi] call-end");if(!doneRef.current){setStatus("idle")}});
       vapi.on("error",(e)=>{connected=true;clearTimeout(connectTimeout);console.error("[Vapi error]",e);setErrMsg(typeof e==="string"?e:e?.message||e?.error?.message||"Voice connection error");setStatus("error")});
+      vapi.on("volume-level",(vol)=>{if(!window._vapiVolLogged){window._vapiVolLogged=true;console.log("[Vapi] volume-level events firing — mic is active")}});
 
       // Connection timeout — 45s to allow greeting to finish speaking
       const connectTimeout=setTimeout(()=>{if(!connected&&!doneRef.current){setErrMsg("Connection is taking too long. Try reloading the page or switch to the standard text form.");setStatus("error");try{vapiRef.current.stop()}catch(e){}}},45000);
@@ -1603,6 +1605,7 @@ function VoiceIntake({initialAns,onBack,onDone,onSwitchToForm}){
       vapi.on("message",(msg)=>{
         // Any message means the call is live — mark active
         markActive();
+        console.log("[Vapi msg]",msg.type,msg.transcriptType||"",msg.role||"",msg.transcript?.substring(0,50)||"");
         // User speech: show Deepgram transcript
         if(msg.type==="transcript"&&msg.transcriptType==="final"&&msg.role==="user"){
           setTranscript(prev=>[...prev,{role:"user",text:msg.transcript}]);
