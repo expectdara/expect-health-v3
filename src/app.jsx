@@ -1110,20 +1110,21 @@ SECTION 1: SYMPTOM SCREENING
 screen_pain — "Over the past month, have you felt pain, pressure, or discomfort in your lower stomach, pelvis, bladder, or genital area?" → record_answer("screen_pain", "yes"|"no"). Gates PAIN section.
 screen_sexual — "Do your pelvic floor symptoms ever interfere with any vaginal penetration — for example, sexual activity or intimacy, tampon use, or doctor exams?" → record_answer("screen_sexual", "yes"|"no"). Gates SEXUAL HEALTH section.
 
-SECTION 2: BLADDER LEAKAGE (ICIQ-UI)
-iciq1 — "How often do you leak urine? Never, about once a week or less, two or three times a week, about once a day, several times a day, or all the time." → 0-5
-If iciq1 = 0, SKIP iciq2, iciq3, iciq4.
-iciq2 — "How much urine do you usually leak? None, a small amount, a moderate amount, or a large amount?" → 0, 2, 4, or 6
-iciq3 — "Overall, how much does leaking urine interfere with your everyday life? Scale 0 to 10." → 0-10
-iciq4 — "Under what circumstances does urine leak?" Multi-select from: before_toilet, stress_cough, stress_exercise, after_urination, asleep, no_reason, continuous. Ask "any others?" until done.
+SECTION 2: BLADDER LEAKAGE (ICIQ-UI Short Form)
+IMPORTANT: You MUST ask ALL of these questions. Do NOT skip this section.
+iciq1 — "How often do you leak urine? Never, about once a week or less often, two or three times a week, about once a day, several times a day, or all the time." → 0-5
+If iciq1 = 0 (Never), SKIP iciq2, iciq3, iciq4 and move to Section 3.
+iciq2 — "How much urine do you usually leak, whether you wear protection or not? None, a small amount, a moderate amount, or a large amount." → 0, 2, 4, or 6
+iciq3 — "Overall, how much does leaking urine interfere with your everyday life? Please pick a number between 0 and 10, where 0 means not at all and 10 means a great deal." → 0-10
+iciq4 — "Under what circumstances does urine leak? Please tell me all that apply." Read all options: leaks before you can get to the toilet (urgency), leaks when you cough or sneeze (stress_cough), leaks when you are physically active or exercising (stress_exercise), leaks when you have finished urinating and are dressed (post_void), leaks when you are asleep (nocturnal), leaks for no obvious reason (unknown), leaks all the time (continuous). Ask "any others?" until done. Record as array.
 
 SECTION 3: URINARY SYMPTOMS
-fl2a — nocturia frequency (0-4). If > 0 ask fl2b bother (0-10).
-fl3a — urgency frequency (0-4). If > 0 ask fl3b bother (0-10).
-fl5a — daytime frequency (0-4). If > 0 ask fl5b bother (0-10).
-fl6a — hesitancy (0-4). If > 0 ask fl6b bother (0-10).
-fl7a — straining to urinate (0-4). If > 0 ask fl7b bother (0-10).
-fl8a — intermittency (0-4). If > 0 ask fl8b bother (0-10).
+fl2a — "During the night, how many times do you have to get up to urinate, on average? None, one, two, three, or four or more." → 0-4. If > 0 ask fl2b: "How much does getting up at night to urinate bother you? On a scale of 0 to 10, where 0 means not at all and 10 means a great deal." → 0-10.
+fl3a — "Do you have a sudden need to rush to the toilet to urinate? Never, occasionally, sometimes, most of the time, or all of the time." → 0-4. If > 0 ask fl3b: "How much does that sudden urgency bother you? On a scale of 0 to 10, where 0 means not at all and 10 means a great deal." → 0-10.
+fl5a — "How often do you pass urine during the day? 1 to 6 times, 7 to 8 times, 9 to 10 times, 11 to 12 times, or 13 or more times." → 0-4. If > 0 ask fl5b: "How much does your daytime urination frequency bother you? 0 to 10, where 0 is not at all and 10 is a great deal." → 0-10.
+fl6a — "Is there a delay before you can start to urinate? Never, occasionally, sometimes, most of the time, or all of the time." → 0-4. If > 0 ask fl6b: "How much does that delay bother you? 0 to 10, where 0 is not at all and 10 is a great deal." → 0-10.
+fl7a — "Do you have to strain to urinate? Never, occasionally, sometimes, most of the time, or all of the time." → 0-4. If > 0 ask fl7b: "How much does straining to urinate bother you? 0 to 10, where 0 is not at all and 10 is a great deal." → 0-10.
+fl8a — "Do you stop and start more than once while you urinate? Never, occasionally, sometimes, most of the time, or all of the time." → 0-4. If > 0 ask fl8b: "How much does stop-and-start urination bother you? 0 to 10, where 0 is not at all and 10 is a great deal." → 0-10.
 gupi5 — incomplete emptying (0-5).
 gupi6 — urinary frequency <2hr (0-5).
 
@@ -1158,10 +1159,10 @@ pain3 — functional impact (0-4)
 symptoms_trigger — multi-select: during_urination, bladder_fills, sexual_activity, tampon, bowel_movements, sitting_long, none
 
 SECTION 7: SEXUAL HEALTH (only if screen_sexual = "yes")
-fs2a — vaginal dryness (0-3). If > 0 ask fs2b bother (0-10).
-fs3a — sex life impact (0-3). If > 0 ask fs3b bother (0-10).
-fs4a — pain during sex (0-4). If 1-3 ask fs4b bother (0-10).
-fs5a — leakage during sex (0-4). If 1-3 ask fs5b bother (0-10).
+fs2a — "Do you have pain or discomfort because of a dry vagina? Not at all, a little, somewhat, or a lot." → 0-3. If > 0 ask fs2b: "How much does vaginal dryness bother you? 0 to 10, where 0 is not at all and 10 is a great deal." → 0-10.
+fs3a — "To what extent do you feel that your sex life has been affected by your urinary symptoms? Not at all, a little, somewhat, or a lot." → 0-3. If > 0 ask fs3b: "How much does the impact on your sex life bother you? 0 to 10, where 0 is not at all and 10 is a great deal." → 0-10.
+fs4a — "Do you have pain during sexual activity? Not at all, a little, somewhat, a lot, or I don't have sexual activity." → 0-4. If 1-3 ask fs4b: "How much does pain during sexual activity bother you? 0 to 10, where 0 is not at all and 10 is a great deal." → 0-10.
+fs5a — "Do you leak urine during sexual activity? Not at all, a little, somewhat, a lot, or I don't have sexual activity." → 0-4. If 1-3 ask fs5b: "How much does leaking during sexual activity bother you? 0 to 10, where 0 is not at all and 10 is a great deal." → 0-10.
 
 SECTION 8: QUALITY OF LIFE
 gupi7 — activity limitation (0-3)
@@ -1663,7 +1664,7 @@ function VoiceIntake({initialAns,onBack,onDone,onSwitchToForm}){
       <div style={{display:"inline-flex",alignItems:"center",gap:8,padding:"8px 16px",borderRadius:20,background:status==="active"?"#DCFCE7":status==="connecting"?"#FEF3C7":status==="processing"?"#EDE9FE":status==="error"?"#FEE2E2":C.g100}}>
         <div style={{width:8,height:8,borderRadius:"50%",background:status==="active"?C.gn:status==="connecting"?C.or:status==="processing"?C.purp:status==="error"?C.rd:C.g400,animation:status==="active"||status==="connecting"?"pulse 1.5s ease-in-out infinite":"none"}}/>
         <span style={{fontSize:12,fontWeight:600,color:status==="active"?"#166534":status==="connecting"?"#78350F":status==="processing"?"#4C1D95":status==="error"?"#991B1B":C.g600}}>
-          {status==="idle"?"Ready to start":status==="connecting"?"Connecting...":status==="active"?"Listening...":status==="processing"?"Saving your assessment...":status==="done"?"Complete!":status==="error"?"Error":""}
+          {status==="idle"?"Ready to start":status==="connecting"?"Connecting to your microphone... please give us a moment.":status==="active"?"Listening...":status==="processing"?"Saving your assessment...":status==="done"?"Complete!":status==="error"?"Error":""}
         </span>
       </div>
     </div>
@@ -1904,13 +1905,17 @@ function Intake({onDone,mainRef,initialEmail}){
     techStreamRef.current=stream;
     try{const devs=await navigator.mediaDevices.enumerateDevices();const mics=devs.filter(d=>d.kind==="audioinput");setMicDevices(mics);if(!deviceId&&mics.length>0)setSelectedDeviceId(mics[0].deviceId)}catch(e){}
     try{const t0=performance.now();await fetch(window.location.origin,{method:"HEAD",cache:"no-store"});setNetMs(Math.round(performance.now()-t0))}catch(e){setNetMs(-1)}};
-  const startRecording=()=>{if(!techStreamRef.current)return;setMicPhase("recording");setRecordSecs(3);
+  const startRecording=()=>{if(!techStreamRef.current)return;setMicPhase("countdown");setRecordSecs(3);
     if(playbackUrlRef.current){URL.revokeObjectURL(playbackUrlRef.current);playbackUrlRef.current=null}
-    const chunks=[];const rec=new MediaRecorder(techStreamRef.current);recorderRef.current=rec;
-    rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data)};
-    rec.onstop=()=>{const blob=new Blob(chunks,{type:rec.mimeType||"audio/webm"});playbackUrlRef.current=URL.createObjectURL(blob);setMicPhase("playing");
-      const audio=new Audio(playbackUrlRef.current);techAudioRef.current=audio;audio.play().catch(()=>{});audio.onended=()=>setMicPhase("confirm")};
-    rec.start();let secs=3;const tid=setInterval(()=>{secs--;setRecordSecs(secs);if(secs<=0){clearInterval(tid);if(rec.state==="recording")rec.stop()}},1000);techAnimRef.current=tid};
+    let cd=3;const cdTid=setInterval(()=>{cd--;setRecordSecs(cd);if(cd<=0){clearInterval(cdTid);
+      // Countdown done — start actual recording
+      setMicPhase("recording");setRecordSecs(3);
+      const chunks=[];const rec=new MediaRecorder(techStreamRef.current);recorderRef.current=rec;
+      rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data)};
+      rec.onstop=()=>{const blob=new Blob(chunks,{type:rec.mimeType||"audio/webm"});playbackUrlRef.current=URL.createObjectURL(blob);setMicPhase("playing");
+        const audio=new Audio(playbackUrlRef.current);techAudioRef.current=audio;audio.play().catch(()=>{});audio.onended=()=>setMicPhase("confirm")};
+      rec.start();let secs=3;const recTid=setInterval(()=>{secs--;setRecordSecs(secs);if(secs<=0){clearInterval(recTid);if(rec.state==="recording")rec.stop()}},1000);techAnimRef.current=recTid;
+    }},1000);techAnimRef.current=cdTid;};
   const replayRecording=()=>{if(!playbackUrlRef.current)return;const audio=new Audio(playbackUrlRef.current);techAudioRef.current=audio;setMicPhase("playing");audio.play().catch(()=>{});audio.onended=()=>setMicPhase("confirm")};
   const switchDevice=async(devId)=>{setSelectedDeviceId(devId);if(techStreamRef.current){techStreamRef.current.getTracks().forEach(t=>t.stop())}
     try{const stream=await navigator.mediaDevices.getUserMedia({audio:{deviceId:{exact:devId}}});techStreamRef.current=stream;setMicPhase("idle");setMicErr("")}catch(e){setMicErr("Could not access that microphone. Try another one.")}};
@@ -1961,12 +1966,17 @@ function Intake({onDone,mainRef,initialEmail}){
       </div>}
       {micErr&&<button className="btn"onClick={()=>startMicCheck(selectedDeviceId)}style={{margin:"0 auto 12px",display:"flex",justifyContent:"center",color:C.purp,fontSize:12,fontWeight:600}}>Try again</button>}
       {micPhase==="idle"&&<>
-        <div style={{fontSize:13,color:C.g600,lineHeight:1.6,marginBottom:16}}>Say "Microphone check, 1, 2, 3" and we'll play it back so you can confirm it sounds clear.</div>
-        <button className="btn bpk"onClick={startRecording}style={{margin:"0 auto 12px",display:"flex",alignItems:"center",gap:8,justifyContent:"center"}}>Record a short clip</button>
+        <div style={{fontSize:13,color:C.g600,lineHeight:1.6,marginBottom:16}}>We'll do a quick recording test to make sure your microphone is working. After a short countdown, please say:<br/><strong style={{color:C.purpD}}>"Testing, 1, 2, 3."</strong></div>
+        <button className="btn bpk"onClick={startRecording}style={{margin:"0 auto 12px",display:"flex",alignItems:"center",gap:8,justifyContent:"center"}}>Start Mic Check</button>
+      </>}
+      {micPhase==="countdown"&&<>
+        <div style={{fontSize:13,color:C.g600,lineHeight:1.6,marginBottom:8}}>Get ready to speak in...</div>
+        <div style={{fontSize:56,fontWeight:700,color:C.purp,marginBottom:8,transition:"all .2s"}}>{recordSecs}...</div>
+        <div style={{fontSize:13,color:C.g500,lineHeight:1.6}}>When the timer finishes, please say:<br/><strong style={{color:C.purpD}}>"Testing, 1, 2, 3."</strong></div>
       </>}
       {micPhase==="recording"&&<>
-        <div style={{fontSize:13,color:C.g600,lineHeight:1.6,marginBottom:12}}>Recording — say something now!</div>
-        <div style={{fontSize:48,fontWeight:700,color:C.purp,marginBottom:12}}>{recordSecs}</div>
+        <div style={{fontSize:14,fontWeight:600,color:C.purpD,lineHeight:1.6,marginBottom:12}}>Recording now — say "Testing, 1, 2, 3."</div>
+        <div style={{fontSize:48,fontWeight:700,color:C.rd,marginBottom:12}}>{recordSecs}</div>
         <div style={{width:60,height:60,borderRadius:"50%",background:C.rd,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"center",animation:"pulse 1s ease-in-out infinite"}}><div style={{width:20,height:20,borderRadius:4,background:"#fff"}}/></div>
       </>}
       {micPhase==="playing"&&<>
