@@ -863,6 +863,8 @@ function getInconsistencies(ans){
   if((ans.pain1>=5||(ans.gupi4??0)>=5)&&ans.pain3===0)flags.push({field:"pain3",msg:"You reported significant pain but said it has no effect on daily activities. Please confirm."});
   // Says never has urgency but reports urgency-type leaking
   if(ans.fl3a===0&&Array.isArray(ans.iciq4)&&ans.iciq4.includes("urgency"))flags.push({field:"fl3a",msg:"You said you never rush to the toilet, but reported leaking before reaching it. Please review."});
+  // Postpartum but 0 deliveries
+  if(["pp_early","pp_mid","pp_late"].includes(ans.pregnancy_status)&&ans.num_deliveries!==undefined&&ans.num_deliveries===0)flags.push({field:"num_deliveries",msg:"You selected a postpartum status but entered 0 deliveries. Please double-check — if you recently delivered, your total deliveries should be at least 1."});
   // PHQ-2 positive — not a contradiction but a clinical flag
   if((ans.phq2_interest||0)+(ans.phq2_mood||0)>=3)flags.push({field:"phq2_mood",msg:"Your responses suggest you may be experiencing some depression symptoms. Your Physical Therapist will review this before approving your plan and has included this in the report to your doctor.",severity:"warn"});
   return flags;
