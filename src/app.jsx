@@ -9,6 +9,8 @@ const { useState, useEffect, useRef } = React;
 const PILOT_PHASE=1;
 const PILOT_CASES_VALIDATED=0; // total supervised cases completed — update as pilot progresses
 const CLINICAL_LOGIC_VERSION="1.0.0"; // increment on any scoring, tier, dx, or genPlan change
+const PHASE2_MALE=false;  // flip to true to enable male pelvic floor pathway
+const PHASE2_VOICE=false; // flip to true to enable voice intake option
 
 const C={
   pink:"#FC228A",pinkL:"#FF5CA8",pinkD:"#C91A6E",
@@ -70,19 +72,24 @@ function buildOutcomeRecord(intake,plan,reviewTimeSec){
   const avoid=(a.avoid_activities||[]).filter(x=>x!=="none");
   const constip=(a.bowel_constipation??0)>=2||(a.bowel_frequency??4)<=1||(a.bristol_stool??4)<=2;
   const triggers=pain.triggers||[];
+  const orIsMale=intake.isMale||a.sex_at_birth==="male";
+  const maleBaseline=orIsMale?{ipss:intake.ipss?{total:intake.ipss.total,severity:intake.ipss.severity,storage:intake.ipss.storage,voiding:intake.ipss.voiding,qol:intake.ipss.qol}:null,cpsi:intake.cpsi?{total:intake.cpsi.total,pain:intake.cpsi.pain,urinary:intake.cpsi.urinary,qol:intake.cpsi.qol,severity:intake.cpsi.severity}:null,shim:intake.shim?{total:intake.shim.total,severity:intake.shim.severity}:null,lane:intake.lane||plan.lane||null}:{};
   const rec={id:`OR-${++_orid}-${Date.now()}`,created:new Date().toISOString(),logicVersion:CLINICAL_LOGIC_VERSION,
-    baseline:{iciq:{total:iciq.total,severity:iciq.severity,subtype:iciq.subtype},fluts:{F:fluts.F,V:fluts.V,total:fluts.total},fsex:{total:fsex.total},gupi:{total:gupi.total,pain:gupi.pain,urinary:gupi.urinary,qol:gupi.qol,severity:gupi.severity},pain:{composite:pain.composite,functional:pain.functional,severity:pain.severity},phq2,age_bracket:ageBracket(a.dob),pregnancy_status:a.pregnancy_status||"none",delivery_type:a.delivery_type||null,weeks_postpartum:a.delivery_date?Math.round((Date.now()-new Date(a.delivery_date).getTime())/(7*24*60*60*1000)):null,constipation_composite:constip,avoidance_count:avoid.length,cue_preference:a.cue_preference||"default",pudendal_flag:triggers.includes("sitting_long")&&pain.composite>6,med_modify:a.med_modify??0,prior_treatment:a.prior_treatment||[],symptom_triggers:(a.symptoms_trigger||[]).filter(x=>x!=="none"),subtype:iciq.subtype,screener_pain:a.screen_pain==="yes",screener_sexual:a.screen_sexual==="yes",pelvic_history:(a.pelvic_history||[]).filter(x=>x!=="none"),popdi:{score:popdi.score,positiveCount:popdi.positiveCount,bulge:popdi.bulge,highBother:popdi.highBother}},
-    treatment:{tier:iciq.total>=13?"Beginner":iciq.total>=6?"Moderate":iciq.total>0?"Advanced":"Foundation",exercise_ids:(plan.ex||[]).map(e=>e.n),exercise_count:(plan.ex||[]).length,adjunct_types:(plan.adjuncts||[]).map(x=>x.type),adjunct_count:(plan.adjuncts||[]).length,cue_type:a.cue_preference||"default",dx_codes:(plan.dx||[]).map(d=>d.c),risk_level:plan.risk||"green",prenatal_modified:!!plan.prenatal,pt_modified_exercises:false,pt_modified_adjuncts:false,pt_modified_goals:false,pt_rejection:false,review_time_seconds:reviewTimeSec||0},
+    baseline:{isMale:orIsMale,iciq:{total:iciq.total,severity:iciq.severity,subtype:iciq.subtype},fluts:{F:fluts.F,V:fluts.V,total:fluts.total},fsex:{total:fsex.total},gupi:{total:gupi.total,pain:gupi.pain,urinary:gupi.urinary,qol:gupi.qol,severity:gupi.severity},pain:{composite:pain.composite,functional:pain.functional,severity:pain.severity},phq2,age_bracket:ageBracket(a.dob),pregnancy_status:orIsMale?null:(a.pregnancy_status||"none"),delivery_type:orIsMale?null:(a.delivery_type||null),weeks_postpartum:orIsMale?null:(a.delivery_date?Math.round((Date.now()-new Date(a.delivery_date).getTime())/(7*24*60*60*1000)):null),constipation_composite:constip,avoidance_count:avoid.length,cue_preference:a.cue_preference||"default",pudendal_flag:triggers.includes("sitting_long")&&pain.composite>6,med_modify:a.med_modify??0,prior_treatment:a.prior_treatment||[],symptom_triggers:(a.symptoms_trigger||[]).filter(x=>x!=="none"),subtype:iciq.subtype,screener_pain:orIsMale?(a.screen_pain_male==="yes"):(a.screen_pain==="yes"),screener_sexual:orIsMale?(a.screen_sexual_male==="yes"):(a.screen_sexual==="yes"),pelvic_history:(a.pelvic_history||[]).filter(x=>x!=="none"),popdi:orIsMale?null:{score:popdi.score,positiveCount:popdi.positiveCount,bulge:popdi.bulge,highBother:popdi.highBother},...maleBaseline},
+    treatment:{tier:orIsMale?(plan.tier||"general"):(iciq.total>=13?"Beginner":iciq.total>=6?"Moderate":iciq.total>0?"Advanced":"Foundation"),lane:orIsMale?(plan.lane||null):null,exercise_ids:(plan.ex||[]).map(e=>e.n),exercise_count:(plan.ex||[]).length,adjunct_types:(plan.adjuncts||[]).map(x=>x.type),adjunct_count:(plan.adjuncts||[]).length,cue_type:a.cue_preference||"default",dx_codes:(plan.dx||[]).map(d=>d.c),risk_level:plan.risk||"green",prenatal_modified:!!plan.prenatal,pt_modified_exercises:false,pt_modified_adjuncts:false,pt_modified_goals:false,pt_rejection:false,review_time_seconds:reviewTimeSec||0},
     outcome:null};
   OUTCOME_RECORDS.push(rec);
-  L("OUTCOME_RECORD_CREATED",{recordId:rec.id,tier:rec.treatment.tier,iciq:iciq.total,risk:rec.treatment.risk_level});
+  L("OUTCOME_RECORD_CREATED",{recordId:rec.id,tier:rec.treatment.tier,iciq:iciq.total,risk:rec.treatment.risk_level,isMale:orIsMale});
   return rec;
 }
 function completeOutcomeRecord(recordId,baseline,week8){
   const rec=OUTCOME_RECORDS.find(r=>r.id===recordId);if(!rec)return null;
   const iciqD=baseline.iciq-(week8.iciq??baseline.iciq),painD=baseline.pain-(week8.pain??baseline.pain),fsexD=baseline.fsex-(week8.fsex??baseline.fsex),phq2D=baseline.phq2-(week8.phq2??baseline.phq2);
-  rec.outcome={iciq_delta:iciqD,pain_delta:painD,fsex_delta:fsexD,phq2_delta:phq2D,bowel_change:week8.bowel||"same",prolapse_followup:week8.prolapse_followup||null,nps:week8.nps??0,activities_resumed:week8.activities_status||"no",adherence_rate:week8.adherence_rate??0,dropout:false,adverse_event:false,clinically_meaningful:iciqD>=3};
-  L("OUTCOME_RECORD_COMPLETED",{recordId:rec.id,iciq_delta:iciqD,clinically_meaningful:rec.outcome.clinically_meaningful});
+  const isMaleRec=rec.baseline?.isMale||false;
+  const maleOutcome=isMaleRec?{ipss_delta:baseline.ipss_total!=null?(baseline.ipss_total-(week8.ipss_total??baseline.ipss_total)):null,cpsi_delta:baseline.cpsi_total!=null?(baseline.cpsi_total-(week8.cpsi_total??baseline.cpsi_total)):null,shim_delta:baseline.shim_total!=null?((week8.shim_total??baseline.shim_total)-baseline.shim_total):null}:{};
+  const meaningful=isMaleRec?(maleOutcome.ipss_delta!=null?maleOutcome.ipss_delta>=3:iciqD>=3):iciqD>=3;
+  rec.outcome={iciq_delta:iciqD,pain_delta:painD,fsex_delta:fsexD,phq2_delta:phq2D,...maleOutcome,bowel_change:week8.bowel||"same",prolapse_followup:isMaleRec?null:(week8.prolapse_followup||null),nps:week8.nps??0,activities_resumed:week8.activities_status||"no",adherence_rate:week8.adherence_rate??0,dropout:false,adverse_event:false,clinically_meaningful:meaningful};
+  L("OUTCOME_RECORD_COMPLETED",{recordId:rec.id,iciq_delta:iciqD,clinically_meaningful:rec.outcome.clinically_meaningful,isMale:isMaleRec});
   return rec;
 }
 
@@ -379,6 +386,96 @@ const EXCLUSION_REFERRALS={
   ex_ic_hunner:{label:"Interstitial Cystitis with Hunner Lesions",msg:"Please consult a urologist or urogynecologist for evaluation. Pelvic floor PT may still be helpful, but medical evaluation should come first.",specialist:"Urology / Urogynecology",providers:["uofu_urogyn"],returnEligible:true},
   ex_highrisk_preg:{label:"High-Risk Pregnancy",msg:"Please consult your maternal-fetal medicine specialist or OB-GYN before starting any pelvic floor program. We\u2019re here when you get the green light.",specialist:"Maternal-Fetal Medicine",providers:["uofu_mfm"],returnEligible:true},
 };
+// ============================================================
+// MALE PATHWAY — Question Arrays
+// ============================================================
+// IPSS (International Prostate Symptom Score) — 7 symptom Qs (0-5 each = 0-35) + 1 QOL Q (0-6)
+const IPSS=[
+{id:"ipss1",text:"Over the past month, how often have you had the sensation of not emptying your bladder completely after you finished urinating?",opts:[["Not at all",0],["Less than 1 time in 5",1],["Less than half the time",2],["About half the time",3],["More than half the time",4],["Almost always",5]]},
+{id:"ipss2",text:"Over the past month, how often have you had to urinate again less than 2 hours after you finished urinating?",opts:[["Not at all",0],["Less than 1 time in 5",1],["Less than half the time",2],["About half the time",3],["More than half the time",4],["Almost always",5]]},
+{id:"ipss3",text:"Over the past month, how often have you found you stopped and started again several times when you urinated?",opts:[["Not at all",0],["Less than 1 time in 5",1],["Less than half the time",2],["About half the time",3],["More than half the time",4],["Almost always",5]]},
+{id:"ipss4",text:"Over the past month, how often have you found it difficult to postpone urination?",opts:[["Not at all",0],["Less than 1 time in 5",1],["Less than half the time",2],["About half the time",3],["More than half the time",4],["Almost always",5]]},
+{id:"ipss5",text:"Over the past month, how often have you had a weak urinary stream?",opts:[["Not at all",0],["Less than 1 time in 5",1],["Less than half the time",2],["About half the time",3],["More than half the time",4],["Almost always",5]]},
+{id:"ipss6",text:"Over the past month, how often have you had to push or strain to begin urination?",opts:[["Not at all",0],["Less than 1 time in 5",1],["Less than half the time",2],["About half the time",3],["More than half the time",4],["Almost always",5]]},
+{id:"ipss7",text:"Over the past month, how many times did you most typically get up to urinate from the time you went to bed at night until the time you got up in the morning?",opts:[["None",0],["1 time",1],["2 times",2],["3 times",3],["4 times",4],["5 or more times",5]]},
+{id:"ipss_qol",text:"If you were to spend the rest of your life with your urinary condition just the way it is now, how would you feel about that?",opts:[["Delighted",0],["Pleased",1],["Mostly satisfied",2],["Mixed — about equally satisfied and dissatisfied",3],["Mostly dissatisfied",4],["Unhappy",5],["Terrible",6]]},
+];
+// NIH-CPSI (Chronic Prostatitis Symptom Index) — Pain (0-21), Urinary (0-10), QOL (0-12), Total 0-43
+const CPSI=[
+{id:"cpsi1",text:"In the last week, have you experienced any pain or discomfort in the following areas?",type:"multi",opts:[["Area between rectum and testicles (perineum)","perineum"],["Testicles","testicle"],["Tip of the penis (not related to urination)","penis_tip"],["Below your waist, in your pubic or bladder area","pubic"]]},
+{id:"cpsi1a",text:"In the last week, how often have you had pain or discomfort in any of the areas mentioned above?",opts:[["Never",0],["Rarely",1],["Sometimes",2],["Often",3],["Usually",4],["Always",5]],conditional:a=>(a.cpsi1||[]).length>0},
+{id:"cpsi1b",text:"Which number best describes your AVERAGE pain or discomfort on the days that you had it, over the last week? (0 = no pain, 10 = pain as bad as you can imagine)",type:"scale",min:0,max:10,lo:"No pain",hi:"Pain as bad as you can imagine",conditional:a=>a.cpsi1a!==undefined&&a.cpsi1a!==0},
+{id:"cpsi2",text:"In the last week, how often have you had a burning feeling during urination?",opts:[["Not at all",0],["Less than 1 time in 5",1],["Less than half the time",2],["About half the time",3],["More than half the time",4],["Almost always",5]]},
+{id:"cpsi3",text:"In the last week, how often have you had a feeling of incomplete emptying after you finished urinating?",opts:[["Not at all",0],["Less than 1 time in 5",1],["Less than half the time",2],["About half the time",3],["More than half the time",4],["Almost always",5]]},
+{id:"cpsi4",text:"In the last week, how much have your symptoms kept you from doing the kinds of things you would usually do?",opts:[["None",0],["Only a little",1],["Some",2],["A lot",3]]},
+{id:"cpsi5",text:"In the last week, how much did you think about your symptoms?",opts:[["None",0],["Only a little",1],["Some",2],["A lot",3]]},
+{id:"cpsi6",text:"If you were to spend the rest of your life with your symptoms just the way they have been during the last week, how would you feel about that?",opts:[["Delighted",0],["Pleased",1],["Mostly satisfied",2],["Mixed — about equally satisfied and dissatisfied",3],["Mostly dissatisfied",4],["Unhappy",5],["Terrible",6]]},
+];
+// SHIM / IIEF-5 (Sexual Health Inventory for Men) — 5 Qs (1-5 each = 5-25)
+const SHIM=[
+{id:"shim1",text:"Over the past 6 months, how do you rate your confidence that you could get and keep an erection?",opts:[["Very low",1],["Low",2],["Moderate",3],["High",4],["Very high",5]]},
+{id:"shim2",text:"When you had erections with sexual stimulation, how often were your erections hard enough for penetration?",opts:[["Almost never or never",1],["A few times (much less than half the time)",2],["Sometimes (about half the time)",3],["Most times (much more than half the time)",4],["Almost always or always",5]]},
+{id:"shim3",text:"During sexual intercourse, how often were you able to maintain your erection after you had penetrated your partner?",opts:[["Almost never or never",1],["A few times (much less than half the time)",2],["Sometimes (about half the time)",3],["Most times (much more than half the time)",4],["Almost always or always",5]]},
+{id:"shim4",text:"During sexual intercourse, how difficult was it to maintain your erection to completion of intercourse?",opts:[["Extremely difficult",1],["Very difficult",2],["Difficult",3],["Slightly difficult",4],["Not difficult",5]]},
+{id:"shim5",text:"When you attempted sexual intercourse, how often was it satisfactory for you?",opts:[["Almost never or never",1],["A few times (much less than half the time)",2],["Sometimes (about half the time)",3],["Most times (much more than half the time)",4],["Almost always or always",5]]},
+];
+// Male screener gates
+const SCREENER_MALE=[
+{id:"screen_pain_male",text:"Over the past month, have you felt pain, pressure, or discomfort in the perineum, testicles, penis, or lower abdomen?",opts:[["Yes","yes"],["No","no"]]},
+{id:"screen_sexual_male",text:"Have your symptoms affected your sexual function or erections?",opts:[["Yes","yes"],["No","no"]]},
+];
+// Male clinical history — gates care lane determination
+const MALE_HISTORY=[
+{id:"prostate_history",text:"Have you had prostate surgery (e.g., radical prostatectomy, TURP)?",opts:[["Yes","yes"],["No","no"]]},
+{id:"prostate_surgery_type",text:"What type of prostate surgery did you have?",conditional:a=>a.prostate_history==="yes",opts:[["Radical prostatectomy (prostate removal for cancer)","radical_prostatectomy"],["TURP (transurethral resection)","turp"],["Other prostate surgery","other"]]},
+{id:"prostate_surgery_date",text:"Approximately when was your prostate surgery?",type:"text",ph:"e.g., January 2024, 6 months ago",conditional:a=>a.prostate_history==="yes"},
+{id:"prostate_prehab",text:"Is your surgery scheduled for the future (pre-surgery)?",conditional:a=>a.prostate_surgery_type==="radical_prostatectomy",opts:[["Yes — surgery is upcoming","yes"],["No — surgery already happened","no"]]},
+{id:"bph_diagnosed",text:"Have you been diagnosed with BPH (benign prostatic hyperplasia / enlarged prostate)?",opts:[["Yes","yes"],["No","no"]]},
+{id:"cpps_symptoms",text:"Do you experience chronic pelvic pain that has lasted 3 months or longer?",opts:[["Yes","yes"],["No","no"]]},
+];
+// Male pain questions — adapted from GUPI for male anatomy
+const GUPI_PAIN_MALE=[
+{id:"gupi1_table",text:"In the last week, have you experienced any pain or discomfort in the following areas?",type:"yn_table",rows:[
+  {id:"gupi1a",label:"Perineum (area between scrotum and rectum)"},
+  {id:"gupi1b",label:"Testicles"},
+  {id:"gupi1c",label:"Tip of the penis (not related to urination)"},
+  {id:"gupi1d",label:"Below the waist, in the pubic or bladder area"},
+]},
+{id:"gupi2_table",text:"In the last week, have you experienced any of the following?",type:"yn_table",rows:[
+  {id:"gupi2a",label:"Pain or burning during urination"},
+  {id:"gupi2b",label:"Pain or discomfort during or after ejaculation"},
+  {id:"gupi2c",label:"Pain or discomfort as your bladder fills"},
+  {id:"gupi2d",label:"Pain or discomfort relieved by voiding (went away or got better after urinating)"},
+]},
+{id:"gupi3",text:"How often have you had pain or discomfort in any of the areas mentioned above — including the perineum, testicles, penis, pubic area, or bladder — over the last week?",opts:[["Never",0],["Rarely",1],["Sometimes",2],["Often",3],["Usually",4],["Always",5]],conditional:a=>{const painYN=["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d"];return painYN.some(k=>a[k]==="yes")}},
+{id:"gupi4",text:"Which number best describes your AVERAGE pain or discomfort on the days you had it, over the last week? (0 = no pain, 10 = pain as bad as you can imagine)",type:"scale",min:0,max:10,lo:"No pain",hi:"Pain as bad as you can imagine",conditional:a=>a.gupi3!==undefined&&a.gupi3!==0},
+{id:"pain1",text:"What is your current pelvic pain level right now? (0 = no pain, 10 = worst pain imaginable)",type:"scale",min:0,max:10,lo:"No pain",hi:"Worst pain imaginable"},
+{id:"pain3",text:"How does your pain affect your daily activities?",opts:[["No effect",0],["Mild — I can do most activities",1],["Moderate — I avoid some activities",2],["Severe — I am significantly limited",3],["I cannot perform daily activities",4]]},
+{id:"symptoms_trigger",text:"When do you feel pain or discomfort? Select all that apply.",type:"multi",conditional:a=>{const painYN=["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d"];return painYN.some(k=>a[k]==="yes")},opts:[["During urination","dysuria"],["As my bladder fills (relieved by urinating)","bladder_fills"],["During or after ejaculation","ejaculation"],["During bowel movements","bowel_movements"],["While sitting for long periods","sitting_long"],["During physical activity or exercise","exercise"],["None of the above","none"]]},
+];
+// Male red flags — shared + male-specific
+const REDFLAGS_MALE=[
+{id:"rf_bleed",text:"Are you experiencing any unexplained blood in your urine or semen?",type:"yn",rf:true,act:"physician",msg:"Unexplained blood requires physician evaluation before starting PT."},
+{id:"rf_fever",text:"Do you currently have a fever — temperature above 100.4°F (38°C)?",type:"yn",rf:true,act:"er",msg:"A fever at this level may indicate infection or a serious condition requiring medical evaluation. Please call 911 or go to the ER immediately."},
+{id:"rf_chest",text:"Are you experiencing any chest pain or difficulty breathing?",type:"yn",rf:true,act:"er",msg:"This requires immediate medical attention. Please call 911."},
+{id:"rf_head",text:"Do you have a severe headache along with any changes in your vision?",type:"yn",rf:true,act:"er",msg:"A severe headache with vision changes may indicate a serious neurological or vascular condition. Please call 911 immediately."},
+{id:"rf_uti",text:"Are you experiencing burning during urination, blood in your urine, or frequent urination along with a fever?",type:"yn",rf:true,act:"physician",msg:"These may indicate a UTI. Please contact your physician before starting PT."},
+{id:"rf_urinary_retention",text:"Are you currently unable to urinate at all, despite feeling the urge?",type:"yn",rf:true,act:"er",msg:"Acute urinary retention is a medical emergency. Please call 911 or go to the nearest emergency room immediately."},
+];
+// Male exclusions
+const EXCLUSIONS_MALE=[
+{id:"ex_active_prostate_cancer",text:"Are you currently undergoing active treatment for prostate cancer (e.g., radiation, chemotherapy)?",type:"yn",rf:true,act:"physician",msg:"Active cancer treatment requires coordination with your oncology team before starting a PT program. Please consult your treating physician."},
+{id:"ex_recent_pelvic_radiation",text:"Have you had pelvic radiation therapy within the past 6 weeks?",type:"yn",rf:true,act:"physician",msg:"Recent pelvic radiation requires physician clearance before starting pelvic floor exercises. Please consult your radiation oncologist."},
+{id:"ex_catheter_current",text:"Do you currently have a urinary catheter in place?",type:"yn",rf:true,act:"physician",msg:"Pelvic floor exercises should begin after catheter removal. Please consult your urologist for timing."},
+{id:"ex_neuro",text:"Have you been diagnosed with a neurological condition that affects your bladder or pelvic floor? (e.g., multiple sclerosis, spinal cord injury, Parkinson's disease, stroke)",type:"yn",rf:true,act:"physician",msg:"Neurogenic bladder conditions require specialized in-person evaluation. Please consult your physician or a specialist PT."},
+{id:"ex_untreated_uti_male",text:"Do you currently have an active, untreated urinary tract infection?",type:"yn",rf:true,act:"physician",msg:"Active UTIs should be treated before starting pelvic floor exercises. Please consult your physician."},
+{id:"ex_acute_retention",text:"Have you experienced acute urinary retention (complete inability to urinate) in the past 2 weeks?",type:"yn",rf:true,act:"physician",msg:"Recent acute urinary retention requires urological evaluation before starting PT."},
+];
+// Male cue preference — evidence-based from Stafford 2016, Ben Ami 2022
+const CLINICAL_EXTRA_MALE_ADDITIONS=[
+{id:"cue_preference",text:"Which instruction style helps you find and activate your pelvic floor muscles?",opts:[["Shortening: \"Imagine shortening your penis and drawing your testicles upward\" (most effective verbal cue per research)","shorten"],["Squeeze: \"Squeeze your anus as if holding back gas\" (do not clench your buttock muscles)","squeeze"],["Urine stop: \"Squeeze as if stopping the flow of urine\" (do NOT practice while urinating)","urine_stop"],["Simple: \"Contract your pelvic floor muscles\"","simple_contract"],["Not sure yet — surprise me","default"]]},
+];
+
 // SCORING (unchanged references — GUPI items still named gupiXX, pain items still painXX)
 function sICIQ(a){const t=(a.iciq1??0)+(a.iciq2??0)+(a.iciq3??0);const sv=t===0?"None":t<=5?"Slight":t<=12?"Moderate":t<=18?"Severe":"Very Severe";const ty=a.iciq4||[];const u=ty.includes("urgency"),s=ty.includes("stress_cough")||ty.includes("stress_exercise");const sub=u&&s?"Mixed UI":u?"Urge UI":s?"Stress UI":ty.includes("continuous")?"Continuous UI":"Unclassified";return{total:t,severity:sv,subtype:sub}}
 function sFLUTS(a){const F=(a.fl2a??0)+(a.fl3a??0)+(a.fl5a??0);const V=(a.fl6a??0)+(a.fl7a??0)+(a.fl8a??0);return{F,V,total:F+V}}
@@ -388,6 +485,10 @@ function sGUPI(a){const p=(a.gupi1a==="yes"?1:0)+(a.gupi1b==="yes"?1:0)+(a.gupi1
 function sPain(a){const c=a.pain1??0,v=a.gupi4??0,f=a.pain3??0;const cm=v>0?Math.round((c+v)/2*10)/10:c;const trigs=(a.symptoms_trigger||[]).filter(x=>x!=="none");return{current:c,average:v,composite:cm,functional:f,severity:cm===0?"None":cm<=3?"Mild":cm<=6?"Moderate":"Severe",triggers:trigs}}
 // sPOPDI: Pelvic Organ Prolapse Distress Inventory — symptom screener (not diagnostic)
 function sPOPDI(a){const ids=["popdi1","popdi2","popdi3","popdi4","popdi5","popdi6"];const pos=ids.filter(k=>a[k]==="yes");const bothers=pos.map(k=>a[k+"_bother"]??0).filter(b=>b>0);const mean=bothers.length>0?bothers.reduce((s,v)=>s+v,0)/bothers.length:0;const score=Math.round(mean*25);return{score,positiveCount:pos.length,bulge:a.popdi3==="yes"||a.popdi6==="yes",highBother:bothers.some(b=>b>=3)}}
+// Male scoring functions
+function sIPSS(a){const t=(a.ipss1??0)+(a.ipss2??0)+(a.ipss3??0)+(a.ipss4??0)+(a.ipss5??0)+(a.ipss6??0)+(a.ipss7??0);const sv=t<=7?"Mild":t<=19?"Moderate":"Severe";const storage=(a.ipss2??0)+(a.ipss4??0)+(a.ipss7??0);const voiding=(a.ipss1??0)+(a.ipss3??0)+(a.ipss5??0)+(a.ipss6??0);return{total:t,severity:sv,qol:a.ipss_qol??0,storage,voiding}}
+function sCPSI(a){const locs=(a.cpsi1||[]);const pain=Math.min(locs.length,4)+(a.cpsi1a??0)+(a.cpsi1b??0);const urinary=(a.cpsi2??0)+(a.cpsi3??0);const qol=(a.cpsi4??0)+(a.cpsi5??0)+(a.cpsi6??0);const t=pain+urinary+qol;return{total:t,pain,urinary,qol,severity:t<=14?"Mild":t<=29?"Moderate":"Severe"}}
+function sSHIM(a){const t=(a.shim1??0)+(a.shim2??0)+(a.shim3??0)+(a.shim4??0)+(a.shim5??0);const sv=t<=7?"Severe ED":t<=11?"Moderate ED":t<=16?"Mild-Moderate ED":t<=21?"Mild ED":"No ED";return{total:t,severity:sv}}
 
 // Expansion Library — shorthand-to-patient-friendly mappings (per MyCareplan Feature Spec §1.4)
 const EXPANSION_LIB={
@@ -403,7 +504,7 @@ const EXPANSION_LIB={
 "tens":{n:"TENS Unit for Pain",type:"device",d:"Transcutaneous electrical nerve stimulation for pelvic/perineal pain.",rx:"Home TENS unit if pain persists above 4/10.",patientText:"A TENS unit is a small device that sends mild electrical pulses through skin pads for drug-free pain relief. Relief usually begins within 15-30 minutes. Available at pharmacies or online.",badge:"library"},
 "dilator":{n:"Vaginal Dilator Therapy",type:"device",d:"Graduated plastic or silicone dilator set for desensitization and tissue mobility.",rx:"Start smallest size, progress per tolerance.",patientText:"Vaginal dilators are plastic or medical-grade silicone cylinders in graduated sizes for gently desensitizing vaginal tissue. You can use them on your own for pelvic floor stretching. If you use them regularly, it can teach the brain to do less guarding and help the tight muscles to relax at your own pace. Never rushed — you are always in control.",badge:"library"},
 };
-function matchExpansion(input){if(!input||input.trim().length<3)return null;const k=input.trim().toLowerCase();if(EXPANSION_LIB[k])return{...EXPANSION_LIB[k],matchType:"exact"};for(const[key,val]of Object.entries(EXPANSION_LIB)){if(key.includes(k)||k.includes(key))return{...val,matchType:"partial"}}return null}
+function matchExpansion(input){if(!input||input.trim().length<3)return null;const k=input.trim().toLowerCase();if(EXPANSION_LIB[k])return{...EXPANSION_LIB[k],matchType:"exact"};if(EXPANSION_LIB_MALE[k])return{...EXPANSION_LIB_MALE[k],matchType:"exact"};for(const[key,val]of Object.entries(EXPANSION_LIB)){if(key.includes(k)||k.includes(key))return{...val,matchType:"partial"}}for(const[key,val]of Object.entries(EXPANSION_LIB_MALE)){if(key.includes(k)||k.includes(key))return{...val,matchType:"partial"}}return null}
 
 // ============================================================
 // PATIENT CONTENT LIBRARIES
@@ -431,6 +532,59 @@ const PATIENT_ADJ={
 "Lifestyle Modifications":{name:"Lifestyle Changes That Help",type:"behavioral",what:"Four key daily habits: (1) Reduce caffeine to 1 cup/day — caffeine directly irritates the bladder and increases urgency. (2) Drink 6–8 glasses of water spread evenly through the day, not all at once. (3) Eat 25–30g of fiber daily to prevent constipation, which strains the pelvic floor. (4) Always exhale and gently brace your pelvic floor before lifting, pushing, or bending.",why:"These habits directly reduce the stress on the muscles you're strengthening. Many patients see symptom improvement from lifestyle changes alone within 1–2 weeks.",expect:"Fewer urgency episodes within 1-2 weeks. Less straining and pelvic pressure within 2-3 weeks.",howToGet:"Start today — pick one habit and add another each week.",note:"Reduce caffeine to 1 cup/day, drink 6-8 glasses water spread through day, eat 25-30g fiber, exhale before lifting."},
 "In-Person PT Evaluation":{name:"In-Person PT Visit (If Needed)",type:"referral",what:"A hands-on evaluation for direct muscle assessment through internal exam.",why:"Some patients benefit from hands-on assessment if telehealth progress slows.",expect:"Involves a vaginal/rectal exam (with consent).",howToGet:"Discussed at week 4 check-in if scores haven't improved enough.",note:"Not a sign of failure — may benefit from hands-on techniques alongside exercises."},
 "TENS Unit for Pain":{name:"TENS Unit for Pain",type:"device",what:"A small device sending mild electrical pulses through skin pads for drug-free pain relief.",why:"Your pain scores are significant. TENS provides relief you control at home.",expect:"Relief usually begins within 15-30 min.",howToGet:"Available at pharmacies/online ($30-60).",note:"May be recommended if pain hasn't improved by week 2."}
+};
+// ============================================================
+// MALE EXERCISE LIBRARY — Evidence: Stafford 2016, Ben Ami 2022, Milios 2020
+// Cueing: "Shorten the penis" (94.3% correct SUS activation). AVOID "draw in" (25.7%).
+// ============================================================
+const PATIENT_EX_MALE={
+"Supine PF Contraction (Male)":{name:"Lying Down Pelvic Floor Activation",lane:["core","post_prostatectomy","bph_luts","general_male"],why:"Starting lying down removes gravity so your pelvic floor muscles can focus on learning the correct contraction pattern.",howTo:["Lie on your back with knees bent, feet flat, hip-width apart.","Relax your jaw, shoulders, belly, and buttocks completely.","Imagine shortening your penis and drawing your testicles upward — this activates the correct muscles (the striated urethral sphincter).","Hold the squeeze gently for 5-10 seconds, then fully release and rest for 10 seconds.","Repeat 10 times per set. Do 2 sets."],mistakes:["Holding your breath — keep breathing normally throughout","Squeezing buttocks, thighs, or abdominals — only your pelvic floor should work","Bearing down instead of lifting up","Using maximum effort — aim for 50-70% effort"],stop:"Stop if pain above 3/10 or any sharp/burning sensation.",tips:"Progress: Once you can do 10 × 10s holds lying down without substitution, move to seated, then standing. The standing position is most functional."},
+"Diaphragmatic Breathing + PF (Male)":{name:"Belly Breathing with Pelvic Floor",lane:["core","post_prostatectomy","bph_luts","cpps","general_male"],why:"Your diaphragm and pelvic floor move together like a piston. Learning to coordinate them helps your pelvic floor work automatically during daily life.",howTo:["Lie on your back or sit comfortably. One hand on chest, one on belly.","Breathe IN through nose for 4 seconds. Belly rises. Chest stays still. Pelvic floor relaxes and drops.","Breathe OUT through pursed lips for 6 seconds. As you exhale, gently draw your pelvic floor upward.","EXHALE = gentle pelvic floor lift. INHALE = full pelvic floor release.","Do 5 full breath cycles. Rest 30 seconds. Repeat (2 sets)."],mistakes:["Breathing too fast — maintain 4 seconds in, 6 seconds out","Only breathing into chest — make your belly rise","Forgetting to fully relax on inhale","Tensing neck and shoulders"],stop:"Should never cause pain. If dizzy, return to normal breathing.",tips:"The most important exercise in your program. Practice during any downtime."},
+"Quick-Flick Contractions (Male)":{name:"Quick Squeeze Pelvic Floor",lane:["core","post_prostatectomy","general_male"],why:"These train the fast-twitch muscles — the ones that quickly tighten to prevent leaking when you cough, sneeze, or change positions.",howTo:["Sit or lie comfortably.","Squeeze your pelvic floor as quickly and strongly as you can — imagine stopping urine suddenly.","Immediately release completely.","Rest 2-3 seconds between each squeeze.","Do 10 squeezes per set, 3 sets."],mistakes:["Holding the squeeze too long — this is about speed","Not fully releasing between squeezes","Holding your breath","Using buttock or thigh muscles"],stop:"Stop if pain above 3/10.",tips:"Practice 'The Knack' — contract your pelvic floor just before you cough, sneeze, lift, or stand up. This is one of the most effective leak-prevention strategies."},
+"Standing PF Activation (Milios)":{name:"Standing Pelvic Floor Training (Milios Protocol)",lane:["post_prostatectomy"],why:"Research (Milios 2020) shows that men who do 6 sets per day of standing pelvic floor exercises achieve 74% continence at 3 months vs 43% with standard care. Standing is the most functional position.",howTo:["Stand with feet hip-width apart, weight evenly distributed.","Imagine shortening your penis and drawing your testicles upward.","Hold the contraction for 10 seconds while breathing normally.","Fully release and rest for 10 seconds.","Do 10 repetitions per set.","Aim for 6 sets spread throughout the day (e.g., morning, mid-morning, lunch, afternoon, evening, bedtime)."],mistakes:["Holding breath during holds","Clenching buttocks or thighs","Not achieving full release between reps","Doing all sets at once instead of spreading throughout the day"],stop:"Stop if pain above 3/10 or if you notice increased leaking during exercises.",tips:"If pre-surgery (prehab): start this protocol 5 weeks before your surgery date. Post-surgery: begin as soon as catheter is removed, with your surgeon's approval."},
+"Gentle Bridge + PF (Male)":{name:"Bridge Lift with Pelvic Floor",lane:["post_prostatectomy","general_male"],why:"Bridges strengthen your glutes, core, and pelvic floor together. Your pelvic floor engages FIRST, then the hips lift.",howTo:["Lie on your back, knees bent, feet flat and hip-width apart. Arms at sides.","Inhale into your diaphragm to prepare.","As you exhale, engage your pelvic floor FIRST — shorten and lift — then begin lifting your hips.","Slowly lift hips until your body makes a straight line from shoulders to knees.","Hold for 5-10 seconds at the top, breathing normally.","Slowly lower back down. Fully release your pelvic floor. Rest 5 seconds.","Repeat 10 times per set. Aim for 3 sets."],mistakes:["Lifting hips before engaging pelvic floor — PF engages FIRST","Arching lower back at the top — keep a straight line","Holding your breath","Moving too fast"],stop:"Stop if low back pain or pelvic pressure.",tips:"Build up to 10-second holds. Progress to marching bridge (lifting one foot at the top)."},
+"Functional Leakage Drill":{name:"The Knack — Leak Prevention Training",lane:["post_prostatectomy"],why:"The Knack teaches your pelvic floor to automatically tighten before activities that cause leaking. This is one of the most effective strategies for post-prostatectomy incontinence.",howTo:["Identify your leak triggers: coughing, sneezing, standing up, bending, lifting.","Before each triggering activity, quickly contract your pelvic floor (The Knack).","For cough/sneeze: contract pelvic floor just before the cough/sneeze.","For standing from sitting: contract before you begin to rise.","For lifting: contract and hold throughout the lift.","Practice 5 times daily with real activities."],mistakes:["Forgetting to pre-contract before the activity","Contracting too late (after the cough/sneeze)","Not practicing with actual daily activities"],stop:"This should never cause pain.",tips:"Keep a mental tally — aim for at least 5 'Knack' moments per day. Over time, this becomes automatic."},
+"Sit-to-Stand PF Activation":{name:"Sit-to-Stand with Pelvic Floor",lane:["post_prostatectomy"],why:"Standing up from a chair creates a sudden increase in abdominal pressure, which is a common leak trigger. Pre-contracting your pelvic floor prevents this.",howTo:["Sit in a firm chair with feet flat on the floor.","Before standing, engage your pelvic floor — shorten and lift.","While maintaining the contraction, stand up smoothly.","Once standing, hold the contraction for 3 seconds, then release.","Sit back down slowly.","Repeat 10 times, 3 times per day."],mistakes:["Standing before engaging pelvic floor","Using a rocking momentum instead of controlled movement","Forgetting to release after standing"],stop:"Stop if pain or dizziness.",tips:"Practice every time you stand from a chair throughout the day."},
+"Walking PF Integration":{name:"Walking with Pelvic Floor Engagement",lane:["post_prostatectomy"],why:"Walking is often when leaking occurs post-surgery. Learning to engage your pelvic floor during walking helps build automatic protection.",howTo:["Begin a 10-minute walk at a comfortable pace.","Every 5th step, gently contract your pelvic floor for 2-3 seconds.","Release fully and walk normally for 4 steps.","Repeat this rhythmic pattern throughout your walk.","As this gets easier, try maintaining a light pelvic floor contraction throughout."],mistakes:["Holding breath while walking","Contracting too hard — this is a gentle background activation","Walking too fast to coordinate"],stop:"Stop if any pain or if leaking worsens during the exercise.",tips:"Start on flat ground. Progress to inclines and stairs once the pattern feels natural."},
+"Stair Climbing PF":{name:"Stair Climbing with Pelvic Floor",lane:["post_prostatectomy"],why:"Stairs create significant pelvic floor demand. Coordinating your contraction with each step prevents leaking during this common daily activity.",howTo:["Stand at the bottom of a flight of stairs.","Contract your pelvic floor before stepping up.","Maintain the contraction as you step up with one foot.","Release as you bring the second foot up.","Re-contract before the next step.","Do 2 flights, 2 times per day."],mistakes:["Forgetting to pre-contract before each step","Holding breath on the stairs","Rushing through without coordination"],stop:"Stop if pain, significant leaking, or fatigue.",tips:"Hold the railing for balance if needed. Focus on the pelvic floor coordination, not speed."},
+"PF Relaxation Breathing":{name:"Pelvic Floor Relaxation Breathing",lane:["bph_luts","cpps"],why:"For BPH and pelvic pain, the pelvic floor is often too tight. This exercise focuses on FULL RELEASE and lengthening of the pelvic floor muscles — the opposite of a Kegel.",howTo:["Lie on your back with knees bent, or sit in a comfortable supported position.","Place one hand on your belly, one on your chest.","Breathe IN slowly through your nose for 4 seconds — as your belly rises, imagine your pelvic floor dropping and opening fully.","Breathe OUT slowly for 6 seconds — allow your pelvic floor to stay relaxed (do NOT lift or squeeze).","Focus entirely on the INHALE being the working phase — feel the pelvic floor descend.","Continue for 5 minutes, 2 times per day."],mistakes:["Accidentally squeezing on the exhale — for this exercise, keep the pelvic floor relaxed on BOTH phases","Breathing too fast","Tensing abdominals or buttocks"],stop:"Should never cause pain. If pain increases, shorten the session.",tips:"This is the foundation exercise for BPH and pelvic pain. Master this before adding any other exercises."},
+"Reverse Kegel":{name:"Pelvic Floor Lengthening (Reverse Kegel)",lane:["bph_luts","cpps"],why:"A reverse Kegel gently lengthens the pelvic floor muscles. For men with BPH or pelvic pain, the muscles are often in a shortened, tight state. This helps them release.",howTo:["Sit on a firm surface or lie on your back.","Take a slow breath in.","As you inhale, gently bear down as if starting to urinate — a very gentle push, NOT straining.","You should feel a subtle opening and dropping of the pelvic floor.","Hold this gentle release for 5 seconds.","Release and return to neutral.","Repeat 10 times, 2 sets."],mistakes:["Pushing too hard — this is a GENTLE bearing down, not straining","Holding your breath","Doing a regular Kegel (squeezing up) instead of a reverse Kegel (opening down)"],stop:"Stop if any pain, straining, or sense of rectal pressure.",tips:"Imagine your pelvic floor is an elevator — a Kegel lifts it up, a Reverse Kegel lets it ride down to the ground floor."},
+"Hip Adductor Stretch":{name:"Butterfly Stretch for Pelvic Floor",lane:["bph_luts","cpps"],why:"Tight hip adductors (inner thigh muscles) contribute to pelvic floor tension. Stretching them helps the pelvic floor relax.",howTo:["Sit on the floor or a firm surface.","Bring the soles of your feet together, letting your knees fall out to the sides.","Hold your feet and sit tall.","Gently let gravity pull your knees toward the floor — do NOT push them down.","Breathe deeply — focus on pelvic floor relaxation with each breath.","Hold for 30 seconds. Repeat 3 times."],mistakes:["Pushing knees down forcefully","Rounding your back","Holding your breath"],stop:"Stop if groin pain or sharp hip pain.",tips:"Place pillows under your knees if the stretch is too intense. This should feel like a gentle opening."},
+"Deep Squat PF Release":{name:"Supported Deep Squat for Pelvic Floor Release",lane:["bph_luts","cpps"],why:"A deep squat position naturally lengthens the pelvic floor muscles. This helps release chronic tension.",howTo:["Stand facing a sturdy surface (counter, door frame) for support.","With feet slightly wider than hip-width, toes turned slightly out, slowly lower into a deep squat.","Hold the support surface for balance.","In the bottom position, focus on breathing deeply and letting your pelvic floor fully relax.","Hold for 30 seconds. Repeat 3 times."],mistakes:["Rounding your lower back excessively","Forcing depth beyond comfort","Forgetting to breathe and relax pelvic floor"],stop:"Stop if knee pain, hip pain, or inability to maintain balance.",tips:"If a full deep squat is too difficult, start with a partial squat and gradually increase depth over weeks."},
+"Double Voiding Technique":{name:"Double Voiding for Complete Emptying",lane:["bph_luts"],why:"Double voiding helps ensure your bladder empties fully, reducing residual urine and the feeling of incomplete emptying common with BPH.",howTo:["Urinate as you normally would, without straining.","When you feel you've finished, remain seated on the toilet.","Wait 30 seconds in a relaxed position — lean slightly forward.","Try to urinate again without straining.","Repeat at every bathroom visit."],mistakes:["Straining to force more urine out — stay relaxed","Rushing the waiting period","Standing up before trying the second void"],stop:"If unable to void at all, contact your physician immediately.",tips:"Some men find that rocking gently forward and back helps initiate the second void. This should become a habit at every bathroom visit."},
+"Paradoxical Relaxation":{name:"Paradoxical Relaxation for Pelvic Pain",lane:["cpps"],why:"Chronic pelvic pain causes a protective tightening of the pelvic floor. Paradoxical relaxation teaches your nervous system to release this guarding — the opposite of 'fighting' the pain.",howTo:["Lie on your back in a quiet, comfortable space. Use pillows for support.","Close your eyes. Take several slow breaths.","Bring your awareness to your pelvic floor without trying to change anything.","Notice any tension without judging it or trying to fix it.","With each exhale, imagine the tension melting — imagine warmth flowing into the area.","Scan from your abdomen down through your pelvis, perineum, and hips.","Continue for 10 minutes, 2 times per day."],mistakes:["Trying to force relaxation — the paradox is that you relax by not trying","Getting frustrated when tension remains","Skipping sessions — consistency is crucial"],stop:"This should not increase pain. If pain worsens during a session, gently end and try again later.",tips:"Many men find the most improvement after 2-3 weeks of consistent practice. Consider adding a warm bath before this exercise."},
+"Extended Diaphragmatic Breathing (CPPS)":{name:"Extended Calming Breath for Pain",lane:["cpps"],why:"Extended breathing activates your parasympathetic nervous system, directly reducing pelvic floor muscle tension and pain signals.",howTo:["Sit supported or lie comfortably.","Breathe IN through nose for 4 seconds — belly expands, pelvic floor drops.","Breathe OUT through mouth for 6-8 seconds — as slowly as possible.","Focus on making the exhale as long and slow as you can.","Continue for 10 minutes, 2 times per day."],mistakes:["Making exhale too short — aim for 6-8 seconds","Getting frustrated if pain doesn't decrease immediately","Tensing jaw, shoulders, or pelvic floor"],stop:"Use as often as needed. No side effects.",tips:"Use before stressful situations, during pain flares, or before activities that trigger pain."},
+"Child's Pose PF":{name:"Wide-Knee Child's Pose for Pelvic Floor",lane:["cpps"],why:"This position gently opens the pelvis and allows the pelvic floor to lengthen under the support of gravity.",howTo:["Kneel on a soft surface. Spread your knees wide apart, big toes touching.","Sit your hips back toward your heels.","Walk your hands forward and lower your chest between your knees.","Rest your forehead on the floor or a pillow.","Breathe deeply — with each inhale, direct the breath into your perineum and lower belly.","Hold for 2 minutes. Rest and repeat."],mistakes:["Knees too close together — spread them wide to open the pelvis","Holding breath","Forcing the stretch beyond comfort"],stop:"Stop if knee, hip, or back pain.",tips:"Place a pillow between your calves and thighs if sitting back is uncomfortable. The key is relaxed breathing into the pelvic area."},
+"Hip Flexor Release":{name:"Kneeling Hip Flexor Stretch",lane:["cpps"],why:"Tight hip flexors (from prolonged sitting) pull on the pelvis and contribute to pelvic floor tension. Releasing them helps reduce pelvic pain.",howTo:["Kneel on one knee (use a pad or towel under the knee).","Place the other foot forward with knee at 90 degrees.","Keeping your torso upright, gently shift your weight forward until you feel a stretch in the front of the kneeling hip.","Hold for 30 seconds. Breathe deeply throughout.","Switch sides. Repeat 3 times each side."],mistakes:["Arching your lower back — keep core gently engaged","Leaning forward with your torso instead of shifting hips","Holding breath"],stop:"Stop if sharp knee or hip pain.",tips:"For a deeper stretch, gently squeeze the glute on the kneeling side. This enhances the hip flexor stretch through reciprocal inhibition."},
+"Happy Baby Pose":{name:"Happy Baby Pose for Pelvic Release",lane:["cpps"],why:"This gentle pose opens the hips and pelvis while allowing gravity to help release pelvic floor tension.",howTo:["Lie on your back.","Bring your knees toward your chest.","Open your knees wider than your torso.","Reach your hands to the outsides of your feet (or hold behind your knees if less flexible).","Gently pull your knees down toward the floor beside your ribcage.","Rock gently side to side if comfortable.","Hold for 2 minutes, breathing deeply into your pelvis."],mistakes:["Pulling too aggressively on your feet","Lifting your tailbone off the floor","Tensing your pelvic floor instead of releasing"],stop:"Stop if groin, hip, or low back pain.",tips:"If holding your feet is too intense, hold behind your knees instead. The gentle rocking massage is very effective for releasing tension."},
+"Warm Bath PF Relaxation":{name:"Warm Bath Pelvic Floor Relaxation",lane:["cpps"],why:"Warm water naturally relaxes the pelvic floor muscles and reduces pain signals. Combined with breathing, this is one of the most effective pain management techniques for chronic pelvic pain.",howTo:["Fill a bathtub or sitz bath with comfortably warm water (not hot — around 100-104°F/38-40°C).","Sit in the warm water, ensuring the perineal area is submerged.","Practice your diaphragmatic breathing — 4 seconds in, 6-8 seconds out.","Focus on releasing your pelvic floor with each exhale.","Continue for 15 minutes.","Do this daily, especially during pain flares."],mistakes:["Water too hot — warm is therapeutic, hot can worsen inflammation","Rushing through without combining with breathing","Using bath as passive rest without active relaxation focus"],stop:"Stop if skin irritation or if pain worsens in the water.",tips:"Adding Epsom salts (magnesium sulfate) may provide additional muscle relaxation. Consider doing this before bedtime for better sleep."},
+};
+// ============================================================
+// MALE ADJUNCT LIBRARY
+// ============================================================
+const EXPANSION_LIB_MALE={
+"biofeedback (male)":{n:"PF Biofeedback Device (Male)",type:"device",d:"Anorectal EMG biofeedback sensor for real-time pelvic floor contraction feedback. Helps confirm correct muscle activation and track strength gains.",rx:"Consider if patient does not progress with HEP alone by week 4.",patientText:"An EMG biofeedback device uses a small sensor to show you in real time when you're squeezing the correct muscles. This helps confirm you're doing the exercises correctly and tracks your progress over time. Your PT can recommend a specific device and guide you through setup.",badge:"library"},
+"bladder diary (male)":{n:"Bladder Diary",type:"behavioral",d:"3-day voiding diary to establish baseline frequency, volume, and urgency episodes. Track nocturia episodes.",rx:"Complete before next visit.",patientText:"Please keep a bladder diary for 3 days. Record what you drink, when you urinate, estimated volume, and any leaking or urgency episodes. Include how many times you get up at night. This helps your PT understand your unique pattern.",badge:"library"},
+"fluid management (male)":{n:"Fluid Management (Nocturia)",type:"behavioral",d:"Fluid timing optimization — reduce evening fluid intake to manage nocturia. Maintain total daily intake of 6-8 glasses.",rx:"Begin immediately for patients with IPSS nocturia ≥ 2.",patientText:"To reduce nighttime bathroom trips: stop drinking fluids 2-3 hours before bedtime. Spread your water intake evenly during the day (6-8 glasses total). Reduce caffeine and alcohol, especially after 3 PM — both irritate the bladder and increase urgency.",badge:"library"},
+"timed voiding":{n:"Timed Voiding Program",type:"behavioral",d:"Scheduled voiding every 2-3 hours to prevent urgency episodes and retrain bladder capacity.",rx:"Begin immediately for BPH/LUTS patients.",patientText:"Instead of waiting until you feel urgent, urinate on a schedule — every 2-3 hours during the day. This helps prevent sudden urgency episodes and gradually retrains your bladder to hold more comfortably. Set phone alarms as reminders.",badge:"library"},
+"tens perineal":{n:"TENS Unit (Perineal)",type:"device",d:"Transcutaneous electrical nerve stimulation with perineal electrode placement for chronic pelvic pain management.",rx:"Home TENS unit if CPSI pain domain ≥ 15.",patientText:"A TENS unit sends mild electrical pulses through skin pads placed near the perineum for drug-free pain relief. Use for 20 minutes, twice daily, or during pain flares. Available at pharmacies or online ($30-60).",badge:"library"},
+"warm sitz bath":{n:"Warm Sitz Bath",type:"behavioral",d:"Warm water sitz bath for chronic pelvic pain management. Relaxes pelvic floor muscles and reduces pain signals.",rx:"Daily for CPPS patients. 15 minutes at 100-104°F.",patientText:"Sit in a warm bath (not hot — around 100-104°F) for 15 minutes daily. The warm water naturally relaxes your pelvic floor muscles and reduces pain. Add Epsom salts for additional muscle relaxation. Combine with your breathing exercises for best results.",badge:"library"},
+"penile clamp":{n:"Penile Clamp (Continence Aid)",type:"device",d:"External continence device for social continence during post-prostatectomy recovery. Apply no more than 2 hours at a time. PT supervision required.",rx:"For severe post-prostatectomy incontinence affecting daily function. NOT a long-term solution.",patientText:"A penile clamp is a small external device that gently compresses the urethra to prevent leaking during social activities. IMPORTANT: Never wear for more than 2 hours at a time — remove, void, and reapply. This is a temporary aid while your pelvic floor strengthens. Your PT will guide you on proper use.",badge:"library"},
+"alpha-blocker note":{n:"Alpha-Blocker Coordination",type:"behavioral",d:"Coordination note for patients on alpha-blockers (tamsulosin, alfuzosin). Exercise timing relative to medication.",rx:"Inform PT of all current medications.",patientText:"If you take an alpha-blocker medication (like tamsulosin/Flomax or alfuzosin/Uroxatral), be aware that these medications relax smooth muscle, which may affect your pelvic floor exercise response. Take your medication at the same time daily. Exercise timing doesn't need to change, but let your PT know all your current medications so we can optimize your program.",badge:"library"},
+};
+const PATIENT_ADJ_MALE={
+"PF Biofeedback Device (Male)":{name:"Pelvic Floor Biofeedback (Male)",type:"device",what:"An EMG sensor that measures your pelvic floor muscle activity and displays it on a screen, confirming correct contraction technique.",why:"Research shows men who use biofeedback learn correct pelvic floor activation faster, especially post-prostatectomy.",expect:"Improved awareness and stronger contractions within the first 2 weeks. Clear strength difference by week 4.",howToGet:"Your PT can recommend a specific device. Some clinic-grade devices are used during telehealth sessions. Home options are available with PT guidance.",note:"Particularly helpful for men who are unsure if they're contracting the correct muscles."},
+"Bladder Diary":{name:"Bladder Diary",type:"behavioral",what:"A 3-day record of your fluid intake, bathroom trips, leak episodes, and urgency. Includes nighttime trips.",why:"Gives your PT a clear picture of your bladder patterns so they can tailor your program specifically to you.",expect:"Takes about 3 days to complete. Your PT will review it and adjust your plan accordingly.",howToGet:"Your PT will provide a template. You can also use a bladder diary app on your phone.",note:"Include everything — what you drink, when you urinate, and any leaking. Night trips are especially important."},
+"Timed Voiding Program":{name:"Timed Voiding Program",type:"behavioral",what:"A scheduled voiding program where you urinate every 2-3 hours during the day, regardless of urge.",why:"Prevents urgency episodes and gradually retrains your bladder to hold more comfortably.",expect:"Most men notice fewer urgency episodes within 1-2 weeks.",howToGet:"Your PT creates a personalized schedule based on your bladder diary.",note:"Set phone alarms as reminders. Void before you feel urgent."},
+"Fluid Management (Nocturia)":{name:"Fluid Timing for Nighttime Trips",type:"behavioral",what:"Adjusting WHEN you drink (not necessarily how much) to reduce nighttime bathroom trips.",why:"Nocturia (waking to urinate at night) is one of the most disruptive LUTS symptoms. Fluid timing makes a big difference.",expect:"Most men reduce nighttime trips by 1-2 within 1 week.",howToGet:"Start today: stop fluids 2-3 hours before bed. Cut caffeine after 3 PM.",note:"Total daily fluid should still be 6-8 glasses — just shift timing to earlier in the day."},
+"Penile Clamp":{name:"Penile Clamp (Temporary Continence Aid)",type:"device",what:"A small external device worn on the penis that gently compresses the urethra to prevent leaking during activities.",why:"Provides social continence while your pelvic floor muscles strengthen. A bridge to full recovery.",expect:"Immediate leak reduction during wear. NOT a permanent solution.",howToGet:"Available at medical supply stores or online (~$25-50). Your PT will instruct on proper sizing and use.",note:"CRITICAL: Never wear for more than 2 hours continuously. Remove, void, and reapply. Improper use can cause tissue damage."},
+"TENS Unit (Perineal)":{name:"TENS Unit for Pelvic Pain",type:"device",what:"A small device that sends mild electrical pulses through skin pads near the perineum for drug-free pain relief.",why:"TENS can reduce chronic pelvic pain by interrupting pain signals. You control it at home.",expect:"Relief usually begins within 15-30 minutes of use.",howToGet:"Available at pharmacies/online ($30-60). Your PT will guide electrode placement.",note:"Use for 20 minutes, twice daily, or as needed during pain flares."},
+"Warm Sitz Bath":{name:"Warm Sitz Bath for Pain Relief",type:"behavioral",what:"Sitting in warm water (100-104°F) for 15 minutes to relax pelvic floor muscles and reduce pain.",why:"Warm water naturally relaxes the pelvic floor and reduces nerve pain signals. Very effective for CPPS.",expect:"Pain relief during and for several hours after. Cumulative benefit over weeks.",howToGet:"Use your bathtub or a sitz bath basin (~$15, fits over toilet). Add Epsom salts if desired.",note:"Do this daily, especially during pain flares. Best before bedtime for improved sleep."},
+};
+const SCORE_EXP_MALE={
+ipss:{"Mild":"Your IPSS score is in the mild range (0-7). Your symptoms may be manageable with lifestyle changes and pelvic floor exercises.","Moderate":"Your IPSS score is in the moderate range (8-19). Your program will include targeted exercises and behavioral strategies to improve your symptoms.","Severe":"Your IPSS score is in the severe range (20-35). Your program will be comprehensive with close monitoring. A urology referral may be recommended."},
+cpsi:{"Mild":"Your chronic pain score is in the mild range. Focused relaxation and breathing exercises can make a significant difference.","Moderate":"Your chronic pain score is in the moderate range. Your program will prioritize pain reduction through down-training and relaxation techniques.","Severe":"Your chronic pain score is in the severe range. Pain management will be the primary focus of your program."},
+shim:{"No ED":"Your erectile function score indicates no significant concerns.","Mild ED":"Your score suggests mild erectile difficulty. Pelvic floor exercises can help improve blood flow and muscle control.","Mild-Moderate ED":"Your score indicates mild-to-moderate erectile concerns. Your program includes exercises specifically targeting the muscles that support erection.","Moderate ED":"Your score indicates moderate erectile concerns. Your program will focus on the pelvic floor muscles that directly support erectile function.","Severe ED":"Your score indicates significant erectile concerns. Your PT will coordinate with your urologist to optimize your care."}
 };
 const SCORE_EXP={
 iciq:{"None":"Your bladder leakage score is 0 — you're not currently experiencing leaking.","Slight":"Your score is in the mild range. Many patients see significant improvement within 4-6 weeks.","Moderate":"Your score is in the moderate range. Patients respond well to exercises, bladder training, and lifestyle changes.","Severe":"Your score is in the severe range. This IS treatable. Your program will be more intensive with frequent check-ins.","Very Severe":"Your score is in the very severe range. Your program will be comprehensive with close monitoring."},
@@ -546,6 +700,199 @@ function genPlan(iciq,pain,gupi,intake){
   }
   L("plan_generated",{planId:p.id,risk:p.risk,iciq:iciq.total,tier,prenatal:!!intake.prenatal_flag,review_flags:p.review_flags.map(f=>f.id),logicVersion:CLINICAL_LOGIC_VERSION});return p;
 }
+
+// ============================================================
+// MALE CARE PLAN GENERATOR
+// ============================================================
+function genPlanMale(ipss,cpsi,shim,iciq,pain,intake){
+  const p={id:`TP-${Date.now()}`,at:new Date().toISOString(),status:"pending_review",risk:"green",logicVersion:CLINICAL_LOGIC_VERSION,dx:[],goals:[],ex:[],adjuncts:[],freq:"",dur:"",prec:[],prog:[],cpt:[],lane:"general_male",isMale:true};
+  // Lane determination
+  if(intake.prostate_history==="yes"&&intake.prostate_surgery_type==="radical_prostatectomy"){
+    p.lane="post_prostatectomy";
+    if(intake.prostate_prehab==="yes")p.lane="post_prostatectomy_prehab";
+  } else if(intake.bph_diagnosed==="yes"||ipss.total>=8){
+    p.lane="bph_luts";
+  } else if(intake.cpps_symptoms==="yes"||cpsi.pain>=10){
+    p.lane="cpps";
+  }
+  // ICD-10 codes by lane + symptoms
+  if(p.lane==="post_prostatectomy"||p.lane==="post_prostatectomy_prehab"){
+    if(iciq.total>0){
+      if(iciq.subtype.includes("Stress"))p.dx.push({c:"N39.3",d:"Stress urinary incontinence (post-prostatectomy)"});
+      else if(iciq.subtype.includes("Urge"))p.dx.push({c:"N39.41",d:"Urge urinary incontinence"});
+      else if(iciq.subtype.includes("Mixed"))p.dx.push({c:"N39.46",d:"Mixed urinary incontinence"});
+      else p.dx.push({c:"R32",d:"Unspecified urinary incontinence"});
+    }
+    if(shim.total<=21)p.dx.push({c:"N52.9",d:"Erectile dysfunction (post-prostatectomy)"});
+  }
+  if(p.lane==="bph_luts"){
+    p.dx.push({c:"N40.1",d:"BPH with lower urinary tract symptoms"});
+    if(ipss.voiding>ipss.storage)p.dx.push({c:"R39.14",d:"Feeling of incomplete bladder emptying"});
+  }
+  if(p.lane==="cpps"){
+    p.dx.push({c:"N41.1",d:"Chronic prostatitis"});
+    p.dx.push({c:"G89.29",d:"Other chronic pain — chronic pelvic pain syndrome"});
+  }
+  if(pain.composite>=1)p.dx.push({c:"R10.2",d:"Pelvic and perineal pain"});
+  const constipationFlag=(intake.bowel_constipation??0)>=2||(intake.bowel_frequency??4)<=1||(intake.bristol_stool??4)<=2;
+  if(constipationFlag)p.dx.push({c:"K59.00",d:"Constipation, unspecified"});
+  // Goals
+  if(p.lane==="post_prostatectomy"||p.lane==="post_prostatectomy_prehab"){
+    p.goals.push("Achieve urinary continence (pad-free)");
+    if(iciq.total>0)p.goals.push(`Reduce ICIQ from ${iciq.total} by ≥3 pts in 8 wks`);
+    if(shim.total<=21)p.goals.push(`Improve erectile function (SHIM from ${shim.total})`);
+    if(p.lane==="post_prostatectomy_prehab")p.goals.push("Build pelvic floor strength before surgery (prehab)");
+  } else if(p.lane==="bph_luts"){
+    p.goals.push(`Reduce IPSS from ${ipss.total} (${ipss.severity}) by ≥5 pts in 8 wks`);
+    if(ipss.storage>ipss.voiding)p.goals.push("Reduce urgency and frequency episodes");
+    else p.goals.push("Improve urinary flow and reduce hesitancy");
+    if((intake.ipss7??0)>=2)p.goals.push("Reduce nighttime bathroom trips");
+  } else if(p.lane==="cpps"){
+    p.goals.push(`Reduce CPSI pain from ${cpsi.pain} to ≤${Math.max(0,cpsi.pain-7)}`);
+    p.goals.push("Reduce pelvic floor muscle tension through down-training");
+    p.goals.push("Improve quality of life and daily function");
+  } else {
+    p.goals.push("Strengthen pelvic floor function");
+    p.goals.push("Improve urinary symptom management");
+  }
+  if(intake.patient_goal)p.goals.push(`Patient goal: "${intake.patient_goal}"`);
+  // Exercise selection by lane
+  if(p.lane==="post_prostatectomy"||p.lane==="post_prostatectomy_prehab"){
+    const tier=iciq.total>=13||shim.total<=11?"beginner":iciq.total>=6||shim.total<=16?"moderate":"advanced";
+    p.tier=tier;
+    if(tier==="beginner"){
+      p.ex=[
+        {n:"Standing PF Activation (Milios)",s:6,r:10,h:"10s hold, 10s rest",f:"6 sets/day",d:"Milios protocol — 74% continence at 3mo. Standing is most functional."},
+        {n:"Supine PF Contraction (Male)",s:2,r:10,h:"10s",f:"daily",d:"Gravity-eliminated PF awareness. Cue: shorten the penis, draw testicles upward."},
+        {n:"Diaphragmatic Breathing + PF (Male)",s:2,r:5,h:"full cycle",f:"2x/day",d:"Breathing coordination for PF connection."},
+        {n:"Quick-Flick Contractions (Male)",s:3,r:10,h:"1-2s on/off",f:"daily",d:"Fast-twitch activation for cough/sneeze protection."},
+        {n:"Gentle Bridge + PF (Male)",s:2,r:10,h:"5-10s",f:"daily",d:"Bridge with PF engagement — PF activates FIRST."},
+        {n:"Functional Leakage Drill",s:1,r:5,h:"as needed",f:"5x/day",d:"The Knack — pre-contract before cough/stand/lift."},
+      ];
+      p.freq="6 sets/day standing PF + daily HEP + PT review q3 days";p.dur="12 wks (reassess wk 2,4,8)";
+    } else if(tier==="moderate"){
+      p.ex=[
+        {n:"Standing PF Activation (Milios)",s:4,r:10,h:"10s hold, 10s rest",f:"4 sets/day",d:"Standing PF activation — functional position."},
+        {n:"Quick-Flick Contractions (Male)",s:3,r:10,h:"1-2s on/off",f:"daily",d:"Fast-twitch PF activation."},
+        {n:"Gentle Bridge + PF (Male)",s:3,r:10,h:"10s",f:"3x/wk",d:"Bridge with PF engagement."},
+        {n:"Sit-to-Stand PF Activation",s:1,r:10,h:"hold through stand",f:"3x/day",d:"Functional transfer training."},
+        {n:"Diaphragmatic Breathing + PF (Male)",s:1,r:5,h:"full cycle",f:"daily",d:"Breathing coordination."},
+      ];
+      p.freq="Daily HEP + weekly check-in";p.dur="8 wks (reassess wk 4,8)";
+    } else {
+      p.ex=[
+        {n:"Standing PF Activation (Milios)",s:3,r:10,h:"10s",f:"3 sets/day",d:"Maintenance standing PF activation."},
+        {n:"Walking PF Integration",s:1,r:1,h:"10 min",f:"daily",d:"PF engagement during walking."},
+        {n:"Stair Climbing PF",s:1,r:1,h:"2 flights",f:"2x/day",d:"Stair coordination with PF."},
+        {n:"Functional Leakage Drill",s:1,r:5,h:"as needed",f:"ongoing",d:"The Knack during all activities."},
+      ];
+      p.freq="Daily HEP + bi-weekly check-in";p.dur="6 wks (reassess wk 3,6)";
+    }
+  } else if(p.lane==="bph_luts"){
+    const tier=ipss.total<=7?"mild":ipss.total<=19?"moderate":"severe";
+    p.tier=tier;
+    if(tier==="severe"){
+      p.ex=[
+        {n:"PF Relaxation Breathing",s:2,r:1,h:"5 min",f:"2x/day",d:"Full PF release breathing — INHALE is the working phase."},
+        {n:"Reverse Kegel",s:2,r:10,h:"5s",f:"daily",d:"Gentle PF lengthening — bearing down gently, NOT straining."},
+        {n:"Hip Adductor Stretch",s:3,r:1,h:"30s",f:"daily",d:"Butterfly stretch for inner thigh + PF release."},
+        {n:"Deep Squat PF Release",s:3,r:1,h:"30s",f:"daily",d:"Supported deep squat for PF lengthening."},
+        {n:"Double Voiding Technique",s:1,r:1,h:"every void",f:"every bathroom visit",d:"Void, wait 30s relaxed, try again."},
+        {n:"Diaphragmatic Breathing + PF (Male)",s:2,r:5,h:"full cycle",f:"daily",d:"Breathing coordination."},
+      ];
+      p.freq="Daily HEP + PT review q3 days";p.dur="12 wks (reassess wk 2,4,8)";
+      p.review_flags=[...(p.review_flags||[]),{id:"HIGH_SEVERITY_IPSS",type:"always",label:"Severe IPSS ≥20 — Urology Referral Recommended"}];
+      p.risk="yellow";
+    } else if(tier==="moderate"){
+      p.ex=[
+        {n:"PF Relaxation Breathing",s:2,r:1,h:"5 min",f:"2x/day",d:"Full PF release breathing."},
+        {n:"Reverse Kegel",s:2,r:10,h:"5s",f:"daily",d:"Gentle PF lengthening."},
+        {n:"Hip Adductor Stretch",s:3,r:1,h:"30s",f:"daily",d:"Inner thigh + PF release."},
+        {n:"Double Voiding Technique",s:1,r:1,h:"every void",f:"every bathroom visit",d:"Ensure complete emptying."},
+        {n:"Diaphragmatic Breathing + PF (Male)",s:1,r:5,h:"full cycle",f:"daily",d:"Breathing coordination."},
+      ];
+      p.freq="Daily HEP + weekly check-in";p.dur="8 wks (reassess wk 4,8)";
+    } else {
+      p.ex=[
+        {n:"PF Relaxation Breathing",s:1,r:1,h:"5 min",f:"2x/day",d:"PF release breathing."},
+        {n:"Diaphragmatic Breathing + PF (Male)",s:1,r:5,h:"full cycle",f:"daily",d:"Breathing coordination."},
+        {n:"Double Voiding Technique",s:1,r:1,h:"every void",f:"every bathroom visit",d:"Ensure complete emptying."},
+        {n:"Hip Adductor Stretch",s:3,r:1,h:"30s",f:"3x/wk",d:"Inner thigh stretch for PF support."},
+      ];
+      p.freq="Daily HEP + PT review";p.dur="6 wks (reassess wk 3,6)";
+    }
+  } else if(p.lane==="cpps"){
+    // CPPS: DOWN-TRAINING FIRST — NO Kegels initially
+    p.tier="down_training";
+    p.ex=[
+      {n:"Paradoxical Relaxation",s:1,r:1,h:"10 min",f:"2x/day",d:"Progressive PF release — observe tension without fighting it."},
+      {n:"Extended Diaphragmatic Breathing (CPPS)",s:1,r:1,h:"10 min",f:"2x/day",d:"4-count in, 6-8-count out. Focus on PF drop."},
+      {n:"Child's Pose PF",s:1,r:1,h:"2 min",f:"daily",d:"Wide-knee child's pose — breathe into perineum."},
+      {n:"Hip Flexor Release",s:3,r:1,h:"30s each side",f:"daily",d:"Kneeling hip flexor stretch — reduces pelvic tension."},
+      {n:"Happy Baby Pose",s:1,r:1,h:"2 min",f:"daily",d:"Gentle pelvic opening with rocking."},
+      {n:"Warm Bath PF Relaxation",s:1,r:1,h:"15 min",f:"daily",d:"Warm sitz bath + diaphragmatic breathing."},
+    ];
+    p.freq="Daily HEP + PT review weekly";p.dur="8 wks — down-training phase (reassess wk 4,8)";
+    p.prec.push("CPPS protocol: NO Kegels or strengthening exercises during the initial 8-week down-training phase. Focus exclusively on relaxation and lengthening.");
+  } else {
+    // General male — core exercises
+    p.tier="general";
+    p.ex=[
+      {n:"Supine PF Contraction (Male)",s:2,r:10,h:"5-10s",f:"daily",d:"PF awareness. Cue: shorten the penis, draw testicles upward."},
+      {n:"Diaphragmatic Breathing + PF (Male)",s:2,r:5,h:"full cycle",f:"2x/day",d:"Breathing coordination."},
+      {n:"Quick-Flick Contractions (Male)",s:2,r:10,h:"1-2s on/off",f:"daily",d:"Fast-twitch PF activation."},
+      {n:"Gentle Bridge + PF (Male)",s:2,r:10,h:"5-10s",f:"3x/wk",d:"Bridge with PF engagement."},
+    ];
+    p.freq="Daily HEP + PT review";p.dur="8 wks (reassess wk 4,8)";
+  }
+  // Adjuncts by lane
+  if(p.lane==="post_prostatectomy"||p.lane==="post_prostatectomy_prehab"){
+    p.adjuncts.push({type:"device",n:"PF Biofeedback Device (Male)",d:"EMG biofeedback for PF contraction quality confirmation.",rx:"Consider if patient does not progress with HEP alone by week 4."});
+    p.adjuncts.push({type:"behavioral",n:"Bladder Diary",d:"3-day voiding diary to track leak episodes and frequency.",rx:"Complete before next visit."});
+    if(iciq.total>=13)p.adjuncts.push({type:"device",n:"Penile Clamp",d:"External continence device for social continence. Max 2hr on, then release.",rx:"For severe incontinence affecting daily function. PT supervision required."});
+  }
+  if(p.lane==="bph_luts"){
+    p.adjuncts.push({type:"behavioral",n:"Timed Voiding Program",d:"Scheduled voiding q2-3hr to prevent urgency episodes.",rx:"Begin immediately."});
+    p.adjuncts.push({type:"behavioral",n:"Fluid Management (Nocturia)",d:"Reduce evening fluids. Cut caffeine after 3 PM.",rx:"Begin immediately for nocturia."});
+    p.adjuncts.push({type:"behavioral",n:"Bladder Diary",d:"3-day voiding diary with volume + nocturia tracking.",rx:"Complete before next visit."});
+  }
+  if(p.lane==="cpps"){
+    if(cpsi.pain>=15){
+      p.adjuncts.push({type:"device",n:"TENS Unit (Perineal)",d:"Perineal electrode placement for chronic pelvic pain. 20 min, 2x/day.",rx:"Home TENS unit for pain management."});
+    }
+    p.adjuncts.push({type:"behavioral",n:"Warm Sitz Bath",d:"15 min daily warm water sitz bath for PF muscle relaxation.",rx:"Daily, especially during pain flares."});
+  }
+  if(constipationFlag)p.adjuncts.push({type:"behavioral",n:"Bowel Management Program",d:"Toileting posture, fiber/fluid optimization, defecation dynamics.",rx:"Address constipation — straining worsens PF dysfunction."});
+  if((intake.med_modify??0)===1)p.adjuncts.push({type:"behavioral",n:"Medication Review Referral",d:"Patient reports modifying prescribed medication due to symptoms.",rx:"Urgent: contact prescribing provider."});
+  p.adjuncts.push({type:"behavioral",n:"Lifestyle Modifications",d:"Caffeine reduction, fluid management, lifting mechanics.",rx:"Standard behavioral component."});
+  // Precautions
+  p.prec.push("Stop if pain >3/10");
+  p.prec.push("Report bleeding/fever/UTI immediately");
+  if(p.lane==="post_prostatectomy")p.prec.push("Avoid heavy lifting (>15 lbs) for first 6 weeks post-surgery");
+  // Progression rules
+  if(p.lane==="post_prostatectomy"||p.lane==="post_prostatectomy_prehab"){
+    p.prog=["ICIQ ↓≥2 → increase hold +2s","Pad-free for 3 days → advance to functional drills","SHIM improves ≥3 → add advanced exercises","Adherence ≥80% × 2wk → add functional progressions"];
+  } else if(p.lane==="bph_luts"){
+    p.prog=["IPSS ↓≥3 → reduce voiding frequency by 30 min","Nocturia ↓≥1 → continue current protocol","Add gentle PF strengthening after 4 wks of relaxation"];
+  } else if(p.lane==="cpps"){
+    p.prog=["CPSI pain ↓≥5 → may add gentle strengthening at week 8","Pain ≤3/10 × 2wk → add functional PF activation","If no improvement by week 4 → consider multimodal approach"];
+  } else {
+    p.prog=["IPSS ↓≥2 → increase hold +2s","Adherence ≥80% × 2wk → add standing exercises"];
+  }
+  p.cpt=[{c:"97161",d:"PT Eval — Low Complexity",u:1}];
+  // Review flags
+  const phq2=calcPHQ2(intake);
+  p.review_flags=[...(p.review_flags||[])];
+  if(ipss.total>=20)p.review_flags.push({id:"HIGH_SEVERITY_IPSS",type:"always",label:"Severe IPSS — Urology Referral"});
+  if(shim.total<=7)p.review_flags.push({id:"SEVERE_ED",type:"always",label:"Severe ED (SHIM ≤7)"});
+  if(cpsi.pain>=15){p.review_flags.push({id:"HIGH_CPSI_PAIN",type:"always",label:"High CPSI Pain"});p.risk="yellow"}
+  if(phq2>=3){p.review_flags.push({id:"DEPRESSION_RISK",type:"always",label:"Depression Risk"});p.risk="yellow"}
+  if(intake._safety_answer_changed){p.review_flags.push({id:"SAFETY_ANSWER_CHANGED",type:"always",label:"Safety Answer Changed"});p.risk="yellow"}
+  if(ipss.total>=25&&(intake.ipss7??0)>=4){p.review_flags.push({id:"ACUTE_RETENTION_RISK",type:"always",label:"Acute Retention Risk"});p.risk="yellow"}
+  L("plan_generated",{planId:p.id,risk:p.risk,lane:p.lane,ipss:ipss.total,cpsi:cpsi.total,shim:shim.total,iciq:iciq.total,tier:p.tier,review_flags:p.review_flags.map(f=>f.id),logicVersion:CLINICAL_LOGIC_VERSION,isMale:true});
+  return p;
+}
+
 // Referral routing — deterministic check using existing genPlan flags
 function needsInPersonCare(plan,iciq,pain,popdi){
   const reasons=[];
@@ -696,6 +1043,7 @@ function NPILookup({q,ans,set}){
   </div>;
 }
 function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSafetyModal,setShowSafetyModal}){
+  const _accent=ans.sex_at_birth==="male"?C.blue:C.pink;
   if(q.conditional&&!q.conditional(ans))return null;
   if(q.type==="date"){
     const raw=ans[q.id+"_raw"]||"";
@@ -774,7 +1122,7 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
       <tbody>{q.rows.map((row,i)=><tr key={row.id}style={{background:i%2?"#FAFAFA":"white"}}>
         <td style={{padding:"10px 12px",borderBottom:`1px solid ${C.g100}`,color:C.g700,lineHeight:1.5}}>{row.label}</td>
         {["no","yes"].map(v=><td key={v}style={{textAlign:"center",padding:"10px 6px",borderBottom:`1px solid ${C.g100}`}}>
-          <div onClick={()=>set(row.id,v)} style={{width:24,height:24,borderRadius:12,border:`2px solid ${ans[row.id]===v?(v==="yes"?C.pink:C.g400):C.g300}`,background:ans[row.id]===v?(v==="yes"?C.pink:C.g400):"white",margin:"0 auto",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}}>
+          <div onClick={()=>set(row.id,v)} style={{width:24,height:24,borderRadius:12,border:`2px solid ${ans[row.id]===v?(v==="yes"?_accent:C.g400):C.g300}`,background:ans[row.id]===v?(v==="yes"?_accent:C.g400):"white",margin:"0 auto",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}}>
             {ans[row.id]===v&&<div style={{width:8,height:8,borderRadius:4,background:"white"}}/>}
           </div>
         </td>)}
@@ -790,7 +1138,7 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
           <td style={{...cs,textAlign:"center"}}>
             <div style={{display:"flex",gap:8,justifyContent:"center",alignItems:"center"}}>
               {["No","Yes"].map(v=><div key={v}style={{display:"flex",alignItems:"center",gap:4,cursor:"pointer"}}onClick={()=>set(row.id,v.toLowerCase())}>
-                <div style={{...rs,borderColor:ans[row.id]===v.toLowerCase()?(v==="Yes"?C.pink:C.g400):C.g300,background:ans[row.id]===v.toLowerCase()?(v==="Yes"?C.pink:C.g400):"white"}}>
+                <div style={{...rs,borderColor:ans[row.id]===v.toLowerCase()?(v==="Yes"?_accent:C.g400):C.g300,background:ans[row.id]===v.toLowerCase()?(v==="Yes"?_accent:C.g400):"white"}}>
                   {ans[row.id]===v.toLowerCase()&&<div style={{width:8,height:8,borderRadius:4,background:"white"}}/>}
                 </div>
                 <span style={{fontSize:12,color:ans[row.id]===v.toLowerCase()?C.g700:C.g400}}>{v}</span>
@@ -803,7 +1151,7 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
           <td colSpan={2}style={{padding:"4px 12px 10px",borderBottom:`1px solid ${C.g100}`}}>
             <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
               <span style={{fontSize:11,fontWeight:600,color:C.purp}}>Bother:</span>
-              {q.botherOpts.map(([l,v])=><div key={v}onClick={()=>set(row.id+"_bother",v)}style={{padding:"4px 10px",borderRadius:16,cursor:"pointer",transition:"all .15s",fontSize:12,border:`1.5px solid ${ans[row.id+"_bother"]===v?C.pink:C.g200}`,background:ans[row.id+"_bother"]===v?"rgba(252,34,138,.06)":"white",color:ans[row.id+"_bother"]===v?C.pink:C.g600,fontWeight:ans[row.id+"_bother"]===v?600:400}}>{l}</div>)}
+              {q.botherOpts.map(([l,v])=><div key={v}onClick={()=>set(row.id+"_bother",v)}style={{padding:"4px 10px",borderRadius:16,cursor:"pointer",transition:"all .15s",fontSize:12,border:`1.5px solid ${ans[row.id+"_bother"]===v?_accent:C.g200}`,background:ans[row.id+"_bother"]===v?(_accent===C.blue?"rgba(0,138,252,.06)":"rgba(252,34,138,.06)"):"white",color:ans[row.id+"_bother"]===v?_accent:C.g600,fontWeight:ans[row.id+"_bother"]===v?600:400}}>{l}</div>)}
             </div>
           </td>
         </tr>}
@@ -907,10 +1255,10 @@ const MOCK_PROVIDERS=[
 ];
 // Utah in-person referral partner directory — curated list, add providers as partnerships form
 const UTAH_PROVIDERS=[
-  {id:"reborn_pt",name:"Reborn Physical Therapy",provider:"Betty DeLass",credential:"PT",cities:["Lehi","Murray","Layton","Provo"],phone:"(801) 702-8475",telehealth:true,intakeMethod:"phone",payers:["BCBS","Tricare","EMI","Medicare","Select Health","Cash/HSA/FSA"],treats:["bladder","bowel","postpartum","prolapse","pain","sexual"],website:"https://rebornpt.com",type:"pt"},
-  {id:"uofu_urogyn",name:"University of Utah Urogynecology",provider:"Urogynecology Clinic",credential:"MD",cities:["Salt Lake City"],phone:"(801) 213-2995",telehealth:false,intakeMethod:"phone",payers:[],treats:["mesh","prolapse","complex_incontinence","neurourology"],website:"https://healthcare.utah.edu",type:"specialist"},
-  {id:"uofu_mfm",name:"University of Utah Maternal-Fetal Medicine",provider:"MFM Clinic",credential:"MD",cities:["Salt Lake City"],phone:"(801) 213-2995",telehealth:false,intakeMethod:"phone",payers:[],treats:["high_risk_pregnancy"],website:"https://healthcare.utah.edu",type:"specialist"},
-  {id:"huntsman",name:"Huntsman Cancer Institute \u2014 Gynecologic Oncology",provider:"Gynecologic Oncology",credential:"MD",cities:["Salt Lake City"],phone:"(801) 587-7000",telehealth:false,intakeMethod:"phone",payers:[],treats:["gynecologic_cancer"],website:"https://healthcare.utah.edu/huntsmancancerinstitute",type:"specialist"},
+  {id:"reborn_pt",name:"Reborn Physical Therapy",provider:"Betty DeLass",credential:"PT",cities:["Lehi","Murray","Layton","Provo"],phone:"(801) 702-8475",telehealth:true,intakeMethod:"phone",callNote:"When you call, mention you completed an Expect Health assessment and would like to book an appointment.",payers:["BCBS","Tricare","EMI","Medicare","Select Health","Cash/HSA/FSA"],treats:["bladder","bowel","postpartum","prolapse","pain","sexual"],website:"https://rebornpt.com",type:"pt",relevantFor:["prolapse","pudendal","severe_iciq","high_pain","bulge"],whyMap:{prolapse:"Your screening detected prolapse symptoms — in-person pelvic floor PT can perform a hands-on assessment and fit a pessary (a small, removable device inserted to support pelvic organs) if appropriate.",pudendal:"Your pain pattern suggests possible pudendal nerve involvement — a specialist pelvic floor PT can evaluate this in person.",severe_iciq:"Your incontinence severity may benefit from hands-on biofeedback and manual techniques alongside your home program.",high_pain:"Your pain level is significant — in-person manual therapy can complement your home exercises.",bulge:"You reported a bulge or protrusion — a pelvic floor PT can assess this with a physical exam."}},
+  {id:"uofu_urogyn",name:"University of Utah Urogynecology",provider:"Urogynecology Clinic",credential:"MD",cities:["Salt Lake City"],phone:"(801) 213-2995",telehealth:false,intakeMethod:"phone",payers:[],treats:["mesh","prolapse","complex_incontinence","neurourology"],website:"https://healthcare.utah.edu",type:"specialist",relevantFor:["prolapse","pudendal","bulge"],whyMap:{prolapse:"Your screening detected prolapse symptoms — a urogynecologist can stage the prolapse and discuss treatment options.",pudendal:"Your symptoms suggest possible pudendal nerve involvement — a urogynecologist can perform diagnostic evaluation.",bulge:"You reported a vaginal bulge or protrusion — a urogynecologist can examine this and determine if treatment is needed."}},
+  {id:"uofu_mfm",name:"University of Utah Maternal-Fetal Medicine",provider:"MFM Clinic",credential:"MD",cities:["Salt Lake City"],phone:"(801) 213-2995",telehealth:false,intakeMethod:"phone",payers:[],treats:["high_risk_pregnancy"],website:"https://healthcare.utah.edu",type:"specialist",relevantFor:["high_risk_pregnancy"],whyMap:{high_risk_pregnancy:"Your pregnancy history indicates you may benefit from maternal-fetal medicine evaluation."}},
+  {id:"huntsman",name:"Huntsman Cancer Institute \u2014 Gynecologic Oncology",provider:"Gynecologic Oncology",credential:"MD",cities:["Salt Lake City"],phone:"(801) 587-7000",telehealth:false,intakeMethod:"phone",payers:[],treats:["gynecologic_cancer"],website:"https://healthcare.utah.edu/huntsmancancerinstitute",type:"specialist",relevantFor:["cancer"],whyMap:{cancer:"Your screening indicated a known or suspected pelvic cancer — a gynecologic oncologist should coordinate your care."}},
 ];
 function typoMatch(input,target){
   if(!input)return true;
@@ -1082,13 +1430,8 @@ const VAPI_PUBLIC_KEY="270b6390-cef2-4960-813c-b7cfa4a1d032";
 function buildVoiceAssistant(initialAns){
   const name=(initialAns.name_first||"")+" "+(initialAns.name_last||"");
   const isPregnant=initialAns.pregnancy_status==="pregnant";
-  return{
-    model:{provider:"openai",model:"gpt-4o",
-      messages:[{role:"system",content:`You are a clinical intake assistant for Expect, a pelvic floor physical therapy platform. You ask structured health questions verbally. You NEVER diagnose or give medical advice. You collect data for a licensed Physical Therapist.
-
-CONTEXT: The patient has already completed demographics, safety screening, and eligibility screening via the web form. Their name is ${name}. ${isPregnant?"They are currently pregnant.":""}You are starting from the Symptom Screening section.
-
-RULES:
+  const isMaleVoice=initialAns.sex_at_birth==="male";
+  const rules=`RULES:
 1. Ask one question at a time. Wait for the answer before proceeding.
 2. ALWAYS confirm answers before recording, especially numeric values.
 3. After sensitive sections, say: "Thank you for sharing that. This information helps us build the most accurate care plan for you."
@@ -1102,11 +1445,96 @@ RULES:
 11. Free text questions: transcribe verbatim. Do not summarize.
 12. Pace yourself. Pause after each question. This is a clinical interaction.
 13. If the patient says "Repeat", repeat the last question exactly as you asked it.
-14. Wait for the patient to say "yes" or "ready" before starting the first question after your greeting.
+14. Wait for the patient to say "yes" or "ready" before starting the first question after your greeting.`;
+  const greeting=`START with this greeting: "Hi ${initialAns.name_first||"there"}, I'm your intake assistant. You've already completed the first part of your assessment. Now I'm going to ask you some questions about your ${isMaleVoice?"urinary, bowel, and pelvic":"symptoms so we can build your personalized care plan"} health. You can take your time, and if you ever need me to repeat a question, just say 'Repeat.' Ready?"`;
+  const bowelSection=`BOWEL HEALTH
+bowel_constipation — 0-4
+bowel_frequency — 0-5
+bristol_stool — 1-7 (read ALL 7 types verbatim:
+- Type 1: Separate hard lumps, hard to pass.
+- Type 2: Sausage-shaped but lumpy.
+- Type 3: Sausage-shaped with cracks on the surface.
+- Type 4: Smooth and soft, like a sausage.
+- Type 5: Soft blobs with clear-cut edges.
+- Type 6: Fluffy pieces with ragged edges.
+- Type 7: Watery, no solid pieces.)`;
+  const qolSection=`QUALITY OF LIFE
+gupi7 — activity limitation (0-3)
+gupi8 — symptom preoccupation (0-3)
+gupi9 — life satisfaction with symptoms (1-6)`;
+  const historySection=`HISTORY & GOALS
+caffeine_intake — (if urgency symptoms) 0-3
+water_intake — (if urgency or constipation) 0-3
+phq2_interest — EXACT WORDING: "Over the past 2 weeks, how often have you been bothered by having little interest or pleasure in doing things? Not at all, several days, more than half the days, or nearly every day?" → 0-3
+phq2_mood — EXACT WORDING: "Over the past 2 weeks, how often have you been bothered by feeling down, depressed, or hopeless? Not at all, several days, more than half the days, or nearly every day?" → 0-3
+avoid_activities — multi-select: exercise, social_events, travel, sexual_activity, lifting, none
+medications — free text
+med_modify — 0-2
+prior_treatment — multi-select
+${isMaleVoice?`cue_preference — "Which instruction style helps you find your pelvic floor muscles?" Options: "shorten" (imagine shortening your penis and drawing testicles upward), "squeeze" (squeeze your anus as if holding back gas), "urine_stop" (squeeze as if stopping urine flow), "simple_contract", "default"`:`cue_preference — "body_function"|"imaginative"|"breath"|"simple"|"not_sure"`}
+pelvic_history — multi-select
+patient_goal — free text (transcribe verbatim)
+catchall_pelvic — free text`;
+  const closing=`CLOSING: "That's everything, ${initialAns.name_first||""}! Your responses are being processed now. A licensed physical therapist will review everything before your care plan is finalized. You'll be able to access it by logging into Expect with your email. Thank you for taking the time — you've taken an important step toward feeling better."`;
+  const maleSections=`SECTION 1: CLINICAL HISTORY & SCREENING
+prostate_history — "Have you had prostate surgery, such as a radical prostatectomy or TURP?" → "yes"|"no"
+If yes: prostate_surgery_type — "What type of prostate surgery?" → "radical_prostatectomy"|"turp"|"other"
+If yes: prostate_surgery_date — "Approximately when was your surgery?" → free text
+If radical_prostatectomy: prostate_prehab — "Is your surgery scheduled for the future, or has it already happened?" → "yes" (upcoming) | "no" (already done)
+bph_diagnosed — "Have you been diagnosed with BPH, also called benign prostatic hyperplasia or enlarged prostate?" → "yes"|"no"
+cpps_symptoms — "Do you experience chronic pelvic pain that has lasted 3 months or longer?" → "yes"|"no"
+screen_pain_male — "Over the past month, have you felt pain, pressure, or discomfort in the perineum, testicles, penis, or lower abdomen?" → "yes"|"no". Gates PAIN and CPSI sections.
+screen_sexual_male — "Have your symptoms affected your sexual function or erections?" → "yes"|"no". Gates SHIM section.
 
-START with this greeting: "Hi ${initialAns.name_first||"there"}, I'm your intake assistant. You've already completed the first part of your assessment. Now I'm going to ask you some questions about your symptoms so we can build your personalized care plan. You can take your time, and if you ever need me to repeat a question, just say 'Repeat.' Ready?"
+SECTION 2: URINARY SYMPTOMS (IPSS — International Prostate Symptom Score)
+IMPORTANT: You MUST ask ALL 7 questions plus the QOL question. Do NOT skip any.
+ipss1 — "Over the past month, how often have you had the sensation of not emptying your bladder completely after you finished urinating? Not at all, less than 1 time in 5, less than half the time, about half the time, more than half the time, or almost always." → 0-5
+ipss2 — "Over the past month, how often have you had to urinate again less than 2 hours after you finished urinating?" → 0-5
+ipss3 — "Over the past month, how often have you found you stopped and started again several times when you urinated?" → 0-5
+ipss4 — "Over the past month, how often have you found it difficult to postpone urination?" → 0-5
+ipss5 — "Over the past month, how often have you had a weak urinary stream?" → 0-5
+ipss6 — "Over the past month, how often have you had to push or strain to begin urination?" → 0-5
+ipss7 — "Over the past month, how many times did you most typically get up to urinate from the time you went to bed at night until the time you got up in the morning? None, 1 time, 2 times, 3 times, 4 times, or 5 or more times." → 0-5
+ipss_qol — "If you were to spend the rest of your life with your urinary condition just the way it is now, how would you feel about that? Delighted, pleased, mostly satisfied, mixed, mostly dissatisfied, unhappy, or terrible." → 0-6
 
-SECTION 1: SYMPTOM SCREENING
+SECTION 3: BLADDER LEAKAGE (ICIQ-UI Short Form)
+iciq1 — "How often do you leak urine?" → 0-5. If 0 (Never), SKIP iciq2-4.
+iciq2 — amount leaked → 0,2,4,6
+iciq3 — interference 0-10, where 0 means not at all and 10 means a great deal
+iciq4 — circumstances multi-select (urgency, stress_cough, stress_exercise, post_void, nocturnal, unknown, continuous)
+
+SECTION 4: ${bowelSection}
+
+SECTION 5: PAIN (only if screen_pain_male = "yes" OR cpps_symptoms = "yes")
+gupi1a-d — pain locations (yes/no each): perineum, testicles, tip of penis, pubic/bladder area
+gupi2a-d — pain situations (yes/no each): during urination, during/after ejaculation, as bladder fills, relieved by urinating
+gupi3 — pain frequency (0-5), only if any gupi1/gupi2 = yes
+gupi4 — average pain (0-10), only if gupi3 > 0
+pain1 — current pain (0-10)
+pain3 — functional impact (0-4)
+symptoms_trigger — multi-select: dysuria, bladder_fills, ejaculation, bowel_movements, sitting_long, exercise, none
+
+SECTION 5b: CHRONIC PAIN (NIH-CPSI) — only if cpps_symptoms = "yes" OR (screen_pain_male = "yes" AND gupi3 >= 2)
+cpsi1 — pain locations multi-select: perineum, testicle, penis_tip, pubic
+cpsi1a — pain frequency (0-5), only if cpsi1 has selections
+cpsi1b — average pain (0-10), only if cpsi1a > 0
+cpsi2 — burning during urination (0-5)
+cpsi3 — incomplete emptying feeling (0-5)
+cpsi4 — symptom impact on activities (0-3)
+cpsi5 — symptom preoccupation (0-3)
+cpsi6 — life satisfaction with symptoms (0-6: delighted to terrible)
+
+SECTION 6: SEXUAL HEALTH — SHIM/IIEF-5 (only if screen_sexual_male = "yes")
+shim1 — erectile confidence (1-5: very low to very high)
+shim2 — erection firmness during stimulation (1-5)
+shim3 — penetration maintenance (1-5)
+shim4 — completion maintenance (1-5: extremely difficult to not difficult)
+shim5 — intercourse satisfaction (1-5)
+
+SECTION 7: ${qolSection}
+
+SECTION 8: ${historySection}`;
+  const femaleSections=`SECTION 1: SYMPTOM SCREENING
 screen_pain — "Over the past month, have you felt pain, pressure, or discomfort in your lower stomach, pelvis, bladder, or genital area?" → record_answer("screen_pain", "yes"|"no"). Gates PAIN section.
 screen_sexual — "Do your pelvic floor symptoms ever interfere with any vaginal penetration — for example, sexual activity or intimacy, tampon use, or doctor exams?" → record_answer("screen_sexual", "yes"|"no"). Gates SEXUAL HEALTH section.
 
@@ -1119,26 +1547,15 @@ iciq3 — "Overall, how much does leaking urine interfere with your everyday lif
 iciq4 — "Under what circumstances does urine leak? Please tell me all that apply." Read all options: leaks before you can get to the toilet (urgency), leaks when you cough or sneeze (stress_cough), leaks when you are physically active or exercising (stress_exercise), leaks when you have finished urinating and are dressed (post_void), leaks when you are asleep (nocturnal), leaks for no obvious reason (unknown), leaks all the time (continuous). Ask "any others?" until done. Record as array.
 
 SECTION 3: URINARY SYMPTOMS
-fl2a — "During the night, how many times do you have to get up to urinate, on average? None, one, two, three, or four or more." → 0-4. If > 0 ask fl2b: "How much does getting up at night to urinate bother you? On a scale of 0 to 10, where 0 means not at all and 10 means a great deal." → 0-10.
-fl3a — "Do you have a sudden need to rush to the toilet to urinate? Never, occasionally, sometimes, most of the time, or all of the time." → 0-4. If > 0 ask fl3b: "How much does that sudden urgency bother you? On a scale of 0 to 10, where 0 means not at all and 10 means a great deal." → 0-10.
-fl5a — "How often do you pass urine during the day? 1 to 6 times, 7 to 8 times, 9 to 10 times, 11 to 12 times, or 13 or more times." → 0-4. If > 0 ask fl5b: "How much does your daytime urination frequency bother you? 0 to 10, where 0 is not at all and 10 is a great deal." → 0-10.
-fl6a — "Is there a delay before you can start to urinate? Never, occasionally, sometimes, most of the time, or all of the time." → 0-4. If > 0 ask fl6b: "How much does that delay bother you? 0 to 10, where 0 is not at all and 10 is a great deal." → 0-10.
-fl7a — "Do you have to strain to urinate? Never, occasionally, sometimes, most of the time, or all of the time." → 0-4. If > 0 ask fl7b: "How much does straining to urinate bother you? 0 to 10, where 0 is not at all and 10 is a great deal." → 0-10.
-fl8a — "Do you stop and start more than once while you urinate? Never, occasionally, sometimes, most of the time, or all of the time." → 0-4. If > 0 ask fl8b: "How much does stop-and-start urination bother you? 0 to 10, where 0 is not at all and 10 is a great deal." → 0-10.
-gupi5 — incomplete emptying (0-5).
-gupi6 — urinary frequency <2hr (0-5).
+fl2a — nocturia (0-4). If > 0 ask fl2b bother (0-10, where 0 means not at all and 10 means a great deal).
+fl3a — urgency (0-4). If > 0 ask fl3b bother (0-10, where 0 means not at all and 10 means a great deal).
+fl5a — frequency (0-4). If > 0 ask fl5b bother (0-10, where 0 is not at all and 10 is a great deal).
+fl6a — hesitancy (0-4). If > 0 ask fl6b bother (0-10, where 0 is not at all and 10 is a great deal).
+fl7a — straining (0-4). If > 0 ask fl7b bother (0-10, where 0 is not at all and 10 is a great deal).
+fl8a — intermittency (0-4). If > 0 ask fl8b bother (0-10, where 0 is not at all and 10 is a great deal).
+gupi5 — incomplete emptying (0-5). gupi6 — frequency <2hr (0-5).
 
-SECTION 4: BOWEL HEALTH
-bowel_constipation — 0-4
-bowel_frequency — 0-5
-bristol_stool — 1-7 (read ALL 7 types verbatim:
-- Type 1: Separate hard lumps, hard to pass.
-- Type 2: Sausage-shaped but lumpy.
-- Type 3: Sausage-shaped with cracks on the surface.
-- Type 4: Smooth and soft, like a sausage.
-- Type 5: Soft blobs with clear-cut edges.
-- Type 6: Fluffy pieces with ragged edges.
-- Type 7: Watery, no solid pieces.)
+SECTION 4: ${bowelSection}
 
 SECTION 5: PROLAPSE (POPDI-6)
 For each: yes/no. If yes, ask bother (1-4: not at all, somewhat, moderately, quite a bit).
@@ -1159,34 +1576,31 @@ pain3 — functional impact (0-4)
 symptoms_trigger — multi-select: during_urination, bladder_fills, sexual_activity, tampon, bowel_movements, sitting_long, none
 
 SECTION 7: SEXUAL HEALTH (only if screen_sexual = "yes")
-fs2a — "Do you have pain or discomfort because of a dry vagina? Not at all, a little, somewhat, or a lot." → 0-3. If > 0 ask fs2b: "How much does vaginal dryness bother you? 0 to 10, where 0 is not at all and 10 is a great deal." → 0-10.
-fs3a — "To what extent do you feel that your sex life has been affected by your urinary symptoms? Not at all, a little, somewhat, or a lot." → 0-3. If > 0 ask fs3b: "How much does the impact on your sex life bother you? 0 to 10, where 0 is not at all and 10 is a great deal." → 0-10.
-fs4a — "Do you have pain during sexual activity? Not at all, a little, somewhat, a lot, or I don't have sexual activity." → 0-4. If 1-3 ask fs4b: "How much does pain during sexual activity bother you? 0 to 10, where 0 is not at all and 10 is a great deal." → 0-10.
-fs5a — "Do you leak urine during sexual activity? Not at all, a little, somewhat, a lot, or I don't have sexual activity." → 0-4. If 1-3 ask fs5b: "How much does leaking during sexual activity bother you? 0 to 10, where 0 is not at all and 10 is a great deal." → 0-10.
+fs2a — vaginal dryness (0-3). If > 0 ask fs2b bother (0-10, where 0 is not at all and 10 is a great deal).
+fs3a — sex life impact (0-3). If > 0 ask fs3b bother (0-10, where 0 is not at all and 10 is a great deal).
+fs4a — pain during sex (0-4, includes "I don't have sexual activity"). If 1-3 ask fs4b bother (0-10, where 0 is not at all and 10 is a great deal).
+fs5a — leak during sex (0-4, includes "I don't have sexual activity"). If 1-3 ask fs5b bother (0-10, where 0 is not at all and 10 is a great deal).
 
-SECTION 8: QUALITY OF LIFE
-gupi7 — activity limitation (0-3)
-gupi8 — symptom preoccupation (0-3)
-gupi9 — life satisfaction with symptoms (1-6)
+SECTION 8: ${qolSection}
 
-SECTION 9: HISTORY & GOALS
-caffeine_intake — (if urgency: fl3a > 0) 0-3
-water_intake — (if urgency or constipation) 0-3
-phq2_interest — EXACT WORDING: "Over the past 2 weeks, how often have you been bothered by having little interest or pleasure in doing things? Not at all, several days, more than half the days, or nearly every day?" → 0-3
-phq2_mood — EXACT WORDING: "Over the past 2 weeks, how often have you been bothered by feeling down, depressed, or hopeless? Not at all, several days, more than half the days, or nearly every day?" → 0-3
-avoid_activities — multi-select: exercise, social_events, travel, sexual_activity, lifting, none
-medications — free text
-med_modify — 0-2
-prior_treatment — multi-select
-cue_preference — "body_function"|"imaginative"|"breath"|"simple"|"not_sure"
-pelvic_history — multi-select
-patient_goal — free text (transcribe verbatim)
-catchall_pelvic — free text
+SECTION 9: ${historySection}`;
+  const systemPrompt=`You are a clinical intake assistant for Expect, a pelvic floor physical therapy platform. You ask structured health questions verbally. You NEVER diagnose or give medical advice. You collect data for a licensed Physical Therapist.
+
+CONTEXT: The patient has already completed demographics, safety screening, and eligibility screening via the web form. Their name is ${name}. ${isPregnant?"They are currently pregnant.":""}${isMaleVoice?"This is a MALE patient — use male-specific instruments (IPSS, NIH-CPSI, SHIM) and male anatomy terms.":""}You are starting from the ${isMaleVoice?"Clinical History":"Symptom Screening"} section.
+
+${rules}
+
+${greeting}
+
+${isMaleVoice?maleSections:femaleSections}
 
 WRAP UP:
 After all questions, call complete_intake with status "complete".
 
-CLOSING: "That's everything, ${initialAns.name_first||""}! Your responses are being processed now. A licensed physical therapist will review everything before your care plan is finalized. You'll be able to access it by logging into Expect with your email. Thank you for taking the time — you've taken an important step toward feeling better."`}],
+${closing}`;
+  return{
+    model:{provider:"openai",model:"gpt-4o",
+      messages:[{role:"system",content:systemPrompt}],
       tools:[
         {type:"function","function":{name:"record_answer",description:"Record a single confirmed answer from the patient. For numeric answers send the number as a string (e.g. '3'). For multi-select send a JSON array as a string (e.g. '[\"stress_cough\",\"stress_exercise\"]').",parameters:{type:"object",properties:{questionId:{type:"string",description:"The answer key (e.g. iciq1, screen_pain)"},value:{type:"string",description:"The answer value as a string"}},required:["questionId","value"]}}},
         {type:"function","function":{name:"record_answers",description:"Record multiple confirmed answers at once. Values should be strings (numbers as strings, arrays as JSON strings).",parameters:{type:"object",properties:{answers:{type:"array",items:{type:"object",properties:{questionId:{type:"string"},value:{type:"string"}},required:["questionId","value"]}}},required:["answers"]}}},
@@ -1239,16 +1653,20 @@ function SessionWarningModal({cd,onDismiss}){
 // REFERRAL CARD — reusable warm handoff component for in-person care routing
 function ReferralCard({referral,compact}){
   if(!referral||!referral.needed)return null;
-  const[requested,setRequested]=useState(false);
+
+  const reasonIds=referral.reasons.map(r=>r.id);
+  const relevantProvs=UTAH_PROVIDERS.filter(p=>(p.relevantFor||[]).some(rf=>reasonIds.includes(rf)));
+  const showPCP=reasonIds.some(r=>["depression","high_pain","severe_iciq","pudendal"].includes(r));
   return<div style={{background:"#FFF7ED",border:"1px solid #FDBA74",borderRadius:12,padding:compact?16:20,marginTop:compact?12:20}}>
-    <div style={{fontWeight:700,fontSize:compact?14:16,color:"#9A3412",marginBottom:8}}>We recommend in-person pelvic floor evaluation</div>
+    <div style={{fontWeight:700,fontSize:compact?14:16,color:"#9A3412",marginBottom:8}}>We recommend in-person evaluation</div>
     <div style={{fontSize:12,color:"#78350F",lineHeight:1.6,marginBottom:12}}>Based on your assessment, you may benefit from a hands-on evaluation in addition to your home exercise program. In-person care works alongside your digital plan, not instead of it.</div>
     <div style={{marginBottom:12}}>
       {referral.reasons.map((r,i)=><div key={i}style={{fontSize:12,color:"#92400E",marginBottom:4,display:"flex",alignItems:"flex-start",gap:6}}>
-        <span style={{color:"#EA580C",fontWeight:700,flexShrink:0}}>•</span><span>{r.label}</span>
+        <span style={{color:"#EA580C",fontWeight:700,flexShrink:0}}>{"\u2022"}</span><span>{r.label}</span>
       </div>)}
     </div>
-    {UTAH_PROVIDERS.map(prov=><div key={prov.id}style={{background:"#fff",border:"1px solid #E5E7EB",borderRadius:10,padding:14,marginBottom:10}}>
+    {relevantProvs.map(prov=>{const matchedReasons=reasonIds.filter(rid=>(prov.relevantFor||[]).includes(rid));const whyText=matchedReasons.map(rid=>prov.whyMap?.[rid]).filter(Boolean)[0];return<div key={prov.id}style={{background:"#fff",border:"1px solid #E5E7EB",borderRadius:10,padding:14,marginBottom:10}}>
+      {whyText&&<div style={{fontSize:12,color:"#92400E",lineHeight:1.5,marginBottom:10,padding:"8px 10px",background:"#FEF3C7",borderRadius:6,borderLeft:"3px solid #D97706"}}>{whyText}</div>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
         <div>
           <div style={{fontWeight:700,fontSize:14,color:"#111827"}}>{prov.name}</div>
@@ -1259,17 +1677,22 @@ function ReferralCard({referral,compact}){
           <span style={{background:"#D1FAE5",color:"#065F46",fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:10}}>In-Person</span>
         </div>
       </div>
-      <div style={{fontSize:12,color:"#6B7280",marginBottom:8}}>Locations: {prov.cities.join(" · ")}</div>
-      <div style={{fontSize:11,color:"#9CA3AF",marginBottom:10}}>Accepts: {prov.payers.join(", ")}</div>
-      <a href={"tel:"+prov.phone.replace(/[^\d]/g,"")}style={{display:"inline-flex",alignItems:"center",gap:8,background:C.pink,color:"#fff",padding:"8px 18px",borderRadius:8,fontWeight:600,fontSize:13,textDecoration:"none",cursor:"pointer"}}onClick={()=>L("referral_initiated",{provider:prov.id,reasons:referral.reasons.map(r=>r.id),method:"phone"})}>
+      <div style={{fontSize:12,color:"#6B7280",marginBottom:8}}>Locations: {prov.cities.join(" \u00B7 ")}</div>
+      {prov.payers.length>0&&<div style={{fontSize:11,color:"#9CA3AF",marginBottom:10}}>Accepts: {prov.payers.join(", ")}</div>}
+      <a href={"tel:"+prov.phone.replace(/[^\d]/g,"")}style={{display:"inline-flex",alignItems:"center",gap:8,background:C.pink,color:"#fff",padding:"8px 18px",borderRadius:8,fontWeight:600,fontSize:13,textDecoration:"none",cursor:"pointer"}}onClick={()=>L("referral_initiated",{provider:prov.id,reasons:matchedReasons,method:"phone"})}>
         Call to Schedule — {prov.phone}
       </a>
-      <div style={{fontSize:11,color:"#78350F",marginTop:8,lineHeight:1.5}}>When you call, let them know you completed an Expect Health assessment. They do intake by phone.</div>
-    </div>)}
-    {!requested?<button style={{background:"none",border:`1px solid ${C.g300}`,borderRadius:8,padding:"8px 14px",fontSize:12,color:C.g600,cursor:"pointer",width:"100%",marginTop:4}}onClick={()=>{L("care_coordination_request",{reasons:referral.reasons.map(r=>r.id)});setRequested(true)}}>
-      Need help finding care? Request care coordination →
-    </button>:<div style={{background:"#D1FAE5",borderRadius:8,padding:"10px 14px",fontSize:12,color:"#065F46",textAlign:"center",marginTop:4}}>
-      Request received — our team will follow up with you.
+      <div style={{fontSize:11,color:"#78350F",marginTop:8,lineHeight:1.5}}>{prov.callNote||"When you call, let them know you completed an Expect Health assessment."}</div>
+    </div>})}
+    {showPCP&&<div style={{background:"#fff",border:"1px solid #E5E7EB",borderRadius:10,padding:14,marginBottom:10}}>
+      <div style={{fontSize:12,color:"#92400E",lineHeight:1.5,marginBottom:10,padding:"8px 10px",background:"#FEF3C7",borderRadius:6,borderLeft:"3px solid #D97706"}}>{reasonIds.includes("depression")?"Your depression screening was positive — we recommend sharing your results with your primary care provider for follow-up and potential referral to mental health support.":"Your symptoms may benefit from coordination with your primary care provider. Share your Expect Health assessment results at your next visit."}</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+        <div>
+          <div style={{fontWeight:700,fontSize:14,color:"#111827"}}>Your Primary Care Provider</div>
+          <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>PCP / Family Medicine / Internal Medicine</div>
+        </div>
+      </div>
+      <div style={{fontSize:12,color:"#4B5563",lineHeight:1.6}}>Bring your Expect Health care plan to your next appointment, or call your PCP's office to request a visit. Let them know you completed a pelvic floor assessment with validated screening instruments{reasonIds.includes("depression")?" including a positive PHQ-2 depression screen":""}.</div>
     </div>}
   </div>;
 }
@@ -1670,7 +2093,7 @@ function VoiceIntake({initialAns,onBack,onDone,onSwitchToForm}){
     </div>
 
     {(status==="idle"||status==="error")&&<div style={{textAlign:"center",marginBottom:24}}>
-      <button onClick={startCall}style={{width:80,height:80,borderRadius:"50%",background:`linear-gradient(135deg,${C.purp},${C.pink})`,border:"none",cursor:"pointer",color:"#fff",fontSize:32,display:"inline-flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 20px rgba(76,44,132,.3)",transition:"transform .15s"}}onMouseOver={e=>e.currentTarget.style.transform="scale(1.05)"}onMouseOut={e=>e.currentTarget.style.transform="scale(1)"}>
+      <button onClick={startCall}style={{width:80,height:80,borderRadius:"50%",background:`linear-gradient(135deg,${C.purp},${accent||C.pink})`,border:"none",cursor:"pointer",color:"#fff",fontSize:32,display:"inline-flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 20px rgba(76,44,132,.3)",transition:"transform .15s"}}onMouseOver={e=>e.currentTarget.style.transform="scale(1.05)"}onMouseOut={e=>e.currentTarget.style.transform="scale(1)"}>
         🎤
       </button>
       <div style={{fontSize:12,color:C.g500,marginTop:8}}>Tap to begin — the assistant will ask the first question</div>
@@ -1742,7 +2165,7 @@ function Intake({onDone,mainRef,initialEmail}){
     try{localStorage.setItem("expect_session",authSession.sessionToken)}catch(e){}
   },[]);
   useEffect(()=>{if(voiceMode!=="techcheck"){if(techAnimRef.current){clearInterval(techAnimRef.current);techAnimRef.current=null}if(techStreamRef.current){techStreamRef.current.getTracks().forEach(t=>t.stop());techStreamRef.current=null}if(playbackUrlRef.current){URL.revokeObjectURL(playbackUrlRef.current);playbackUrlRef.current=null}if(recorderRef.current){try{recorderRef.current.stop()}catch(e){}recorderRef.current=null}}},[voiceMode]);
-  const set=(k,v)=>{setAns(p=>{const next={...p,[k]:v};if(k==="pregnancy_status"){next.prenatal_flag=v==="pregnant";if(v==="pregnant")L("PRENATAL_PROTOCOL_APPLIED",{context:"PATIENT_INDICATED_ACTIVE_PREGNANCY"});if(v!=="pregnant"){delete next.ex_highrisk_preg;setRfs(r=>r.filter(f=>f.id!=="ex_highrisk_preg"));setSafetyTriggered(s=>{const n={...s};delete n.ex_highrisk_preg;return n})}}if(k==="screen_pain"&&v==="no"){["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d","gupi3","gupi4","pain1","pain3","symptoms_trigger"].forEach(key=>delete next[key])}if(k==="screen_sexual"&&v==="no"){["fs2a","fs2b","fs3a","fs3b","fs4a","fs4b","fs5a","fs5b"].forEach(key=>delete next[key])}if(k.startsWith("popdi")&&!k.includes("_bother")&&v==="no"){delete next[k+"_bother"]}return next})};
+  const set=(k,v)=>{setAns(p=>{const next={...p,[k]:v};if(k==="pregnancy_status"){next.prenatal_flag=v==="pregnant";if(v==="pregnant")L("PRENATAL_PROTOCOL_APPLIED",{context:"PATIENT_INDICATED_ACTIVE_PREGNANCY"});if(v!=="pregnant"){delete next.ex_highrisk_preg;setRfs(r=>r.filter(f=>f.id!=="ex_highrisk_preg"));setSafetyTriggered(s=>{const n={...s};delete n.ex_highrisk_preg;return n})}}if(k==="screen_pain"&&v==="no"){["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d","gupi3","gupi4","pain1","pain3","symptoms_trigger"].forEach(key=>delete next[key])}if(k==="screen_pain_male"&&v==="no"){["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d","gupi3","gupi4","pain1","pain3","symptoms_trigger"].forEach(key=>delete next[key])}if(k==="screen_sexual"&&v==="no"){["fs2a","fs2b","fs3a","fs3b","fs4a","fs4b","fs5a","fs5b"].forEach(key=>delete next[key])}if(k==="screen_sexual_male"&&v==="no"){["shim1","shim2","shim3","shim4","shim5"].forEach(key=>delete next[key])}if(k.startsWith("popdi")&&!k.includes("_bother")&&v==="no"){delete next[k+"_bother"]}return next})};
   const togM=(k,v)=>setAns(p=>{
     const cur=p[k]||[];
     if(cur.includes(v)){return{...p,[k]:cur.filter(x=>x!==v)};}
@@ -1752,8 +2175,11 @@ function Intake({onDone,mainRef,initialEmail}){
   });
   const goStep=(s)=>{setStep(s);setTriedNext(false);if(mainRef?.current)mainRef.current.scrollTop=0;try{const _da={...ans};["name_first","name_last","email","phone","dob","physician_name","physician_fax","physician_npi_id","insurance_id"].forEach(k=>delete _da[k]);sessionStorage.setItem("expect_draft",JSON.stringify({ans:_da,step:s,ts:Date.now()}))}catch(e){}
     // Progressive DB save — save draft after each section advance
-    if(authSession){db("upsertPatient",{userId:authSession.userId,email:authSession.email||ans.email||"",name:(ans.name_first||"")+" "+(ans.name_last||""),ans,iciq:null,pain:null,gupi:null,fluts:null,fsex:null,popdi:null,plan:null,depressionFlag:null,prenatalFlag:!!ans.prenatal_flag,physicianName:ans.physician_name||"",physicianFax:ans.physician_fax||"",physicianNPI:ans.physician_npi_id||"",safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],status:"in_progress",createdAt:authSession.createdAt})}};
+    if(authSession){db("upsertPatient",{userId:authSession.userId,email:authSession.email||ans.email||"",name:(ans.name_first||"")+" "+(ans.name_last||""),ans,iciq:null,pain:null,gupi:null,fluts:null,fsex:null,popdi:null,plan:null,depressionFlag:null,prenatalFlag:!!ans.prenatal_flag,physicianName:ans.physician_name||"",physicianFax:ans.physician_fax||"",physicianNPI:ans.physician_npi_id||"",safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],isMale:ans.sex_at_birth==="male"||undefined,status:"in_progress",createdAt:authSession.createdAt})}};
   const isMale=ans.sex_at_birth==="male";
+  const accent=isMale?C.blue:C.pink;
+  const accentL=isMale?C.blueL:C.pinkL;
+  const accentD=isMale?C.blueD:C.pinkD;
   const demo=[
     {id:"name",text:"What is your name?",type:"twotext"},
     {id:"dob",text:"What is your date of birth?",type:"date"},
@@ -1770,7 +2196,23 @@ function Intake({onDone,mainRef,initialEmail}){
     {id:"insurance_carrier",text:"What is the name of your insurance company?",type:"text",ph:"e.g. Blue Cross, SelectHealth, Aetna",conditional:a=>a.insurance_type==="commercial"},
     {id:"insurance_id",text:"What is your insurance member ID?",type:"text",ph:"Member ID",conditional:a=>a.insurance_type&&!["self_pay","uninsured"].includes(a.insurance_type)},
   ];
-  const steps=[
+  // Male-adapted clinical extra: replaces vaginal cue preference with evidence-based male cues
+  const clinicalExtraMale=CLINICAL_EXTRA.map(q=>q.id==="cue_preference"?CLINICAL_EXTRA_MALE_ADDITIONS[0]:q).filter(q=>q.id!=="pelvic_history"||!isMale).concat(isMale?[{id:"pelvic_history",text:"Do you have a history of any of the following that may affect your pelvic floor symptoms? Select all that apply.",type:"multi",opts:[["Back pain or back injury","back_pain"],["Hip pain or hip injury","hip_pain"],["Hernia repair","hernia_repair"],["Prostate biopsy","prostate_biopsy"],["Prior pelvic floor PT","prior_pf_pt"],["Chronic constipation","chronic_constipation"],["None of the above","none"]]}]:[]);
+  const steps=isMale?[
+    {t:"Let's Get to Know You",s:"Some basic information to get started.",qs:demo},
+    {t:"Safety Check",s:"We need to make sure you're safe to proceed.",qs:REDFLAGS_MALE},
+    {t:"Eligibility Screening",s:"A few questions to confirm this program is right for you.",qs:EXCLUSIONS_MALE},
+    {t:"Clinical History",s:"Tell us about your prostate and pelvic health history.",qs:[...MALE_HISTORY,...SCREENER_MALE]},
+    {t:"Urinary Symptoms",s:"IPSS — International Prostate Symptom Score.",qs:IPSS},
+    {t:"Bladder Leakage",s:"ICIQ-UI Short Form — thinking about the past 4 weeks.",qs:[...ICIQ]},
+    {t:"Bowel Health",s:"A few questions about your bowel habits.",qs:BOWEL},
+    {t:"Pain & Discomfort",s:"Pelvic pain assessment. Over the past week.",qs:GUPI_PAIN_MALE,cond:a=>a.screen_pain_male==="yes"||a.cpps_symptoms==="yes"},
+    {t:"Chronic Pain Assessment",s:"NIH-CPSI — Chronic Prostatitis Symptom Index.",qs:CPSI,cond:a=>a.cpps_symptoms==="yes"||(a.screen_pain_male==="yes"&&a.gupi3!==undefined&&a.gupi3>=2)},
+    {t:"Sexual Health",s:"SHIM/IIEF-5 — over the past 6 months. All answers are confidential.",qs:SHIM,cond:a=>a.screen_sexual_male==="yes"},
+    {t:"Quality of Life",s:"How your symptoms have affected your life over the past week.",qs:QOL_IMPACT},
+    {t:"Your History & Goals",s:"A few more questions to help your PT create the best plan for you.",qs:clinicalExtraMale},
+    {t:"Create Your Account",s:"Set up your account to securely access your care plan.",qs:[],custom:"account"},
+  ]:[
     {t:"Let's Get to Know You",s:"Some basic information to get started.",qs:demo},
     {t:"Safety Check",s:"We need to make sure you're safe to proceed.",qs:REDFLAGS},
     {t:"Eligibility Screening",s:"A few questions to confirm this program is right for you.",qs:EXCLUSIONS},
@@ -1787,8 +2229,9 @@ function Intake({onDone,mainRef,initialEmail}){
   ];
   const hasER=rfs.some(f=>f.act==="er");
   const hasAnyRF=rfs.length>0;
-  const hasExclusion=EXCLUSIONS.some(e=>ans[e.id]==="yes");
-  const triggeredExclusions=EXCLUSIONS.filter(e=>ans[e.id]==="yes");
+  const activeExclusions=isMale?EXCLUSIONS_MALE:EXCLUSIONS;
+  const hasExclusion=activeExclusions.some(e=>ans[e.id]==="yes");
+  const triggeredExclusions=activeExclusions.filter(e=>ans[e.id]==="yes");
   // DOB age calculation
   const dobAge=(()=>{if(!ans.dob)return null;const b=new Date(ans.dob);const t=new Date();let a=t.getFullYear()-b.getFullYear();const m=t.getMonth()-b.getMonth();if(m<0||(m===0&&t.getDate()<b.getDate()))a--;return a})();
   const isUnder18=dobAge!==null&&dobAge<18;
@@ -1807,8 +2250,8 @@ function Intake({onDone,mainRef,initialEmail}){
   // Block on demographics (step 0): under 18 OR required fields incomplete
   const page1Incomplete=step===0&&(!ans.name_first||!ans.name_last||!ans.dob||!ans.sex_at_birth||(!isMale&&!ans.pregnancy_status)||!ans.insurance_type||!ans.email);
   const missingFields=step===0?[...(!ans.name_first||!ans.name_last?["name"]:[]),!ans.email?"email":"",!ans.dob?"date of birth":"",!ans.sex_at_birth?"sex":"",!isMale&&!ans.pregnancy_status?"pregnancy status":"",!ans.insurance_type?"insurance type":""].filter(Boolean):[];
-  // Block on screener step: require all 4 screener answers
-  const screenerIncomplete=step===3&&(!ans.screen_pain||!ans.screen_sexual);
+  // Block on screener step: require screener answers (male uses different screener IDs)
+  const screenerIncomplete=step===3&&(isMale?(!ans.screen_pain_male||!ans.screen_sexual_male||!ans.prostate_history||!ans.bph_diagnosed||!ans.cpps_symptoms):(!ans.screen_pain||!ans.screen_sexual));
   // Block on POPDI-6 step: require all 6 yes/no answers + bother for each "yes"
   const popdiIncomplete=steps[step]?.qs===POPDI&&(POPDI[0].rows.some(r=>ans[r.id]===undefined)||POPDI[0].rows.some(r=>ans[r.id]==="yes"&&ans[r.id+"_bother"]===undefined));
   // Block on ICIQ step: require Q1 at minimum; if Q1 > 0, require Q2+Q3+Q4
@@ -1827,19 +2270,27 @@ function Intake({onDone,mainRef,initialEmail}){
   const phq2Incomplete=step===11&&(ans.phq2_interest===undefined||ans.phq2_mood===undefined);
   // Block on Account step: require password
   const acctIncomplete=step===12&&(!acctPw||acctPw.length<8||acctPw!==acctPwC||!/[A-Z]/.test(acctPw)||!/\d/.test(acctPw));
+  // Block on IPSS step (male step 4): require all 7 IPSS questions + QOL
+  const ipssIncomplete=isMale&&step===4&&(ans.ipss1===undefined||ans.ipss2===undefined||ans.ipss3===undefined||ans.ipss4===undefined||ans.ipss5===undefined||ans.ipss6===undefined||ans.ipss7===undefined||ans.ipss_qol===undefined);
+  // Block on SHIM step (male step 9): require all 5 SHIM questions
+  const shimIncomplete=isMale&&step===9&&ans.screen_sexual_male==="yes"&&(ans.shim1===undefined||ans.shim2===undefined||ans.shim3===undefined||ans.shim4===undefined||ans.shim5===undefined);
   // Block on safety (step 1) for ANY red flag, block on exclusions (step 2) for ANY exclusion
-  const blocked=(step===0&&(isUnder18||isMale||page1Incomplete))||(step===1&&hasAnyRF)||(step===2&&hasExclusion)||screenerIncomplete||popdiIncomplete||iciqIncomplete||flutsIncomplete||bowelIncomplete||painIncomplete||flutsexIncomplete||qolIncomplete||phq2Incomplete;
+  const blocked=(isMale&&!PHASE2_MALE)||(step===0&&(isUnder18||page1Incomplete))||(step===1&&hasAnyRF)||(step===2&&hasExclusion)||screenerIncomplete||popdiIncomplete||iciqIncomplete||(isMale?ipssIncomplete:flutsIncomplete)||bowelIncomplete||painIncomplete||(isMale?shimIncomplete:flutsexIncomplete)||qolIncomplete||phq2Incomplete;
   const savePatientRef=useRef(null);// hold save args for retry
   useEffect(()=>{
     if(step!==steps.length||doneRef.current)return;doneRef.current=true;
-    const iciq=sICIQ(ans),pain=sPain(ans),gupi=sGUPI(ans),fluts=sFLUTS(ans),fsex=sFSEX(ans),popdi=sPOPDI(ans),plan=genPlan(iciq,pain,gupi,ans);
-    L("intake_done",{iciq:iciq.total,pain:pain.composite,gupi:gupi.total});
+    const iciq=sICIQ(ans),pain=sPain(ans),gupi=sGUPI(ans),fluts=sFLUTS(ans),fsex=sFSEX(ans),popdi=sPOPDI(ans);
+    const ipss=isMale?sIPSS(ans):{total:0,severity:"N/A",qol:0,storage:0,voiding:0};
+    const cpsi_score=isMale?sCPSI(ans):{total:0,pain:0,urinary:0,qol:0,severity:"N/A"};
+    const shim_score=isMale?sSHIM(ans):{total:0,severity:"N/A"};
+    const plan=isMale?genPlanMale(ipss,cpsi_score,shim_score,iciq,pain,ans):genPlan(iciq,pain,gupi,ans);
+    L("intake_done",{iciq:iciq.total,pain:pain.composite,gupi:gupi.total,isMale,ipss:ipss.total,cpsi:cpsi_score.total,shim:shim_score.total});
     const phq2Total=calcPHQ2(ans);
     const depressionFlag=phq2Total>=3?{positive:true,score:phq2Total,maxScore:6,interest:ans.phq2_interest||0,mood:ans.phq2_mood||0,threshold:3,recommendation:"PHQ-9 full screening recommended. Consider mental health resource referral.",oaip_report:{flagType:"DEPRESSION_RISK",severity:phq2Total>=5?"HIGH":"MODERATE",score:phq2Total,maxScore:6,timestamp:new Date().toISOString()}}:{positive:false,score:phq2Total};
-    sharedIntake={ans,iciq,pain,gupi,fluts,fsex,popdi,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,name:(ans.name_first||"")+" "+(ans.name_last||""),physicianName:ans.physician_name,physicianFax:ans.physician_fax,physicianNPI:ans.physician_npi_id,safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],userId:authSession?.userId,screeners:{pain:ans.screen_pain,sexual:ans.screen_sexual},pelvicHistory:ans.pelvic_history||[]};
+    sharedIntake={ans,iciq,pain,gupi,fluts,fsex,popdi,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,name:(ans.name_first||"")+" "+(ans.name_last||""),physicianName:ans.physician_name,physicianFax:ans.physician_fax,physicianNPI:ans.physician_npi_id,safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],userId:authSession?.userId,screeners:{pain:isMale?ans.screen_pain_male:ans.screen_pain,sexual:isMale?ans.screen_sexual_male:ans.screen_sexual},pelvicHistory:ans.pelvic_history||[],isMale,ipss,cpsi:cpsi_score,shim:shim_score,lane:plan.lane};
     if(depressionFlag.positive)L("depression_screen_positive",{score:phq2Total,severity:phq2Total>=5?"HIGH":"MODERATE",patient:(ans.name_first||"")+" "+(ans.name_last||"")});
     if(authSession){
-      const saveArgs={userId:authSession.userId,email:authSession.email,name:sharedIntake.name,ans,iciq,pain,gupi,fluts,fsex,popdi,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,physicianName:ans.physician_name||"",physicianFax:ans.physician_fax||"",physicianNPI:ans.physician_npi_id||"",safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],password:acctPw||undefined,status:"pending_review",createdAt:new Date().toISOString()};
+      const saveArgs={userId:authSession.userId,email:authSession.email,name:sharedIntake.name,ans,iciq,pain,gupi,fluts,fsex,popdi,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,physicianName:ans.physician_name||"",physicianFax:ans.physician_fax||"",physicianNPI:ans.physician_npi_id||"",safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],password:acctPw||undefined,status:"pending_review",createdAt:new Date().toISOString(),isMale,ipss,cpsi:cpsi_score,shim:shim_score,lane:plan.lane};
       savePatientRef.current=saveArgs;
       setSaveState("saving");
       (async()=>{for(let attempt=0;attempt<3;attempt++){try{await db("upsertPatient",saveArgs,{throw:true});try{sessionStorage.removeItem("expect_draft")}catch(e){}setSaveState("saved");if(onDone)onDone();return}catch(e){if(attempt<2)await new Promise(r=>setTimeout(r,1000))}}setSaveState("failed")})();
@@ -2031,14 +2482,13 @@ function Intake({onDone,mainRef,initialEmail}){
       <div><div className="h1">{steps[step].t}</div><div className="sub"style={{maxWidth:600}}>{steps[step].s}</div></div>
       <div style={{background:C.purp,color:C.white,padding:"6px 14px",borderRadius:20,fontSize:12,fontWeight:600,flexShrink:0}}>{visibleIdx+1} / {visibleSteps.length}</div>
     </div>
-    <div style={{display:"flex",gap:3,marginBottom:20}}>{visibleSteps.map((si,vi)=><div key={si}style={{flex:1,height:4,borderRadius:2,background:si<=step?`linear-gradient(90deg,${C.pink},${C.purp})`:C.g200,transition:"all .3s"}}/>)}</div>
+    <div style={{display:"flex",gap:3,marginBottom:20}}>{visibleSteps.map((si,vi)=><div key={si}style={{flex:1,height:4,borderRadius:2,background:si<=step?`linear-gradient(90deg,${accent},${C.purp})`:C.g200,transition:"all .3s"}}/>)}</div>
     {triedNext&&page1Incomplete&&step===0&&!isUnder18&&!isMale&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>{"Please complete: "+missingFields.join(", ")+"."}</div>}
     {isUnder18&&step===0&&<div className="ra"style={{background:"#FEE2E2",borderColor:C.rd,color:"#991B1B",fontSize:14,fontWeight:600,marginBottom:14}}>⛔ This program is designed for adults 18 years and older. Based on the date of birth you entered, you are under 18. If you believe this is an error, please correct your date of birth above.</div>}
-    {isMale&&step===0&&<div style={{background:"#EFF6FF",border:"2px solid #3B82F6",borderRadius:12,padding:"32px 24px",textAlign:"center",margin:"20px 0"}}>
-      <div style={{fontSize:18,fontWeight:700,color:"#1E40AF",marginBottom:12}}>Male Pelvic Floor Program Coming Soon</div>
-      <p style={{fontSize:14,color:"#1E3A5F",lineHeight:1.7,maxWidth:480,margin:"0 auto 20px"}}>We're building a dedicated program for male pelvic floor health — including post-prostatectomy recovery, chronic pelvic pain, and more. In the meantime, we can help connect you with a specialist in your area.</p>
-      <a href="mailto:team@expect.care"style={{display:"inline-flex",alignItems:"center",gap:8,background:"#3B82F6",color:"#fff",padding:"12px 24px",borderRadius:8,fontSize:14,fontWeight:600,textDecoration:"none"}}>Contact team@expect.care</a>
-      <div style={{fontSize:12,color:"#64748B",marginTop:16,lineHeight:1.6}}>If you selected Male by mistake, choose Female above to continue.</div>
+    {isMale&&step===0&&!PHASE2_MALE&&<div className="ra"style={{background:"#EFF6FF",borderColor:"#3B82F6",color:"#1E40AF",fontSize:14,fontWeight:600,marginBottom:14}}>This program is currently designed for female pelvic floor health. A male pelvic floor program is coming soon.</div>}
+    {isMale&&step===0&&PHASE2_MALE&&<div style={{background:"#EFF6FF",border:"2px solid #3B82F6",borderRadius:12,padding:"16px 20px",margin:"12px 0"}}>
+      <div style={{fontSize:14,fontWeight:600,color:"#1E40AF"}}>Male Pelvic Floor Program</div>
+      <div style={{fontSize:13,color:"#1E3A5F",marginTop:4,lineHeight:1.5}}>Your intake will include instruments validated for male pelvic health — including the IPSS, NIH-CPSI, and SHIM assessments.</div>
     </div>}
     {isOver115&&step===0&&<div className="ra"style={{background:"#FEF3C7",borderColor:C.or,color:"#92400E",fontSize:14,fontWeight:600,marginBottom:14}}>The date of birth you entered would make you over 115 years old. Could you double-check that your birth date is correct? Typos in the year are common.</div>}
     {hasER&&step===1&&<div className="ra"style={{background:"#FEE2E2",borderColor:C.rd,color:"#991B1B",fontSize:15,fontWeight:600,marginBottom:14}}>⛔ STOP — Please call 911 or go to the nearest emergency room immediately.</div>}
@@ -2059,7 +2509,6 @@ function Intake({onDone,mainRef,initialEmail}){
         <a href={"tel:"+ptProv.phone.replace(/[^\d]/g,"")}style={{fontSize:12,color:C.purp,fontWeight:600,textDecoration:"none"}}>{ptProv.phone}</a>
       </div>}
       {ref.returnEligible&&<div style={{fontSize:12,color:"#92400E",fontStyle:"italic",marginTop:4}}>Once cleared by your specialist, you may be eligible for this program.</div>}
-      <button onClick={()=>L("care_coordination_request",{exclusion:ex.id,specialist:ref.specialist,providers:ref.providers})}style={{marginTop:10,background:"transparent",border:`1px solid #D97706`,borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,color:"#92400E",cursor:"pointer"}}>Help me find care</button>
     </div>})}
     {triedNext&&screenerIncomplete&&step===3&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please answer both screening questions to continue.</div>}
     {triedNext&&popdiIncomplete&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please answer all six questions. For each "Yes" answer, please also select how much it bothers you.</div>}
@@ -2074,7 +2523,7 @@ function Intake({onDone,mainRef,initialEmail}){
       <div style={{marginBottom:14}}><div className="il">Confirm Password</div><input className="inp"type="password"value={acctPwC}onChange={e=>{setAcctPwC(e.target.value);setAcctErr(null)}}placeholder="Re-enter password"/></div>
       {acctErr&&<div style={{color:C.rd,fontSize:12,marginBottom:8,padding:"6px 10px",background:`${C.rd}10`,borderRadius:6}}>{acctErr}</div>}
       <div style={{fontSize:11,color:C.g400,lineHeight:1.5}}>Your password must be at least 8 characters with at least 1 uppercase letter and 1 number. This account will be used to access your care plan securely.</div>
-    </div>:(isMale&&step===0?steps[step].qs.filter(q=>["name","dob","sex_at_birth"].includes(q.id)):steps[step].qs).map(q=><Q key={q.id}q={q}ans={ans}set={set}togM={togM}rfs={rfs}setRfs={setRfs}safetyTriggered={safetyTriggered}setSafetyTriggered={setSafetyTriggered}showSafetyModal={showSafetyModal}setShowSafetyModal={setShowSafetyModal}/>)}
+    </div>:steps[step].qs.map(q=><Q key={q.id}q={q}ans={ans}set={set}togM={togM}rfs={rfs}setRfs={setRfs}safetyTriggered={safetyTriggered}setSafetyTriggered={setSafetyTriggered}showSafetyModal={showSafetyModal}setShowSafetyModal={setShowSafetyModal}/>)}
     {step===0&&ans.prenatal_flag&&<div style={{background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:10,padding:"12px 16px",margin:"8px 0 12px",fontSize:13,color:"#166534",lineHeight:1.6}}>We'll tailor your care plan with prenatal-safe modifications so you can safely support your pelvic floor throughout your pregnancy.</div>}
     <ConsistencyAlerts ans={ans} currentQIds={steps[step].qs.map(q=>q.id)}/>
     {steps[step].qs.some(q=>q.id==="phq2_mood")&&phq2Score>=2&&<div style={{margin:"16px 0"}}><PsiResourceCard/></div>}
@@ -2085,9 +2534,9 @@ function Intake({onDone,mainRef,initialEmail}){
     {triedNext&&bowelIncomplete&&step===6&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>Please answer the bowel frequency and stool type questions to continue.</div>}
     {triedNext&&painIncomplete&&step===8&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>Please use the sliders to rate your current pain level and average pain to continue.</div>}
     {triedNext&&phq2Incomplete&&step===11&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>Please answer both mental health screening questions to continue.</div>}
-    {!(isMale&&step===0)&&<div style={{display:"flex",justifyContent:"space-between",marginTop:20}}>
+    {!(isMale&&step===0&&!PHASE2_MALE)&&<div style={{display:"flex",justifyContent:"space-between",marginTop:20}}>
       <button className="btn bo"onClick={()=>step>0&&goStep(prevVisibleStep(step))}disabled={step===0}>← Back</button>
-      <button className="btn bpk"onClick={async()=>{if(steps[step].custom==="account"){const email=ans.email||"";if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setAcctErr("Please enter a valid email in the demographics step.");return}if(acctPw.length<8){setAcctErr("Password must be at least 8 characters.");return}if(!/[A-Z]/.test(acctPw)){setAcctErr("Password must contain at least 1 uppercase letter.");return}if(!/[0-9]/.test(acctPw)){setAcctErr("Password must contain at least 1 number.");return}if(acctPw!==acctPwC){setAcctErr("Passwords do not match.");return}L("account_created",{email,userId:authSession?.userId});setAcctErr(null);goStep(nextVisibleStep(step))}else if(blocked){setTriedNext(true)}else if(step===2){setVoiceMode("fork")}else{goStep(nextVisibleStep(step))}}}style={{opacity:blocked?0.4:1}}>{steps[step].custom==="account"?"Secure Account & Submit →":step===steps.length-1?"Submit Assessment →":"Continue →"}</button>
+      <button className="btn bpk"onClick={async()=>{if(steps[step].custom==="account"){const email=ans.email||"";if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setAcctErr("Please enter a valid email in the demographics step.");return}if(acctPw.length<8){setAcctErr("Password must be at least 8 characters.");return}if(!/[A-Z]/.test(acctPw)){setAcctErr("Password must contain at least 1 uppercase letter.");return}if(!/[0-9]/.test(acctPw)){setAcctErr("Password must contain at least 1 number.");return}if(acctPw!==acctPwC){setAcctErr("Passwords do not match.");return}L("account_created",{email,userId:authSession?.userId});setAcctErr(null);goStep(nextVisibleStep(step))}else if(blocked){setTriedNext(true)}else if(step===2&&PHASE2_VOICE){setVoiceMode("fork")}else{goStep(nextVisibleStep(step))}}}style={{opacity:blocked?0.4:1}}>{steps[step].custom==="account"?"Secure Account & Submit →":step===steps.length-1?"Submit Assessment →":"Continue →"}</button>
     </div>}</div>;
 }
 
@@ -2104,6 +2553,131 @@ function PatientWaiting({name}){
       </div>
     </div>
     {referral.needed&&<ReferralCard referral={referral}/>}
+  </div>;
+}
+function Week4CheckIn({baseline,onComplete}){
+  const[step,setStep]=useState(0);const[ans,setAns]=useState({});const[done,setDone]=useState(false);
+  const set=(k,v)=>setAns(a=>({...a,[k]:v}));
+  const c4ICIQ=(a)=>(a.c4_iciq1??0)+(a.c4_iciq2??0)+(a.c4_iciq3??0);
+  const c4Pain=(a)=>Math.round(((a.c4_pain1??0)+(a.c4_pain2??0))/2*10)/10;
+  const c4PHQ2=(a)=>(a.c4_phq2_interest??0)+(a.c4_phq2_mood??0);
+  // Build conditional steps
+  const steps=[];
+  steps.push({id:"iciq",title:"Bladder Leakage Check-In",qs:ICIQ.map(q=>({...q,id:"c4_"+q.id,conditional:q.conditional?a=>q.conditional(Object.fromEntries(Object.entries(a).map(([k,v])=>[k.replace("c4_",""),v]))):undefined}))});
+  if(baseline.pain>0)steps.push({id:"pain",title:"Pain Check-In",qs:[
+    {id:"c4_pain1",text:"What is your pelvic pain level right now? (0 = no pain, 10 = worst pain imaginable)",type:"scale",min:0,max:10,lo:"No pain",hi:"Worst pain imaginable"},
+    {id:"c4_pain2",text:"What has your average pelvic pain been over the past week? (0 = no pain, 10 = worst pain imaginable)",type:"scale",min:0,max:10,lo:"No pain",hi:"Worst pain imaginable"},
+  ]});
+  steps.push({id:"phq2",title:"Emotional Well-Being",qs:[
+    {id:"c4_phq2_interest",text:"Over the past 2 weeks, how often have you been bothered by having little interest or pleasure in doing things?",opts:[["Not at all",0],["Several days",1],["More than half the days",2],["Nearly every day",3]]},
+    {id:"c4_phq2_mood",text:"Over the past 2 weeks, how often have you been bothered by feeling down, depressed, or hopeless?",opts:[["Not at all",0],["Several days",1],["More than half the days",2],["Nearly every day",3]]}
+  ]});
+  steps.push({id:"overall",title:"How Are Things Going?",qs:[
+    {id:"c4_overall",text:"Overall, how would you rate your progress so far?",opts:[["Much better","much_better"],["Somewhat better","somewhat_better"],["About the same","same"],["Somewhat worse","worse"],["Much worse","much_worse"]]},
+    {id:"c4_adherence_self",text:"How consistently have you been doing your exercises?",opts:[["Daily or almost daily","daily"],["A few times a week","few_times"],["Once a week or less","rarely"],["I haven't started yet","not_started"]]},
+  ]});
+  const curStep=steps[step];
+  const canNext=()=>{if(!curStep)return false;return curStep.qs.every(q=>{if(q.conditional&&!q.conditional(ans))return true;return ans[q.id]!==undefined})};
+  const renderQ=(q)=>{
+    if(q.conditional&&!q.conditional(ans))return null;
+    return<div key={q.id}className="qc">
+      <div className="qt">{q.text}</div>
+      {q.type==="scale"&&<div>
+        <div className="scv"style={ans[q.id]===undefined?{color:C.g400,fontStyle:"italic"}:{}}>{ans[q.id]!==undefined?ans[q.id]:"—"}</div>
+        <input type="range"className="slr"min={q.min}max={q.max}value={ans[q.id]??q.min}onPointerDown={e=>{if(ans[q.id]===undefined)set(q.id,+e.target.value)}}onChange={e=>set(q.id,+e.target.value)}/>
+        <div className="scl"><span>{q.lo}</span><span>{q.hi}</span></div>
+      </div>}
+      {q.opts&&!q.type&&q.opts.map(([l,v])=><button key={v}className={`ob ${ans[q.id]===v?"s":""}`}onClick={()=>set(q.id,v)}>{l}</button>)}
+    </div>;
+  };
+  const finish=()=>{
+    const iciqScore=c4ICIQ(ans);const painScore=c4Pain(ans);const phq2Score=c4PHQ2(ans);
+    const iciqDelta=baseline.iciq-iciqScore;
+    const painWorsened=baseline.pain>0&&painScore-baseline.pain>=2;
+    const phq2Worsened=phq2Score>(baseline.phq2||0);
+    const phq2High=phq2Score>=5&&phq2Worsened;
+    const noProgress=iciqDelta<1&&baseline.iciq>0;
+    let concern="none";
+    if(noProgress)concern="mild";
+    if(painWorsened||phq2Worsened||(ans.c4_overall==="worse"||ans.c4_overall==="much_worse"))concern="moderate";
+    if(phq2High||(painWorsened&&(painScore-baseline.pain>=4||painScore>=8))||ans.c4_overall==="much_worse")concern="high";
+    const results={iciq:iciqScore,pain:painScore,phq2:phq2Score,overall:ans.c4_overall,adherence_self:ans.c4_adherence_self,date:new Date().toLocaleDateString("en-US",{month:"2-digit",day:"2-digit"}),submitted:true,concern};
+    L("checkin_week4_complete",{iciq_intake:baseline.iciq,iciq_week4:iciqScore,iciq_delta:iciqDelta,phq2:phq2Score,overall:ans.c4_overall,adherence:ans.c4_adherence_self,concern});
+    if(noProgress)L("PT_ALERT_NO_ICIQ_PROGRESS_WK4",{iciq_intake:baseline.iciq,iciq_week4:iciqScore,note:"ICIQ improvement <1 point at Week 4 — consider early intervention"});
+    if(phq2Score>=3)L("depression_screen_positive",{score:phq2Score,severity:phq2Score>=5?"HIGH":"MODERATE",context:"week4_checkin"});
+    if(painWorsened)L("CLINICAL_REGRESSION_FLAG",{symptomType:"pain_worsened_wk4",intake:baseline.pain,week4:painScore,delta:painScore-baseline.pain});
+    if(ans.c4_adherence_self==="not_started"||ans.c4_adherence_self==="rarely"){
+      const addFlag=(id,label)=>{if(sharedIntake?.plan?.review_flags&&!sharedIntake.plan.review_flags.some(f=>f.id===id)){sharedIntake.plan.review_flags=[...sharedIntake.plan.review_flags,{id,type:"triggered",label}];notifyFlagChange()}};
+      addFlag("ADHERENCE_CONCERN_WK4","Low adherence at Week 4");
+    }
+    if(concern==="high"){
+      const addFlag=(id,label)=>{if(sharedIntake?.plan?.review_flags&&!sharedIntake.plan.review_flags.some(f=>f.id===id)){sharedIntake.plan.review_flags=[...sharedIntake.plan.review_flags,{id,type:"triggered",label}];notifyFlagChange()}};
+      addFlag("URGENT_REVIEW_WK4","Urgent Review — Week 4 Check-In");
+    }
+    setDone(true);onComplete(results);
+  };
+  if(done){
+    const iciqDelta=baseline.iciq-c4ICIQ(ans);const painDelta=baseline.pain-c4Pain(ans);const phq2Score=c4PHQ2(ans);
+    const deltaColor=(d)=>d>0?C.gn:d<0?C.rd:C.or;
+    const deltaArrow=(d)=>d>0?"\u2193":d<0?"\u2191":"\u2192";
+    return<div className="fi"style={{textAlign:"center",paddingTop:40}}>
+      <div style={{fontSize:48,marginBottom:16}}>{ans.c4_overall==="much_worse"?"\u26A0\uFE0F":"\uD83D\uDCCA"}</div>
+      <div className="h1"style={{fontSize:24,marginBottom:8}}>Week 4 Check-In Complete</div>
+      <p style={{fontSize:14,color:C.g500,maxWidth:500,margin:"0 auto 24px",lineHeight:1.6}}>Thank you! Your PT can see your mid-program progress.</p>
+      <div style={{maxWidth:500,margin:"0 auto",textAlign:"left"}}>
+        <div className="card">
+          <div className="chd">Your Progress So Far</div>
+          <div style={{display:"grid",gap:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
+              <span style={{fontSize:13,color:C.g600}}>ICIQ Score</span>
+              <span style={{fontSize:13,fontWeight:700,color:deltaColor(iciqDelta)}}>{baseline.iciq} {"\u2192"} {c4ICIQ(ans)} <span>{deltaArrow(iciqDelta)} {Math.abs(iciqDelta)} pts</span></span>
+            </div>
+            {baseline.pain>0&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
+              <span style={{fontSize:13,color:C.g600}}>Pain Composite</span>
+              <span style={{fontSize:13,fontWeight:700,color:deltaColor(painDelta)}}>{baseline.pain} {"\u2192"} {c4Pain(ans)} <span>{deltaArrow(painDelta)}</span></span>
+            </div>}
+            <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
+              <span style={{fontSize:13,color:C.g600}}>PHQ-2</span>
+              <span style={{fontSize:13,fontWeight:700,color:phq2Score>=3?C.rd:C.gn}}>{phq2Score}/6 {phq2Score>=3?"— Positive":"— Negative"}</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0"}}>
+              <span style={{fontSize:13,color:C.g600}}>Self-Rated Progress</span>
+              <span style={{fontSize:13,fontWeight:700,color:ans.c4_overall==="much_better"||ans.c4_overall==="somewhat_better"?C.gn:ans.c4_overall==="same"?C.or:C.rd}}>{(ans.c4_overall||"").replace(/_/g," ")}</span>
+            </div>
+          </div>
+        </div>
+        {iciqDelta>=3&&<div className="card"style={{borderLeft:`4px solid ${C.gn}`,background:"#F0FDF4"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#065F46",marginBottom:4}}>Great Progress!</div>
+          <div style={{fontSize:12,color:"#065F46",lineHeight:1.6}}>Your ICIQ score has improved by {iciqDelta} points — that's a clinically meaningful change. Keep it up!</div>
+        </div>}
+        {iciqDelta<1&&baseline.iciq>0&&<div className="card"style={{borderLeft:`4px solid ${C.or}`,background:"#FFF7ED"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#9A3412",marginBottom:4}}>Still Early</div>
+          <div style={{fontSize:12,color:"#78350F",lineHeight:1.6}}>Your scores haven't changed much yet — that's not unusual at 4 weeks. Many patients see the biggest improvements between weeks 4 and 8. Your PT may adjust your plan based on these results.</div>
+        </div>}
+        {phq2Score>=2&&<div className="card"style={{borderLeft:"4px solid #D97706",background:"#FFFBEB"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#92400E",marginBottom:8}}>Support Resources</div>
+          <div style={{fontSize:12,color:"#78350F",marginBottom:6}}>Based on your responses, we want to make sure you have access to these resources:</div>
+          {PSI_RESOURCES.crisis.map((r,i)=><div key={i}style={{fontSize:12,color:"#7F1D1D",marginBottom:4}}><strong>{r.name}:</strong> <a href={"tel:"+r.phone.replace(/[^0-9]/g,"")}style={{color:"#DC2626"}}>{r.phone}</a> {" \u2014 "} {r.desc}</div>)}
+        </div>}
+      </div>
+    </div>;
+  }
+  return<div className="fi">
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+      <div><div className="h1"style={{fontSize:20}}>Week 4 Check-In</div><div className="sub">Step {step+1} of {steps.length}</div></div>
+      <div style={{fontSize:12,color:C.g400}}>Takes about 2-3 minutes</div>
+    </div>
+    <div style={{height:4,background:C.g200,borderRadius:2,marginBottom:20}}><div style={{height:4,background:C.pink,borderRadius:2,width:`${((step+1)/steps.length)*100}%`,transition:"width .3s"}}/></div>
+    <div className="card">
+      <div className="chd">{curStep.title}</div>
+      {curStep.qs.map(q=>renderQ(q))}
+      {curStep.id==="phq2"&&c4PHQ2(ans)>=2&&ans.c4_phq2_interest!==undefined&&ans.c4_phq2_mood!==undefined&&<PsiResourceCard compact/>}
+    </div>
+    <div style={{display:"flex",justifyContent:"space-between",marginTop:16}}>
+      {step>0?<button className="btn bo"onClick={()=>setStep(s=>s-1)}>{"\u2190"} Back</button>:<div/>}
+      {step<steps.length-1?<button className="btn bpk"disabled={!canNext()}onClick={()=>setStep(s=>s+1)}style={{opacity:canNext()?1:.5}}>Next {"\u2192"}</button>:
+      <button className="btn bpk"disabled={!canNext()}onClick={finish}style={{opacity:canNext()?1:.5}}>Complete Check-In</button>}
+    </div>
   </div>;
 }
 function Week8CheckIn({baseline,onComplete}){
@@ -2372,9 +2946,10 @@ function MyCareplan({data}){
   const[expanded,setExpanded]=useState({});
   const toggle=(id)=>setExpanded(p=>({...p,[id]:!p[id]}));
   const fullName=(ans.name_first||"")+" "+(ans.name_last||"");
-  const tier=iciq.total>=13?"Beginner":iciq.total>=6?"Moderate":"Advanced";
-  const tierWks=iciq.total>=13?"12":iciq.total>=6?"8":"6";
-  const cueLbl={biologic:"Body function",imaginative:'Imaginative ("blueberry" cue per Crane & Dugan, 2025)',breathing:"Breath-based",simple_contract:"Simple contraction",default:"Default"}[ans.cue_preference]||"Default";
+  const cpIsMale=data?.isMale||ans.sex_at_birth==="male";
+  const tier=cpIsMale?(plan.tier||"general").replace(/_/g," "):(iciq.total>=13?"Beginner":iciq.total>=6?"Moderate":"Advanced");
+  const tierWks=cpIsMale?(plan.dur||"8 wks").match(/(\d+)/)?.[1]||"8":(iciq.total>=13?"12":iciq.total>=6?"8":"6");
+  const cueLbl={biologic:"Body function",imaginative:'Imaginative ("blueberry" cue per Crane & Dugan, 2025)',breathing:"Breath-based",simple_contract:"Simple contraction",shorten:'Shorten cue (Stafford 2016)',squeeze:'Squeeze anus (Ben Ami 2022)',urine_stop:"Stop urine flow",default:"Default"}[ans.cue_preference]||"Default";
   const avF=(ans.avoid_activities||[]).filter(x=>x!=="none");
   const phq2=calcPHQ2(ans);
   const dateStr=new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
@@ -2385,6 +2960,7 @@ function MyCareplan({data}){
   const[adhStatus,setAdhStatus]=useState(null);
   const[adhNote,setAdhNote]=useState("");
   const[showCheckin,setShowCheckin]=useState(false);
+  const[showCheckin4,setShowCheckin4]=useState(false);
   const[showExport,setShowExport]=useState(false);
   const[exportDone,setExportDone]=useState(false);
   // Push notification state
@@ -2411,6 +2987,7 @@ function MyCareplan({data}){
   useEffect(()=>{document.body.style.overflow=showExport?"hidden":"";return()=>{document.body.style.overflow=""}},[showExport]);
   useEffect(()=>{if(exportDone){const t=setTimeout(()=>setExportDone(false),8000);return()=>clearTimeout(t)}},[exportDone]);
   const[showProgress,setShowProgress]=useState(false);
+  const[week4Results,setWeek4Results]=useState(data.week4||null);
   const[week8Results,setWeek8Results]=useState(data.week8||null);
   const logAdherence=()=>{
     const entry={date:new Date().toISOString().split("T")[0],status:adhStatus,note:adhNote||undefined};
@@ -2425,6 +3002,7 @@ function MyCareplan({data}){
   const monthDays=adherenceLog.filter(e=>{const d=new Date(e.date);const now=new Date();return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()}).length;
   // Baseline for Week 8
   const baseline={iciq:iciq.total,pain:pain.composite,phq2,fsex:fsex.total,constipation:(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??4)<=1||(ans.bristol_stool??4)<=2,avoid:avF,popdi_positive:(popdi?.positiveCount||0)>0,popdi_score:popdi?.score??0};
+  const onCheckin4Complete=(results)=>{setWeek4Results(results);setShowCheckin4(false);if(sharedIntake){sharedIntake.week4=results;if(sharedIntake.userId)db("updatePatientWeek4",{userId:sharedIntake.userId,week4:results})}};
   const onCheckinComplete=(results)=>{setWeek8Results(results);setShowCheckin(false);if(sharedIntake){sharedIntake.week8=results;if(sharedIntake.userId)db("updatePatientWeek8",{userId:sharedIntake.userId,week8:results});if(sharedIntake.outcomeRecordId){const adhRate=adherenceLog.length>0?Math.round(adherenceLog.filter(e=>e.status==="yes").length/adherenceLog.length*100):0;const orec=completeOutcomeRecord(sharedIntake.outcomeRecordId,baseline,{...results,adherence_rate:adhRate});if(orec&&orec.outcome)db("completeOutcomeRecord",{recordId:sharedIntake.outcomeRecordId,outcome:orec.outcome})}}};
   // Polished care plan CSS (from sample-patient-care-plan design)
   const cpCSS=`
@@ -2497,30 +3075,49 @@ function MyCareplan({data}){
   .cp-export-btn:hover{background:#6D28D9;color:#fff}
   `;
   // If showing checkin, render that instead
+  if(showCheckin4)return<div className="fi"><style>{cpCSS}</style><div className="cp-shell"><Week4CheckIn baseline={baseline} onComplete={onCheckin4Complete}/></div></div>;
   if(showCheckin)return<div className="fi"><style>{cpCSS}</style><div className="cp-shell"><Week8CheckIn baseline={baseline} onComplete={onCheckinComplete}/></div></div>;
 
   const ScoresTab=()=><div>
     <div className="cp-card">
       <div className="cp-card-title">Your Assessment Results</div>
       <div className="cp-card-sub">These scores come from validated clinical instruments used worldwide. They help your PT understand your symptoms and track your progress.</div>
-      <div className="cp-scores-grid">
+      {cpIsMale?<div className="cp-scores-grid">
+        <div className={`cp-score-chip ${(data?.ipss?.total??0)>=20?"warn":""}`}><div className="cp-sv">{data?.ipss?.total??0}</div><div className="cp-sl">IPSS Score</div><div className="cp-sd">{data?.ipss?.severity||"N/A"} (out of 35)</div></div>
+        <div className={`cp-score-chip ${iciq.total>=6?"warn":""}`}><div className="cp-sv">{iciq.total}</div><div className="cp-sl">ICIQ Score</div><div className="cp-sd">{iciq.severity} (out of 21)</div></div>
+        <div className="cp-score-chip"><div className="cp-sv">{pain.composite}/10</div><div className="cp-sl">Pain Level</div><div className="cp-sd">{pain.severity}</div></div>
+        {(data?.cpsi?.total??0)>0&&<div className="cp-score-chip"><div className="cp-sv">{data?.cpsi?.total??0}</div><div className="cp-sl">NIH-CPSI</div><div className="cp-sd">{data?.cpsi?.severity||"N/A"} (out of 43)</div></div>}
+        {(data?.shim?.total??0)>0&&<div className="cp-score-chip"><div className="cp-sv">{data?.shim?.total??0}</div><div className="cp-sl">SHIM/IIEF-5</div><div className="cp-sd">{data?.shim?.severity||"N/A"} (out of 25)</div></div>}
+        <div className="cp-score-chip good"><div className="cp-sv"style={{fontSize:14}}>{(data?.lane||plan.lane||"general").replace(/_/g," ")}</div><div className="cp-sl">Care Lane</div><div className="cp-sd">{tierWks}-week program</div></div>
+        {avF.length>0&&<div className="cp-score-chip"><div className="cp-sv">{avF.length}</div><div className="cp-sl">Avoided Activities</div><div className="cp-sd">{avF.join(", ")}</div></div>}
+      </div>:<div className="cp-scores-grid">
         <div className={`cp-score-chip ${iciq.total>=6?"warn":""}`}><div className="cp-sv">{iciq.total}</div><div className="cp-sl">ICIQ Score</div><div className="cp-sd">{iciq.severity} (out of 21)</div></div>
         <div className="cp-score-chip"><div className="cp-sv">{iciq.subtype.replace(" UI","")}</div><div className="cp-sl">Leakage Type</div><div className="cp-sd">{iciq.subtype.includes("Mixed")?"Stress + Urge":iciq.subtype}</div></div>
         <div className="cp-score-chip"><div className="cp-sv">{pain.composite}/10</div><div className="cp-sl">Pain Level</div><div className="cp-sd">{pain.severity}</div></div>
         <div className="cp-score-chip"><div className="cp-sv">{gupi.total}</div><div className="cp-sl">GUPI Score</div><div className="cp-sd">{gupi.severity} (out of 45)</div></div>
-        <div className="cp-score-chip good"><div className="cp-sv" style={{fontSize:18}}>{tier}</div><div className="cp-sl">Program Tier</div><div className="cp-sd">{tierWks}-week program</div></div>
+        <div className="cp-score-chip good"><div className="cp-sv"style={{fontSize:18}}>{tier}</div><div className="cp-sl">Program Tier</div><div className="cp-sd">{tierWks}-week program</div></div>
         {avF.length>0&&<div className="cp-score-chip"><div className="cp-sv">{avF.length}</div><div className="cp-sl">Avoided Activities</div><div className="cp-sd">{avF.join(", ")}</div></div>}
-      </div>
+      </div>}
       <div className="cp-bar-wrap">
-        <div className="cp-bar-label"><span>Less Severe</span><span>ICIQ: {iciq.total}/21</span><span>More Severe</span></div>
-        <div className="cp-bar"><div className="cp-bar-fill"style={{width:`${iciq.total/21*100}%`,background:`linear-gradient(90deg,#059669,#D97706${iciq.total>15?",#DC2626":""})`}}/></div>
+        {cpIsMale?<React.Fragment>
+          <div className="cp-bar-label"><span>Less Severe</span><span>IPSS: {data?.ipss?.total??0}/35</span><span>More Severe</span></div>
+          <div className="cp-bar"><div className="cp-bar-fill"style={{width:`${(data?.ipss?.total??0)/35*100}%`,background:`linear-gradient(90deg,#059669,#D97706${(data?.ipss?.total??0)>25?",#DC2626":""})`}}/></div>
+        </React.Fragment>:<React.Fragment>
+          <div className="cp-bar-label"><span>Less Severe</span><span>ICIQ: {iciq.total}/21</span><span>More Severe</span></div>
+          <div className="cp-bar"><div className="cp-bar-fill"style={{width:`${iciq.total/21*100}%`,background:`linear-gradient(90deg,#059669,#D97706${iciq.total>15?",#DC2626":""})`}}/></div>
+        </React.Fragment>}
       </div>
     </div>
     <div className="cp-card">
       <div className="cp-card-title">What Your Scores Mean</div>
-      <p style={{fontSize:13,color:"#4B5563",lineHeight:1.7}}>
+      {cpIsMale?<div style={{fontSize:13,color:"#4B5563",lineHeight:1.7}}>
+        <p>{SCORE_EXP_MALE.ipss[data?.ipss?.severity]||"Your IPSS score helps us understand your urinary symptoms."}</p>
+        {(data?.cpsi?.total??0)>0&&<p style={{marginTop:8}}>{SCORE_EXP_MALE.cpsi[data?.cpsi?.severity]||""}</p>}
+        {(data?.shim?.total??0)>0&&<p style={{marginTop:8}}>{SCORE_EXP_MALE.shim[data?.shim?.severity]||""}</p>}
+        {iciq.total>0&&<p style={{marginTop:8}}>Your ICIQ incontinence score of <strong>{iciq.total}</strong> ({iciq.severity}) is also being tracked as part of your recovery.</p>}
+      </div>:<p style={{fontSize:13,color:"#4B5563",lineHeight:1.7}}>
         We assessed your symptoms using the International Consultation on Incontinence Questionnaire (ICIQ), the global gold standard used by doctors to measure pelvic health. Your ICIQ score of <strong>{iciq.total}</strong> places you in the <strong>{iciq.severity.toLowerCase()} severity</strong> range. {iciq.subtype==="Mixed UI"?"Your leakage is mixed type — a combination of stress incontinence (leaking during coughing, sneezing, or activity) and urge incontinence (sudden strong need to urinate). This is the most common pattern and responds well to the combination approach in your program.":iciq.subtype==="Stress UI"?"Your leakage is stress type — leaking during physical activity, coughing, or sneezing. This responds very well to pelvic floor strengthening.":iciq.subtype==="Urge UI"?"Your leakage is urge type — a sudden, strong need to urinate that's hard to control. This responds well to bladder retraining combined with exercises.":"Your PT has identified your specific pattern and built your program accordingly."}
-      </p>
+      </p>}
       {ans.patient_goal&&<p style={{fontSize:13,color:"#4B5563",lineHeight:1.7,marginTop:10}}>Your goal: <em>"{ans.patient_goal}"</em> Your program is designed specifically around this.</p>}
     </div>
   </div>;
@@ -2531,6 +3128,9 @@ function MyCareplan({data}){
     imaginative:{phrase:"Imagine gently closing around and lifting a blueberry",short:"lift a blueberry"},
     breathing:{phrase:"As you breathe out, draw in and lift your pelvic floor",short:"exhale and lift"},
     simple_contract:{phrase:"Contract your pelvic floor muscles",short:"contract PF"},
+    shorten:{phrase:"Imagine shortening your penis and drawing your testicles upward",short:"shorten and lift"},
+    squeeze:{phrase:"Squeeze your anus as if holding back gas",short:"squeeze anus"},
+    urine_stop:{phrase:"Squeeze as if stopping the flow of urine",short:"stop urine flow"},
     default:{phrase:"Gently squeeze and lift your pelvic floor",short:"squeeze and lift"}
   };
   const cue=cueMap[ans.cue_preference]||cueMap.default;
@@ -2555,7 +3155,7 @@ function MyCareplan({data}){
       <div style={{background:ans.cue_preference==="imaginative"?"#EDE9FE":ans.cue_preference==="breathing"?"#E0F2FE":"#FEF3C7",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,lineHeight:1.5,color:ans.cue_preference==="imaginative"?"#4C1D95":ans.cue_preference==="breathing"?"#0C4A6E":"#78350F"}}>
         <strong>Your cueing style:</strong> When instructions say to engage your pelvic floor, use this cue: <em>"{cue.phrase}"</em>
       </div>
-      {(plan.ex||[]).map((ex,i)=>{const lib=PATIENT_EX[ex.n];const open=expanded["ex_"+i];return<div key={i}className="cp-exc">
+      {(plan.ex||[]).map((ex,i)=>{const lib=PATIENT_EX[ex.n]||PATIENT_EX_MALE[ex.n];const open=expanded["ex_"+i];return<div key={i}className="cp-exc">
         <div className="cp-exh"onClick={()=>toggle("ex_"+i)}>
           <div><div className="cp-exn">{i+1}. {lib?lib.name:ex.n}{ex.prenatalModified&&<span style={{background:"#D1FAE5",color:"#065F46",fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:10,marginLeft:8}}>Prenatal-adapted</span>}</div><div style={{fontSize:11,color:"#9CA3AF",marginTop:2}}>{ex.f}</div></div>
           <div className="cp-exr">{ex.s}×{ex.r} · {ex.h} hold</div>
@@ -2592,7 +3192,7 @@ function MyCareplan({data}){
     <div className="cp-card">
       <div className="cp-card-title">Your Personalized Recommendations</div>
       <div className="cp-card-sub">Based on your assessment, your PT recommends the following additional support alongside your exercises.</div>
-      {(plan.adjuncts||[]).map((adj,i)=>{const lib=PATIENT_ADJ[adj.n];const icons={"behavioral":"🔄","device":"📊","referral":"🏥"};const bgs={"behavioral":"#E0F2FE","device":"#EDE9FE","referral":"#F3F4F6"};const displayText=adj.patientText||(lib?`${lib.what}${lib.why?` ${lib.why}`:""}`:(adj.d||""));return<div key={i}className="cp-adj-item">
+      {(plan.adjuncts||[]).map((adj,i)=>{const lib=PATIENT_ADJ[adj.n]||PATIENT_ADJ_MALE[adj.n];const icons={"behavioral":"🔄","device":"📊","referral":"🏥"};const bgs={"behavioral":"#E0F2FE","device":"#EDE9FE","referral":"#F3F4F6"};const displayText=adj.patientText||(lib?`${lib.what}${lib.why?` ${lib.why}`:""}`:(adj.d||""));return<div key={i}className="cp-adj-item">
         <div className="cp-adj-icon"style={{background:bgs[adj.type]||"#F3F4F6"}}>{icons[adj.type]||"📋"}</div>
         <div><div style={{fontWeight:600,fontSize:13,color:"#111827"}}>{lib?lib.name:adj.n}</div><div style={{fontSize:12,color:"#4B5563",marginTop:2,lineHeight:1.5}}>{displayText}</div></div>
       </div>;})}
@@ -2631,19 +3231,28 @@ function MyCareplan({data}){
         <div className="cp-rpt-section"><div className="cp-rpt-h">Patient Information</div>
           <div className="cp-rpt-row"><span className="cp-rl">Name</span><span className="cp-rv">{fullName}</span></div>
           <div className="cp-rpt-row"><span className="cp-rl">DOB</span><span className="cp-rv">{ans.dob||"—"}</span></div>
-          <div className="cp-rpt-row"><span className="cp-rl">Status</span><span className="cp-rv">{(ans.pregnancy_status||"").replace(/_/g," ")}</span></div>
+          <div className="cp-rpt-row"><span className="cp-rl">{ans.sex_at_birth==="male"?"Sex":"Status"}</span><span className="cp-rv">{ans.sex_at_birth==="male"?"Male":(ans.pregnancy_status||"").replace(/_/g," ")}</span></div>
           <div className="cp-rpt-row"><span className="cp-rl">Assessment Date</span><span className="cp-rv">{dateStr}</span></div>
           <div className="cp-rpt-row"><span className="cp-rl">Plan Approved</span><span className="cp-rv">{dateStr}</span></div>
           <div className="cp-rpt-row"><span className="cp-rl">Reviewing PT</span><span className="cp-rv">Nicole L. Dugan, PT, DPT, WCS</span></div>
         </div>
         <div className="cp-rpt-section"><div className="cp-rpt-h">Clinical Scores</div>
-          <div className="cp-rpt-row"><span className="cp-rl">ICIQ-UI SF</span><span className="cp-rv">{iciq.total}/21 — {iciq.severity}, {iciq.subtype}</span></div>
-          <div className="cp-rpt-row"><span className="cp-rl">FLUTS</span><span className="cp-rv">F: {fluts?.F||0}/12 · V: {fluts?.V||0}/12</span></div>
-          <div className="cp-rpt-row"><span className="cp-rl">POPDI-6</span><span className="cp-rv">{popdi.positiveCount}/6 positive{popdi.positiveCount>0?` (score: ${popdi.score}/100)${popdi.bulge?" — BULGE SYMPTOMS":""}`:""}</span></div>
-          <div className="cp-rpt-row"><span className="cp-rl">FLUTSsex</span><span className="cp-rv">{fsex?.total||0}/12</span></div>
-          <div className="cp-rpt-row"><span className="cp-rl">GUPI</span><span className="cp-rv">{gupi.total}/45 — {gupi.severity} (P: {gupi.pain}, U: {gupi.urinary}, Q: {gupi.qol})</span></div>
-          <div className="cp-rpt-row"><span className="cp-rl">Pain Composite</span><span className="cp-rv">{pain.composite}/10 — {pain.severity}</span></div>
-          <div className="cp-rpt-row"><span className="cp-rl">Program Tier</span><span className="cp-rv">{tier} — {tierWks} weeks</span></div>
+          {ans.sex_at_birth==="male"?<React.Fragment>
+            <div className="cp-rpt-row"><span className="cp-rl">IPSS</span><span className="cp-rv">{sharedIntake?.ipss?.total??0}/35 — {sharedIntake?.ipss?.severity||"N/A"} (S:{sharedIntake?.ipss?.storage??0} V:{sharedIntake?.ipss?.voiding??0})</span></div>
+            <div className="cp-rpt-row"><span className="cp-rl">ICIQ-UI SF</span><span className="cp-rv">{iciq.total}/21 — {iciq.severity}, {iciq.subtype}</span></div>
+            <div className="cp-rpt-row"><span className="cp-rl">NIH-CPSI</span><span className="cp-rv">{sharedIntake?.cpsi?.total??0}/43 — {sharedIntake?.cpsi?.severity||"N/A"} (P:{sharedIntake?.cpsi?.pain??0} U:{sharedIntake?.cpsi?.urinary??0} Q:{sharedIntake?.cpsi?.qol??0})</span></div>
+            <div className="cp-rpt-row"><span className="cp-rl">SHIM/IIEF-5</span><span className="cp-rv">{sharedIntake?.shim?.total??0}/25 — {sharedIntake?.shim?.severity||"N/A"}</span></div>
+            <div className="cp-rpt-row"><span className="cp-rl">Pain Composite</span><span className="cp-rv">{pain.composite}/10 — {pain.severity}</span></div>
+            <div className="cp-rpt-row"><span className="cp-rl">Care Lane</span><span className="cp-rv">{(plan.lane||"general").replace(/_/g," ")} — {plan.tier||""}</span></div>
+          </React.Fragment>:<React.Fragment>
+            <div className="cp-rpt-row"><span className="cp-rl">ICIQ-UI SF</span><span className="cp-rv">{iciq.total}/21 — {iciq.severity}, {iciq.subtype}</span></div>
+            <div className="cp-rpt-row"><span className="cp-rl">FLUTS</span><span className="cp-rv">F: {fluts?.F||0}/12 · V: {fluts?.V||0}/12</span></div>
+            <div className="cp-rpt-row"><span className="cp-rl">POPDI-6</span><span className="cp-rv">{popdi.positiveCount}/6 positive{popdi.positiveCount>0?` (score: ${popdi.score}/100)${popdi.bulge?" — BULGE SYMPTOMS":""}`:""}</span></div>
+            <div className="cp-rpt-row"><span className="cp-rl">FLUTSsex</span><span className="cp-rv">{fsex?.total||0}/12</span></div>
+            <div className="cp-rpt-row"><span className="cp-rl">GUPI</span><span className="cp-rv">{gupi.total}/45 — {gupi.severity} (P: {gupi.pain}, U: {gupi.urinary}, Q: {gupi.qol})</span></div>
+            <div className="cp-rpt-row"><span className="cp-rl">Pain Composite</span><span className="cp-rv">{pain.composite}/10 — {pain.severity}</span></div>
+            <div className="cp-rpt-row"><span className="cp-rl">Program Tier</span><span className="cp-rv">{tier} — {tierWks} weeks</span></div>
+          </React.Fragment>}
           <div className="cp-rpt-row"><span className="cp-rl">Cueing Style</span><span className="cp-rv">{cueLbl}</span></div>
           <div className="cp-rpt-row"><span className="cp-rl">PHQ-2</span><span className="cp-rv">{phq2}/6 — {phq2>=3?"Positive":"Negative"}</span></div>
           {phq2>=2&&<div className="cp-rpt-row"><span className="cp-rl">Support Resources</span><span className="cp-rv" style={{color:"#D97706"}}>Provided — PSI crisis lines + support resources (PHQ-2 ≥2)</span></div>}
@@ -2651,10 +3260,10 @@ function MyCareplan({data}){
           <div className="cp-rpt-row"><span className="cp-rl">Medication Modification</span><span className="cp-rv">{(ans.med_modify??0)===1?"Yes":"No"}</span></div>
         </div>
         <div className="cp-rpt-section"><div className="cp-rpt-h">Exercise Prescription</div>
-          {(plan.ex||[]).map((ex,i)=>{const lib=PATIENT_EX[ex.n];return<div key={i}className="cp-rpt-row"><span className="cp-rl">{lib?lib.name:ex.n}</span><span className="cp-rv">{ex.r} reps × {ex.s} sets, {ex.h} hold, {ex.f}</span></div>})}
+          {(plan.ex||[]).map((ex,i)=>{const lib=PATIENT_EX[ex.n]||PATIENT_EX_MALE[ex.n];return<div key={i}className="cp-rpt-row"><span className="cp-rl">{lib?lib.name:ex.n}</span><span className="cp-rv">{ex.r} reps × {ex.s} sets, {ex.h} hold, {ex.f}</span></div>})}
         </div>
         <div className="cp-rpt-section"><div className="cp-rpt-h">Adjunct Recommendations</div>
-          {(plan.adjuncts||[]).map((adj,i)=>{const lib=PATIENT_ADJ[adj.n];return<div key={i}className="cp-rpt-row"><span className="cp-rl">{lib?lib.name:adj.n}</span><span className="cp-rv">{adj.rx||lib?.what||""}</span></div>})}
+          {(plan.adjuncts||[]).map((adj,i)=>{const lib=PATIENT_ADJ[adj.n]||PATIENT_ADJ_MALE[adj.n];return<div key={i}className="cp-rpt-row"><span className="cp-rl">{lib?lib.name:adj.n}</span><span className="cp-rv">{adj.rx||lib?.what||""}</span></div>})}
         </div>
         <div className="cp-rpt-section"><div className="cp-rpt-h">Plan Details</div>
           <div className="cp-rpt-row"><span className="cp-rl">Frequency</span><span className="cp-rv">{plan.freq}</span></div>
@@ -2779,8 +3388,14 @@ function MyCareplan({data}){
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transform:showProgress?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s"}}><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         {showProgress&&<div style={{padding:"0 20px 20px",borderTop:"1px solid #E5E7EB"}}>
+          {/* Week 4 Check-In Banner */}
+          {!week4Results&&<div className="checkin-banner" style={{background:"linear-gradient(135deg,#6D28D9,#8B5CF6)",borderRadius:12,padding:"16px 20px",marginTop:16,marginBottom:16,color:"white",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div><div style={{fontWeight:700,fontSize:15}}>Week 4 Mid-Program Check-In</div><div style={{fontSize:12,opacity:.8,marginTop:2}}>Takes about 2-3 minutes. Quick progress snapshot for your PT.</div></div>
+            <button className="btn"style={{background:"white",color:"#6D28D9",fontWeight:700}}onClick={()=>setShowCheckin4(true)}>Start Check-In</button>
+          </div>}
+          {week4Results&&!week8Results&&<div style={{background:"#D1FAE5",borderRadius:8,padding:"10px 14px",fontSize:12,color:"#065F46",textAlign:"center",marginTop:16,marginBottom:8}}>Week 4 check-in complete {week4Results.date?`(${week4Results.date})`:""} — ICIQ: {week4Results.iciq??"-"}, PHQ-2: {week4Results.phq2??"-"}</div>}
           {/* Week 8 Check-In Banner */}
-          {!week8Results&&<div className="checkin-banner" style={{background:"linear-gradient(135deg,#4C1D95,#DB2777)",borderRadius:12,padding:"16px 20px",marginTop:16,marginBottom:16,color:"white",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          {!week8Results&&week4Results&&<div className="checkin-banner" style={{background:"linear-gradient(135deg,#4C1D95,#DB2777)",borderRadius:12,padding:"16px 20px",marginTop:16,marginBottom:16,color:"white",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div><div style={{fontWeight:700,fontSize:15}}>Your Week 8 Check-In is ready!</div><div style={{fontSize:12,opacity:.8,marginTop:2}}>Takes about 4-5 minutes. Help us measure your progress.</div></div>
             <button className="btn"style={{background:"white",color:"#4C1D95",fontWeight:700}}onClick={()=>setShowCheckin(true)}>Start Check-In</button>
           </div>}
@@ -2789,11 +3404,15 @@ function MyCareplan({data}){
         </div>}
       </div>
 
-      {/* MyChart / EHR Export */}
-      <div style={{textAlign:"center",margin:"20px 0"}}>
+      {/* Print / Export Actions */}
+      <div style={{display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap",margin:"20px 0"}}>
+        <button className="cp-export-btn" onClick={()=>{setTab("report");setTimeout(()=>{const el=cpRef.current;if(!el)return;const w=window.open("","_blank","width=820,height=1100");if(!w){alert("Please allow popups for this site to print your care plan.");return}const styles=document.querySelectorAll("style");let css="";styles.forEach(s=>{css+=s.innerHTML});w.document.write("<!DOCTYPE html><html><head><title>Expect Care Plan \u2014 "+fullName+"</title>");w.document.write("<base href=\""+window.location.origin+"/\">");w.document.write("<style>"+css+"</style>");w.document.write("<style>body{margin:20px;font-family:'DM Sans',sans-serif}@media print{body{margin:0}.cp-sample{display:none}button{display:none !important}.cp-tabs,.adh-widget,.checkin-banner{display:none !important}}</style>");w.document.write("</head><body>");w.document.write(el.innerHTML);w.document.write("</body></html>");w.document.close();const doPrint=()=>w.print();if(w.document.fonts&&w.document.fonts.ready){w.document.fonts.ready.then(doPrint).catch(doPrint)}else{setTimeout(doPrint,1500)}L("CARE_PLAN_PRINTED",{patient:fullName})},200)}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Print Care Plan
+        </button>
         <button className="cp-export-btn" onClick={()=>{if(tab!=="report"){if(window.confirm("Switch to the Full Report tab for a complete export?")){setTab("report");setTimeout(()=>setShowExport(true),100)}return}setShowExport(true)}}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export for MyChart / EHR
+          Save as PDF for MyChart
         </button>
       </div>
 
@@ -2930,6 +3549,9 @@ function PTReview(){
 function PTNewIntakeReview({data,onBack}){
   const{ans,popdi:_popdi,plan:initPlan}=data;const iciq=data.iciq||sICIQ(ans||{});const pain=data.pain||sPain(ans||{});const gupi=data.gupi||sGUPI(ans||{});const fluts=data.fluts||sFLUTS(ans||{});const fsex=data.fsex||sFSEX(ans||{});const popdi=_popdi||sPOPDI(ans||{});
   if(!initPlan||!ans)return<div className="fi"style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:36,marginBottom:16}}>&#x26A0;&#xFE0F;</div><div className="h1"style={{fontSize:20}}>Incomplete Intake</div><p style={{fontSize:14,color:C.g500,maxWidth:400,margin:"12px auto",lineHeight:1.7}}>This patient's intake data is incomplete and cannot be reviewed. The patient may need to restart their assessment.</p><button className="btn bbl"onClick={onBack}>Back to Patients</button></div>;
+  const ptIsMale=data?.isMale||ans.sex_at_birth==="male";
+  const activeRedflags=ptIsMale?REDFLAGS_MALE:REDFLAGS;
+  const activeExcl=ptIsMale?EXCLUSIONS_MALE:EXCLUSIONS;
   // Editable state for iterative review
   const[plan,setPlan]=useState(JSON.parse(JSON.stringify(initPlan)));
   const[editGoals,setEditGoals]=useState((initPlan.goals||[]).join("\n"));
@@ -2941,7 +3563,7 @@ function PTNewIntakeReview({data,onBack}){
   const[editNote,setEditNote]=useState("");
   const[noteGenerated,setNoteGenerated]=useState(false);
   const[tRun,setTRun]=useState(false);const[tSec,setTSec]=useState(0);const[notes,setNotes]=useState("");
-  const[faxSt,setFaxSt]=useState(null);const[patSent,setPatSent]=useState(false);
+  const[faxSt,setFaxSt]=useState(null);const[faxErr,setFaxErr]=useState(null);const[patSent,setPatSent]=useState(false);
   const[approved,setApproved]=useState(false);const[showGuardrails,setShowGuardrails]=useState(false);
   const[psiRefer,setPsiRefer]=useState(false);const[followUpSent,setFollowUpSent]=useState(null);
   const tmRef=useRef();
@@ -2963,20 +3585,30 @@ function PTNewIntakeReview({data,onBack}){
     const exList=editExs.map(e=>`${e.n}: ${e.s}x${e.r}, hold ${e.h}, ${e.f}`).join("\n");
     const adjList=(editAdj||[]).map(a=>`[${a.type.toUpperCase()}] ${a.n}: ${a.rx}`).join("\n");
     const avoidArr=ans.avoid_activities||[];const avoidCt=avoidArr.filter(x=>x!=="none").length;
-    const tier=iciq.total>=13?"Beginner (12wk)":iciq.total>=6?"Moderate (8wk)":"Advanced (6wk)";
-    const cueLbl={biologic:"Body function",imaginative:"Imaginative",breathing:"Breath-based",simple_contract:"Simple contraction",default:"Default"}[ans.cue_preference]||"Default";
+    const tier=ptIsMale?`${(plan.tier||"general").replace(/_/g," ")} (${(plan.dur||"8 wks").match(/(\d+\s*wk)/)?.[1]||"8 wk"})`:(iciq.total>=13?"Beginner (12wk)":iciq.total>=6?"Moderate (8wk)":"Advanced (6wk)");
+    const cueLbl={biologic:"Body function",imaginative:"Imaginative",breathing:"Breath-based",simple_contract:"Simple contraction",shorten:"Shorten cue (Stafford)",squeeze:"Squeeze anus (Ben Ami)",urine_stop:"Stop urine flow",default:"Default"}[ans.cue_preference]||"Default";
     const pelvHx=(ans.pelvic_history||[]).filter(x=>x!=="none");
     const screenLine=`Screening: Pain=${ans.screen_pain||"—"}, Sexual=${ans.screen_sexual||"—"}.${ans.screen_pain==="no"?" Pain section: SCREENED OUT.":""}${ans.screen_sexual==="no"?" Sexual section: SCREENED OUT.":""}`;
-    return `${alertBlock}PHYSICAL THERAPY ENCOUNTER NOTE\nPatient: ${nm} | DOB: ${ans.dob||"—"}${ans.email?` | Email: ${ans.email}`:""}${ans.phone?` | Phone: ${ans.phone}`:""}\nDOS: ${new Date().toISOString().split("T")[0]} | POS: 10 (Telehealth) | Mod: GQ\n\nSUBJECTIVE:\nInitial evaluation. ICIQ-UI SF: ${iciq.total} (${iciq.severity}, ${iciq.subtype}). Tier: ${tier}. FLUTS: F${fluts.F}/V${fluts.V}. GUPI: ${gupi.total} (${gupi.severity}). Pain: ${pain.composite}/10 (${pain.severity}). FLUTSsex: ${fsex.total}.\n${popdi.positiveCount>0?`POPDI-6: ${popdi.positiveCount}/6 positive (score: ${popdi.score}/100).${popdi.bulge?" BULGE/PROTRUSION SYMPTOMS REPORTED.":""}${popdi.highBother?" High bother noted.":""}\n`:"POPDI-6: 0/6 — no prolapse symptoms.\n"}${screenLine}\n${pelvHx.length>0?`Pelvic Hx: ${pelvHx.map(x=>x.replace(/_/g," ")).join(", ")}.\n`:""}${ans.patient_goal?`Patient goal: "${ans.patient_goal}"\n`:""}${ans.catchall_pelvic?`Additional concerns: "${ans.catchall_pelvic}"\n`:""}${ans.prior_treatment?`Prior treatment: ${Array.isArray(ans.prior_treatment)?ans.prior_treatment.join(", "):ans.prior_treatment}\n`:""}${ans.medications?`Medications: ${ans.medications}\n`:""}${avoidCt>0?`Activity avoidance: ${avoidArr.filter(x=>x!=="none").join(", ")} (${avoidCt} categories${avoidCt>=3?" — HIGH IMPACT":""})\n`:""}${(ans.med_modify??0)===1?`⚠ MEDICATION MODIFICATION: Patient reports changing prescribed medication due to urinary symptoms. Refer to prescribing provider.\n`:""}${ans._safety_answer_changed?`⚠ SAFETY ANSWER CHANGED: Patient initially indicated a safety flag but subsequently changed answer(s): ${(ans._safety_changes||[]).map(c=>c.id).join(", ")}.\n`:""}Cue preference: ${cueLbl}.\n\nOBJECTIVE:\nValidated instruments administered via AI-augmented telehealth. Red flags: ${REDFLAGS.some(r=>ans[r.id]==="yes")?"POSITIVE — see safety screening":"all negative"}${ans._safety_answer_changed?" (note: patient changed safety answer — flagged)":""}.\nStatus: ${ans.pregnancy_status?.replace(/_/g," ")||"N/A"}${ans.delivery_date?`. Delivery: ${ans.delivery_date} (${Math.round((Date.now()-new Date(ans.delivery_date).getTime())/(7*24*60*60*1000))}wk postpartum)`:""}.${ans.delivery_type?` Delivery type: ${ans.delivery_type.replace(/_/g," ")}.`:""} Constipation: ${(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??4)<=1||(ans.bristol_stool??4)<=2?"Yes (straining: "+ans.bowel_constipation+"/4, frequency: "+(["<1x/wk","1-2x/wk","3-4x/wk","5-7x/wk","1-2x/day","3+/day"][ans.bowel_frequency??4])+", Bristol: "+(ans.bristol_stool??"-")+")":"No"}.${plan.prenatal?`\n** PRENATAL PELVIC FLOOR PROTOCOL: Patient is currently pregnant. Exercise modifications for supine positioning have been automatically applied. Review for trimester appropriateness.`:""}\n\nASSESSMENT:\n${dx}\n\nPLAN:\nExercises:\n${exList}\n\nAdjuncts/Devices:\n${adjList||"None"}\n\nGoals:\n${editGoals}\n\nPrecautions:\n${editPrec}\n\nProgression:\n${editProg}\n\nFrequency: ${plan.freq}. Duration: ${plan.dur}.\n\nCPT: ${(plan.cpt||[]).map(c=>`${c.c} — ${c.d} (${c.u}u)`).join(", ")}\nReview time: ${Math.floor(tSec/60)}m ${tSec%60}s${notes?`\n\nPT CLINICAL NOTES:\n${notes}`:""}\n\nATTESTATION:\nI have reviewed the AI-generated assessment, the patient's individual responses, and the treatment plan. ${notes?"Modifications noted. ":""}This reflects my independent clinical judgment.\n\nSigned: [PT Name, DPT] — ${new Date().toISOString()}`;
+    const ptIsMale=data?.isMale||ans.sex_at_birth==="male";
+    const subjLine=ptIsMale
+      ?`Initial evaluation. MALE PATHWAY — Lane: ${(plan.lane||"general").replace(/_/g," ")}. IPSS: ${data?.ipss?.total??0}/35 (${data?.ipss?.severity||"N/A"}, S:${data?.ipss?.storage??0}/V:${data?.ipss?.voiding??0}). ICIQ-UI SF: ${iciq.total} (${iciq.severity}, ${iciq.subtype}). NIH-CPSI: ${data?.cpsi?.total??0}/43 (${data?.cpsi?.severity||"N/A"}, P:${data?.cpsi?.pain??0}/U:${data?.cpsi?.urinary??0}/Q:${data?.cpsi?.qol??0}). SHIM/IIEF-5: ${data?.shim?.total??0}/25 (${data?.shim?.severity||"N/A"}). Pain: ${pain.composite}/10 (${pain.severity}).`
+      :`Initial evaluation. ICIQ-UI SF: ${iciq.total} (${iciq.severity}, ${iciq.subtype}). Tier: ${tier}. FLUTS: F${fluts.F}/V${fluts.V}. GUPI: ${gupi.total} (${gupi.severity}). Pain: ${pain.composite}/10 (${pain.severity}). FLUTSsex: ${fsex.total}.`;
+    const prolapseLine=ptIsMale?"":popdi.positiveCount>0?`POPDI-6: ${popdi.positiveCount}/6 positive (score: ${popdi.score}/100).${popdi.bulge?" BULGE/PROTRUSION SYMPTOMS REPORTED.":""}${popdi.highBother?" High bother noted.":""}\n`:"POPDI-6: 0/6 — no prolapse symptoms.\n";
+    const maleHxLine=ptIsMale?`Prostate hx: ${ans.prostate_history==="yes"?`Yes (${(ans.prostate_surgery_type||"").replace(/_/g," ")}${ans.prostate_surgery_date?", "+ans.prostate_surgery_date:""})`:  "No"}. BPH: ${ans.bph_diagnosed||"—"}. CPPS: ${ans.cpps_symptoms||"—"}.\n`:"";
+    const activeRedflags=ptIsMale?REDFLAGS_MALE:REDFLAGS;
+    const statusLine=ptIsMale
+      ?`Sex: Male.`
+      :`Status: ${ans.pregnancy_status?.replace(/_/g," ")||"N/A"}${ans.delivery_date?`. Delivery: ${ans.delivery_date} (${Math.round((Date.now()-new Date(ans.delivery_date).getTime())/(7*24*60*60*1000))}wk postpartum)`:""}.${ans.delivery_type?` Delivery type: ${ans.delivery_type.replace(/_/g," ")}.`:""}`;
+    return `${alertBlock}PHYSICAL THERAPY ENCOUNTER NOTE\nPatient: ${nm} | DOB: ${ans.dob||"—"}${ans.email?` | Email: ${ans.email}`:""}${ans.phone?` | Phone: ${ans.phone}`:""}\nDOS: ${new Date().toISOString().split("T")[0]} | POS: 10 (Telehealth) | Mod: GQ\n\nSUBJECTIVE:\n${subjLine}\n${prolapseLine}${maleHxLine}${screenLine}\n${pelvHx.length>0?`Pelvic Hx: ${pelvHx.map(x=>x.replace(/_/g," ")).join(", ")}.\n`:""}${ans.patient_goal?`Patient goal: "${ans.patient_goal}"\n`:""}${ans.catchall_pelvic?`Additional concerns: "${ans.catchall_pelvic}"\n`:""}${ans.prior_treatment?`Prior treatment: ${Array.isArray(ans.prior_treatment)?ans.prior_treatment.join(", "):ans.prior_treatment}\n`:""}${ans.medications?`Medications: ${ans.medications}\n`:""}${avoidCt>0?`Activity avoidance: ${avoidArr.filter(x=>x!=="none").join(", ")} (${avoidCt} categories${avoidCt>=3?" — HIGH IMPACT":""})\n`:""}${(ans.med_modify??0)===1?`⚠ MEDICATION MODIFICATION: Patient reports changing prescribed medication due to urinary symptoms. Refer to prescribing provider.\n`:""}${ans._safety_answer_changed?`⚠ SAFETY ANSWER CHANGED: Patient initially indicated a safety flag but subsequently changed answer(s): ${(ans._safety_changes||[]).map(c=>c.id).join(", ")}.\n`:""}Cue preference: ${cueLbl}.\n\nOBJECTIVE:\nValidated instruments administered via AI-augmented telehealth. Red flags: ${activeRedflags.some(r=>ans[r.id]==="yes")?"POSITIVE — see safety screening":"all negative"}${ans._safety_answer_changed?" (note: patient changed safety answer — flagged)":""}.\n${statusLine} Constipation: ${(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??4)<=1||(ans.bristol_stool??4)<=2?"Yes (straining: "+ans.bowel_constipation+"/4, frequency: "+(["<1x/wk","1-2x/wk","3-4x/wk","5-7x/wk","1-2x/day","3+/day"][ans.bowel_frequency??4])+", Bristol: "+(ans.bristol_stool??"-")+")":"No"}.${plan.prenatal?`\n** PRENATAL PELVIC FLOOR PROTOCOL: Patient is currently pregnant. Exercise modifications for supine positioning have been automatically applied. Review for trimester appropriateness.`:""}\n\nASSESSMENT:\n${dx}\n\nPLAN:\nExercises:\n${exList}\n\nAdjuncts/Devices:\n${adjList||"None"}\n\nGoals:\n${editGoals}\n\nPrecautions:\n${editPrec}\n\nProgression:\n${editProg}\n\nFrequency: ${plan.freq}. Duration: ${plan.dur}.\n\nCPT: ${(plan.cpt||[]).map(c=>`${c.c} — ${c.d} (${c.u}u)`).join(", ")}\nReview time: ${Math.floor(tSec/60)}m ${tSec%60}s${notes?`\n\nPT CLINICAL NOTES:\n${notes}`:""}\n\nATTESTATION:\nI have reviewed the AI-generated assessment, the patient's individual responses, and the treatment plan. ${notes?"Modifications noted. ":""}This reflects my independent clinical judgment.\n\nSigned: [PT Name, DPT] — ${new Date().toISOString()}`;
   };
   const genNote=()=>{setEditNote(buildNote());setNoteGenerated(true)};
 
   // Guardrail checks
   const guardrails=[];
   if(tSec<120)guardrails.push({lvl:"warn",msg:`Review time is ${tSec}s — CMS may question reviews under 2 minutes. Continue reviewing before approving.`});
-  if(REDFLAGS.some(r=>ans[r.id]==="yes"))guardrails.push({lvl:"alert",msg:"! Patient had positive red flag(s) in safety screening. Verify these were addressed."});
+  if(activeRedflags.some(r=>ans[r.id]==="yes"))guardrails.push({lvl:"alert",msg:"! Patient had positive red flag(s) in safety screening. Verify these were addressed."});
   if(ans._safety_answer_changed)guardrails.push({lvl:"alert",msg:`! SAFETY ANSWER CHANGED: Patient initially indicated a safety concern but later changed their answer. Questions changed: ${(ans._safety_changes||[]).map(c=>c.id).join(", ")}. Verify this was appropriate.`});
-  if(EXCLUSIONS.some(r=>ans[r.id]==="yes"))guardrails.push({lvl:"alert",msg:"! Patient screened positive for EXCLUSIONARY condition (Section 3.7 Safe Harbor). This patient may not be eligible for AI-generated plans. Review carefully."});
+  if(activeExcl.some(r=>ans[r.id]==="yes"))guardrails.push({lvl:"alert",msg:"! Patient screened positive for EXCLUSIONARY condition (Section 3.7 Safe Harbor). This patient may not be eligible for AI-generated plans. Review carefully."});
   const phq2=calcPHQ2(ans);if(phq2>=3)guardrails.push({lvl:"warn",msg:"PHQ-2 score "+phq2+"/6 — positive screen for depression. Verify capacity to consent and consider mental health resource referral."});
   if(phq2>=2&&!psiRefer)guardrails.push({lvl:"info",msg:"PHQ-2 score "+phq2+"/6 — patient received support resources. Consider checking the PSI Utah referral box if appropriate."});
   if((ans.symptoms_trigger||[]).includes("sitting_long")&&pain.composite>6)guardrails.push({lvl:"alert",msg:"⚠ POTENTIAL PUDENDAL NEURALGIA: Patient reports pain while sitting for long periods with composite pain >6/10. Evaluate for pudendal nerve involvement."});
@@ -3030,14 +3662,21 @@ function PTNewIntakeReview({data,onBack}){
     })()}
 
     {/* SCORE SUMMARY */}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr 1fr",gap:10,marginBottom:14}}>
+    {data?.isMale||ans.sex_at_birth==="male"?<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr 1fr",gap:10,marginBottom:14}}>
+      <div className="sc"><div className="scl2">IPSS</div><div className="scv2"style={{color:C.blue}}>{data?.ipss?.total??0}</div><Bdg sev={data?.ipss?.severity||"N/A"}/><div className="scs">S:{data?.ipss?.storage??0} V:{data?.ipss?.voiding??0} · 0–35</div></div>
+      <div className="sc"><div className="scl2">ICIQ-UI SF</div><div className="scv2"style={{color:C.blue}}>{iciq.total}</div><Bdg sev={iciq.severity}/><div className="scs">{iciq.subtype} · 0–21</div></div>
+      <div className="sc"><div className="scl2">NIH-CPSI</div><div className="scv2"style={{color:C.purp}}>{data?.cpsi?.total??0}</div><Bdg sev={data?.cpsi?.severity||"N/A"}/><div className="scs">P:{data?.cpsi?.pain??0} U:{data?.cpsi?.urinary??0} Q:{data?.cpsi?.qol??0}</div></div>
+      <div className="sc"><div className="scl2">SHIM/IIEF-5</div><div className="scv2"style={{color:C.purpL}}>{data?.shim?.total??0}</div><Bdg sev={data?.shim?.severity||"N/A"}/><div className="scs">0–25</div></div>
+      <div className="sc"><div className="scl2">Pain</div><div className="scv2"style={{color:C.or}}>{pain.composite}</div><Bdg sev={pain.severity}/><div className="scs">Fn: {["None","Mild","Mod","Sev","Cannot"][pain.functional]}</div></div>
+      <div className="sc"><div className="scl2">Lane</div><div className="scv2"style={{color:C.blue,fontSize:12}}>{(data?.lane||plan.lane||"general").replace(/_/g," ")}</div><div className="scs">{plan.tier||""}</div></div>
+    </div>:<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr 1fr",gap:10,marginBottom:14}}>
       <div className="sc"><div className="scl2">ICIQ-UI SF</div><div className="scv2"style={{color:C.pink}}>{iciq.total}</div><Bdg sev={iciq.severity}/><div className="scs">{iciq.subtype} · 0–21</div></div>
       <div className="sc"><div className="scl2">FLUTS</div><div className="scv2"style={{color:C.purp}}>{fluts.total}</div><div className="scs">F:{fluts.F}/12 V:{fluts.V}/12</div></div>
       <div className="sc"><div className="scl2">POPDI-6</div><div className="scv2"style={{color:popdi.positiveCount>0?C.or:C.gn}}>{popdi.positiveCount}/6</div><div className="scs">{popdi.positiveCount>0?(popdi.bulge?"Bulge":"Positive"):"Negative"}</div></div>
       <div className="sc"><div className="scl2">FLUTSsex</div><div className="scv2"style={{color:C.purpL}}>{fsex.total}</div><div className="scs">Sexual symptom score</div></div>
       <div className="sc"><div className="scl2">GUPI-F</div><div className="scv2"style={{color:C.blue}}>{gupi.total}</div><Bdg sev={gupi.severity}/><div className="scs">P:{gupi.pain}/23 U:{gupi.urinary}/10 Q:{gupi.qol}/12</div></div>
       <div className="sc"><div className="scl2">Pain</div><div className="scv2"style={{color:C.or}}>{pain.composite}</div><Bdg sev={pain.severity}/><div className="scs">Fn: {["None","Mild","Mod","Sev","Cannot"][pain.functional]}</div></div>
-    </div>
+    </div>}
 
     {/* ROUTING DESTINATION */}
     <div className="card"style={{marginBottom:14,borderColor:C.blue}}>
@@ -3088,10 +3727,10 @@ function PTNewIntakeReview({data,onBack}){
         <AnsRow label="Bowel — frequency" value={getOptLabel([{id:"x",opts:[["<1x/wk",0],["1-2x/wk",1],["3-4x/wk",2],["5-7x/wk",3],["1-2x/day",4],["3+/day",5]]}],"x",ans.bowel_frequency)}/>
         <AnsRow label="Bowel — Bristol stool type" value={ans.bristol_stool!==undefined?`Type ${ans.bristol_stool}${ans.bristol_stool<=2?" (constipation)":ans.bristol_stool<=5?" (normal range)":" (inflammation/diarrhea)"}`:undefined}/>
         <AnsRow label="Avoided activities" value={Array.isArray(ans.avoid_activities)?((ans.avoid_activities.filter(x=>x!=="none").length>=3?"⚠️ HIGH IMPACT — ":"")+ans.avoid_activities.join(", ")):"None"}/>
-        <AnsRow label="Cue preference" value={ans.cue_preference==="biologic"?"Body function (stop urine flow)":ans.cue_preference==="imaginative"?"Imaginative (lift a blueberry)":ans.cue_preference==="breathing"?"Breath-based (exhale and lift)":"Default"}/>
+        <AnsRow label="Cue preference" value={ans.cue_preference==="biologic"?"Body function (stop urine flow)":ans.cue_preference==="imaginative"?"Imaginative (lift a blueberry)":ans.cue_preference==="breathing"?"Breath-based (exhale and lift)":ans.cue_preference==="shorten"?"Shorten cue (Stafford 2016)":ans.cue_preference==="squeeze"?"Squeeze anus (Ben Ami 2022)":ans.cue_preference==="urine_stop"?"Stop urine flow":"Default"}/>
       </Section>
-      <Section title="Safety Screening" tag={REDFLAGS.some(r=>ans[r.id]==="yes")?"! FLAGS":ans._safety_answer_changed?"⚠ CHANGED":"✓ Clear"} defaultOpen={REDFLAGS.some(r=>ans[r.id]==="yes")||ans._safety_answer_changed}>
-        {REDFLAGS.map(r=><AnsRow key={r.id} label={r.text} value={ans[r.id]==="yes"?"YES":"No"} flag={ans[r.id]==="yes"}/>)}
+      <Section title="Safety Screening" tag={activeRedflags.some(r=>ans[r.id]==="yes")?"! FLAGS":ans._safety_answer_changed?"⚠ CHANGED":"✓ Clear"} defaultOpen={activeRedflags.some(r=>ans[r.id]==="yes")||ans._safety_answer_changed}>
+        {activeRedflags.map(r=><AnsRow key={r.id} label={r.text} value={ans[r.id]==="yes"?"YES":"No"} flag={ans[r.id]==="yes"}/>)}
         {ans._safety_answer_changed&&<div style={{background:"#FEF3C7",border:"1px solid #D97706",borderRadius:8,padding:10,marginTop:8,fontSize:12,color:"#92400E"}}>
           <div style={{fontWeight:700}}>⚠ SAFETY ANSWER CHANGED</div>
           <div style={{marginTop:4}}>Patient initially answered "Yes" to safety question(s) but later changed to "No":</div>
@@ -3099,8 +3738,8 @@ function PTNewIntakeReview({data,onBack}){
           <div style={{marginTop:6,fontStyle:"italic",fontSize:11}}>This answer change has been flagged in the encounter note and OAIP compliance log.</div>
         </div>}
       </Section>
-      <Section title="Eligibility Screening" tag={EXCLUSIONS.some(r=>ans[r.id]==="yes")?"⚠ EXCLUSION":"✓ Eligible"} defaultOpen={EXCLUSIONS.some(r=>ans[r.id]==="yes")}>
-        {EXCLUSIONS.map(r=><AnsRow key={r.id} label={r.text.slice(0,90)+"..."} value={ans[r.id]==="yes"?"YES":"No"} flag={ans[r.id]==="yes"}/>)}
+      <Section title="Eligibility Screening" tag={activeExcl.some(r=>ans[r.id]==="yes")?"⚠ EXCLUSION":"✓ Eligible"} defaultOpen={activeExcl.some(r=>ans[r.id]==="yes")}>
+        {activeExcl.map(r=><AnsRow key={r.id} label={r.text.slice(0,90)+"..."} value={ans[r.id]==="yes"?"YES":"No"} flag={ans[r.id]==="yes"}/>)}
       </Section>
       {((ans.phq2_interest||0)+(ans.phq2_mood||0))>=3&&<div className="card" style={{background:"#FEE2E2",borderLeft:"4px solid #DC2626",marginBottom:10}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -3267,9 +3906,10 @@ function PTNewIntakeReview({data,onBack}){
         <div style={{fontSize:13,color:C.g600,marginBottom:8}}>Send encounter note + care plan to <b>{ans.physician_name||"Physician"}</b>{ans.physician_npi_id?<span style={{fontSize:11,color:C.blue,marginLeft:6}}>(NPI: {ans.physician_npi_id} ✓)</span>:""}{ans.prenatal_flag?<span style={{fontSize:11,color:"#065F46",marginLeft:6}}>(Prenatal protocol)</span>:""}</div>
         <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:10}}>
           <input className="inp"value={ans.physician_fax||""}readOnly style={{width:180}}/>
-          <button className="btn bpu bsm"disabled={faxSt==="sending"||!ans.physician_fax}onClick={()=>{setFaxSt("sending");L("fax_init",{to:ans.physician_name});setTimeout(()=>{setFaxSt("sent");L("fax_confirmed",{conf:`FAX-${Date.now().toString(36).toUpperCase()}`})},2000)}}style={{opacity:!ans.physician_fax?0.4:1}}>{faxSt==="sending"?"Sending...":"Send HIPAA Fax"}</button>
+          <button className="btn bpu bsm"disabled={faxSt==="sending"||!ans.physician_fax||!editNote}onClick={async()=>{setFaxSt("sending");setFaxErr(null);L("fax_init",{to:ans.physician_name,fax:ans.physician_fax});try{const r=await fetch("/api/fax",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:ans.physician_fax,encounterNote:editNote,patientName:nm,physicianName:ans.physician_name||""})});const d=await r.json();if(r.ok&&d.success){setFaxSt("sent");L("fax_confirmed",{faxId:d.faxId,conf:d.faxId,to:d.to,from:d.from})}else{setFaxSt("error");setFaxErr(d.error||"Fax failed");L("fax_failed",{error:d.error||"Unknown"})}}catch(e){setFaxSt("error");setFaxErr(e.message);L("fax_failed",{error:e.message})}}}style={{opacity:(!ans.physician_fax||!editNote)?0.4:1}}>{faxSt==="sending"?"Sending...":"Send HIPAA Fax"}</button>
         </div>
-        {faxSt==="sent"&&<div style={{padding:"8px 14px",borderRadius:8,background:`${C.gn}10`,color:C.gn,fontSize:12,fontWeight:600}}>✓ Fax sent · Logged</div>}
+        {faxSt==="sent"&&<div style={{padding:"8px 14px",borderRadius:8,background:`${C.gn}10`,color:C.gn,fontSize:12,fontWeight:600}}>Fax queued successfully. Delivery confirmation will be logged.</div>}
+        {faxSt==="error"&&<div style={{padding:"8px 14px",borderRadius:8,background:"#FEE2E2",color:"#991B1B",fontSize:12,fontWeight:600}}>Fax failed: {faxErr}. You can retry or download the note to fax manually.</div>}
         </>}
       </div>
       <div className="card fi">
@@ -3466,7 +4106,8 @@ function OAIPView(){
   if(sharedIntake){
     const a=sharedIntake.ans;
     // Safety screening flags
-    REDFLAGS.forEach(rf=>{if(a[rf.id]==="yes")redFlags.push({type:"SAFETY_FLAG",severity:rf.act==="er"?"CRITICAL":"HIGH",desc:rf.text,action:rf.msg,patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()})});
+    const oaipRfs=sharedIntake.isMale?REDFLAGS_MALE:REDFLAGS;
+    oaipRfs.forEach(rf=>{if(a[rf.id]==="yes")redFlags.push({type:"SAFETY_FLAG",severity:rf.act==="er"?"CRITICAL":"HIGH",desc:rf.text,action:rf.msg,patient:sharedIntake.name||"Current Patient",ts:new Date().toISOString()})});
     // Safety answer changed
     if(a._safety_answer_changed)(a._safety_changes||[]).forEach(c=>redFlags.push({type:"SAFETY_ANSWER_CHANGED",severity:"HIGH",desc:`Patient changed safety answer: ${c.id}`,action:"PT must verify safety concern was appropriately addressed",patient:sharedIntake.name||"Current Patient",ts:c.ts}));
     // PHQ-2 depression

@@ -60,6 +60,11 @@ export const upsertPatient = mutation({
     physicianNPI: v.optional(v.string()),
     safetyAnswerChanged: v.boolean(),
     safetyChanges: v.any(),
+    isMale: v.optional(v.boolean()),
+    ipss: v.optional(v.any()),
+    cpsi: v.optional(v.any()),
+    shim: v.optional(v.any()),
+    lane: v.optional(v.string()),
     passwordHash: v.optional(v.string()),
     salt: v.optional(v.string()),
     status: v.string(),
@@ -163,6 +168,21 @@ export const updatePatientWeek8 = mutation({
       .first();
     if (!patient) throw new Error("Patient not found");
     await ctx.db.patch(patient._id, { week8: args.week8 });
+  },
+});
+
+export const updatePatientWeek4 = mutation({
+  args: {
+    userId: v.string(),
+    week4: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const patient = await ctx.db
+      .query("patients")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .first();
+    if (!patient) throw new Error("Patient not found");
+    await ctx.db.patch(patient._id, { week4: args.week4 });
   },
 });
 
