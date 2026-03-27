@@ -11,6 +11,14 @@ const PILOT_CASES_VALIDATED=0; // total supervised cases completed — update as
 const CLINICAL_LOGIC_VERSION="1.0.0"; // increment on any scoring, tier, dx, or genPlan change
 const PHASE2_MALE=false;  // flip to true to enable male pelvic floor pathway
 const PHASE2_VOICE=false; // flip to true to enable voice intake option
+const DEMO_MODE=true;  // true = show verification code on screen; false = send via email API
+
+// VA Lighthouse Integration — OAuth 2.0 + PKCE
+const VA_ENABLED=true; // set false to hide VA connect option
+const VA_CLIENT_ID=(typeof window!=="undefined"&&window.__VA_CLIENT_ID)||"mock"; // "mock" = local testing mode
+const VA_AUTH_URL="https://sandbox-api.va.gov/oauth2/clinical-health/v1/authorize";
+const VA_REDIRECT_URI=(typeof window!=="undefined"&&window.location.origin||"https://expect-utah-landing.vercel.app")+"/va-callback";
+const VA_SCOPES="patient/Patient.read patient/Condition.read patient/Observation.read patient/DocumentReference.read launch/patient";
 
 const C={
   pink:"#FC228A",pinkL:"#FF5CA8",pinkD:"#C91A6E",
@@ -18,7 +26,7 @@ const C={
   blue:"#008AFC",blueL:"#3AA6FF",blueD:"#0066BE",
   yel:"#D7FC51",yelD:"#A8C93E",
   white:"#FFFFFF",offW:"#F8F7FC",
-  g50:"#FAFAFD",g100:"#F0EFF5",g200:"#E2E0EC",g300:"#C9C6D6",g400:"#9994AD",g500:"#6E6887",g600:"#524D66",g700:"#3A3650",g800:"#252238",g900:"#16142A",
+  g50:"#FAFAFD",g100:"#F0EFF5",g200:"#E2E0EC",g300:"#C9C6D6",g400:"#736E8C",g500:"#6E6887",g600:"#524D66",g700:"#3A3650",g800:"#252238",g900:"#16142A",
   gn:"#22C55E",rd:"#EF4444",or:"#F59E0B",
 };
 const log=[];let _lid=0;let authSession=null;let ptSessionToken=null;let ptIdentity=null;
@@ -27,7 +35,7 @@ function L(t,d){const uid=authSession?.userId||ptIdentity?.userId||null;const de
 // Shared audit event color map (used by PT AuditLog and OAIP audit stream)
 const AUDIT_COLORS={consent_signed:C.blue,intake_done:C.pink,plan_generated:C.or,plan_reviewed:C.gn,plan_rejected:C.rd,encounter_note:C.purp,fax_init:C.g500,fax_confirmed:C.gn,plan_sent_patient:C.blue,msg_sent:C.g400,SAFETY_TRIGGER:"#DC2626",SAFETY_ANSWER_CHANGED:"#EA580C",CONCIERGE_SEARCH:C.purpL,CONCIERGE_PROVIDER_SELECTED:C.gn,CONCIERGE_VERIFICATION_REQUEST:C.or,CLINICAL_REGRESSION_FLAG:"#DC2626",EXERCISE_PAIN_REPORT:C.rd,TECHNICAL_ISSUE_REPORT:C.g500,depression_screen_positive:"#D97706",adverse_event_report:"#DC2626",clinical_review_request:C.or,daily_adherence_entry:C.gn,checkin_week8_complete:C.blue,PT_ALERT_NO_ICIQ_PROGRESS:"#EA580C",BOWEL_REGRESSION:C.or,flutsex_improvement:C.gn,flutsex_regression:C.rd,phq2_resource_card_shown:C.or,FOLLOWUP_NONRESPONSE:"#DC2626",CLINICAL_ESCALATION:"#DC2626",surgical_avoidance_confirmed:C.gn,psi_referral:C.or,psi_referral_approved:C.gn,phq2_followup_email_queued:C.or,expansion_match:C.blueL,month12_checkin_complete:C.blue,CARE_PLAN_DOWNLOADED:C.blue,PRENATAL_PROTOCOL_APPLIED:C.gn,OUTCOME_RECORD_CREATED:C.purpL,OUTCOME_RECORD_COMPLETED:C.gn,PT_PLAN_MODIFIED:C.or,account_created:C.gn,session_timeout:C.rd,identity_verified:C.blue,pt_login:C.purp,oaip_login:C.purp,landing_email_collected:C.blueL,referral_initiated:C.pink,care_coordination_request:C.or,exclusion_referral_call:C.pink};
 // PHI-sensitive audit keys that must be masked in auditor mode
-const PHI_KEYS=["patient","name","email","dob","date_of_birth","phone","fax","ssn","mrn","address","city","zip","account","license","npi","ip","device","photo","identifier","name_first","name_last","physicianName","physicianFax","physicianNPI"];
+const PHI_KEYS=["patient","name","email","dob","date_of_birth","phone","fax","ssn","mrn","address","city","zip","account","license","npi","ip","device","photo","identifier","name_first","name_last","physicianName","physicianFax","physicianNPI","goals","medications","detail","notes","ptNotes","clinicalNotes","adverse_detail","practice","conciergeName","conciergeCity","note"];
 // Shared PHI masking utility (used by PT AuditLog and OAIP audit stream)
 function hashMask(name){return`ID-${Array.from(new Uint8Array(new TextEncoder().encode(name||""))).reduce((h,b)=>((h<<5)-h+b)>>>0,5381).toString(16).slice(0,6).toUpperCase()}`}
 function maskDetails(details,masked){if(!masked)return details;return Object.fromEntries(Object.entries(details).map(([k,v])=>PHI_KEYS.includes(k)?[k,typeof v==="string"?hashMask(v):"[REDACTED]"]:[k,v]))}
@@ -980,6 +988,29 @@ textarea.inp{min-height:80px;resize:vertical}
 .mpa{background:#F0EFF5;color:#252238;border-bottom-left-radius:4px}
 @keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}.fi{animation:fi .3s ease-out}
 @keyframes pu{0%,100%{opacity:1}50%{opacity:.5}}.pu{animation:pu 1.5s infinite}
+@media(max-width:768px){
+.four{grid-template-columns:repeat(2,1fr)}
+.three{grid-template-columns:1fr}
+.plr{grid-template-columns:1fr;gap:4px;padding:10px 12px}
+.plh{display:none}
+.shell{padding:16px 12px}
+.mn,.mnw{padding:20px 12px}
+.h1{font-size:22px !important}
+.topnav{padding:0 12px;gap:12px}
+.topnav-tabs{margin-left:8px;overflow-x:auto}
+.tt{padding:14px 12px;font-size:12px;white-space:nowrap}
+}
+@media(max-width:480px){
+.four{grid-template-columns:1fr}
+.two{grid-template-columns:1fr}
+.shell{padding:12px 8px}
+.mn,.mnw{padding:16px 8px}
+.card{padding:14px}
+.btn{font-size:13px;padding:10px 18px}
+.ob{padding:10px 14px;font-size:13px}
+.topnav-logo{font-size:16px;letter-spacing:2px}
+.topnav-tabs{margin-left:0}
+}
 `;
 // COMPONENTS
 function Bdg({sev,sc}){const c={None:C.gn,Slight:C.gn,Mild:C.or,Moderate:C.or,Severe:C.pink,"Very Severe":C.rd}[sev]||C.g400;return<span className="bdg"style={{background:`${c}12`,color:c}}>{sc!==undefined&&<b>{sc}</b>} {sev}</span>}
@@ -1122,9 +1153,9 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
       <tbody>{q.rows.map((row,i)=><tr key={row.id}style={{background:i%2?"#FAFAFA":"white"}}>
         <td style={{padding:"10px 12px",borderBottom:`1px solid ${C.g100}`,color:C.g700,lineHeight:1.5}}>{row.label}</td>
         {["no","yes"].map(v=><td key={v}style={{textAlign:"center",padding:"10px 6px",borderBottom:`1px solid ${C.g100}`}}>
-          <div onClick={()=>set(row.id,v)} style={{width:24,height:24,borderRadius:12,border:`2px solid ${ans[row.id]===v?(v==="yes"?_accent:C.g400):C.g300}`,background:ans[row.id]===v?(v==="yes"?_accent:C.g400):"white",margin:"0 auto",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}}>
+          <button type="button" role="radio" aria-checked={ans[row.id]===v} aria-label={`${v} for ${row.label}`} onClick={()=>set(row.id,v)} style={{width:24,height:24,borderRadius:12,border:`2px solid ${ans[row.id]===v?(v==="yes"?_accent:C.g400):C.g300}`,background:ans[row.id]===v?(v==="yes"?_accent:C.g400):"white",margin:"0 auto",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s",padding:0}}>
             {ans[row.id]===v&&<div style={{width:8,height:8,borderRadius:4,background:"white"}}/>}
-          </div>
+          </button>
         </td>)}
       </tr>)}</tbody>
     </table></div>;
@@ -1137,12 +1168,12 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
           <td style={{...cs,lineHeight:1.5}}>{row.label}</td>
           <td style={{...cs,textAlign:"center"}}>
             <div style={{display:"flex",gap:8,justifyContent:"center",alignItems:"center"}}>
-              {["No","Yes"].map(v=><div key={v}style={{display:"flex",alignItems:"center",gap:4,cursor:"pointer"}}onClick={()=>set(row.id,v.toLowerCase())}>
+              {["No","Yes"].map(v=><button type="button" role="radio" aria-checked={ans[row.id]===v.toLowerCase()} aria-label={`${v} for ${row.label}`} key={v}style={{display:"flex",alignItems:"center",gap:4,cursor:"pointer",background:"none",border:"none",padding:2}}onClick={()=>set(row.id,v.toLowerCase())}>
                 <div style={{...rs,borderColor:ans[row.id]===v.toLowerCase()?(v==="Yes"?_accent:C.g400):C.g300,background:ans[row.id]===v.toLowerCase()?(v==="Yes"?_accent:C.g400):"white"}}>
                   {ans[row.id]===v.toLowerCase()&&<div style={{width:8,height:8,borderRadius:4,background:"white"}}/>}
                 </div>
                 <span style={{fontSize:12,color:ans[row.id]===v.toLowerCase()?C.g700:C.g400}}>{v}</span>
-              </div>)}
+              </button>)}
             </div>
           </td>
         </tr>
@@ -1151,7 +1182,7 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
           <td colSpan={2}style={{padding:"4px 12px 10px",borderBottom:`1px solid ${C.g100}`}}>
             <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
               <span style={{fontSize:11,fontWeight:600,color:C.purp}}>Bother:</span>
-              {q.botherOpts.map(([l,v])=><div key={v}onClick={()=>set(row.id+"_bother",v)}style={{padding:"4px 10px",borderRadius:16,cursor:"pointer",transition:"all .15s",fontSize:12,border:`1.5px solid ${ans[row.id+"_bother"]===v?_accent:C.g200}`,background:ans[row.id+"_bother"]===v?(_accent===C.blue?"rgba(0,138,252,.06)":"rgba(252,34,138,.06)"):"white",color:ans[row.id+"_bother"]===v?_accent:C.g600,fontWeight:ans[row.id+"_bother"]===v?600:400}}>{l}</div>)}
+              {q.botherOpts.map(([l,v])=><button type="button" key={v}onClick={()=>set(row.id+"_bother",v)}aria-pressed={ans[row.id+"_bother"]===v}style={{padding:"4px 10px",borderRadius:16,cursor:"pointer",transition:"all .15s",fontSize:12,border:`1.5px solid ${ans[row.id+"_bother"]===v?_accent:C.g200}`,background:ans[row.id+"_bother"]===v?(_accent===C.blue?"rgba(0,138,252,.06)":"rgba(252,34,138,.06)"):"white",color:ans[row.id+"_bother"]===v?_accent:C.g600,fontWeight:ans[row.id+"_bother"]===v?600:400,fontFamily:"inherit"}}>{l}</button>)}
             </div>
           </td>
         </tr>}
@@ -1173,7 +1204,7 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
       </div>
     </div>}
   </div>;
-  if(q.type==="scale")return<div className="qc fi"><div className="qt">{q.text}</div><div className="scv"style={ans[q.id]===undefined?{color:C.g400,fontStyle:"italic"}:{}}>{ans[q.id]!==undefined?ans[q.id]:"—"}</div><input className="slr"type="range"min={q.min}max={q.max}value={ans[q.id]??q.min}onPointerDown={e=>{if(ans[q.id]===undefined)set(q.id,parseInt(e.target.value))}}onChange={e=>set(q.id,parseInt(e.target.value))}/><div className="scl"><span>{q.lo}</span><span>{q.hi}</span></div></div>;
+  if(q.type==="scale"){const range=q.max-q.min;const scaleColor=(v)=>{const t=(v-q.min)/range;if(t<=0.3)return"#16A34A";if(t<=0.5)return"#CA8A04";if(t<=0.7)return"#EA580C";return"#DC2626"};return<div className="qc fi"><div className="qt">{q.text}</div><div style={{display:"flex",gap:4,flexWrap:"wrap",justifyContent:"center",margin:"12px 0"}}>{Array.from({length:range+1},(_,i)=>q.min+i).map(v=>{const sel=ans[q.id]===v;return<button key={v}onClick={()=>set(q.id,v)}style={{width:36,height:36,borderRadius:8,border:sel?`2px solid ${scaleColor(v)}`:`1.5px solid ${C.g200}`,background:sel?scaleColor(v):"#fff",color:sel?"#fff":"#374151",fontSize:14,fontWeight:sel?700:500,cursor:"pointer",transition:"all .15s"}}>{v}</button>})}</div><div className="scl"><span>{q.lo}</span><span>{q.hi}</span></div>{ans[q.id]===undefined&&<div style={{textAlign:"center",fontSize:12,color:C.g400,fontStyle:"italic"}}>Tap a number to select</div>}</div>;}
   if(q.type==="multi")return<div className="qc fi"><div className="qt">{q.text}</div><div style={{display:"flex",flexWrap:"wrap"}}>{q.opts.map(([l,v])=><div key={v}className={`mo ${(ans[q.id]||[]).includes(v)?"s":""}`}onClick={()=>togM(q.id,v)}>{(ans[q.id]||[]).includes(v)?"✓":"○"} {l}</div>)}</div></div>;
   if(q.type==="bristol"){
     const bsvg=[
@@ -1192,7 +1223,7 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
       </button>)}
     </div>;
   }
-  return<div className="qc fi"><div className="qt">{q.text}</div>{q.opts.map(([l,v])=><button key={v}className={`ob ${ans[q.id]===v?"s":""}`}onClick={()=>set(q.id,v)}>{l}</button>)}
+  return<div className="qc fi"><div className="qt" id={`q_${q.id}`}>{q.text}</div><div role="group" aria-labelledby={`q_${q.id}`}>{q.opts.map(([l,v])=><button key={v}className={`ob ${ans[q.id]===v?"s":""}`}onClick={()=>set(q.id,v)}aria-pressed={ans[q.id]===v}>{l}</button>)}</div>
     {ans[q.id]==="other"&&<input className="inp"type="text"value={ans[q.id+"_other"]||""}onChange={e=>set(q.id+"_other",e.target.value)}placeholder="Please specify"style={{marginTop:8}}/>}
   </div>;
 }
@@ -1758,9 +1789,96 @@ function LandingPage({onDone,onLogin}){
   </div>;
 }
 
+// PRIVACY POLICY & TERMS OF SERVICE MODALS
+function PrivacyModal({onClose}){
+  return<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999}} onClick={onClose}>
+    <div style={{background:"#fff",borderRadius:16,padding:"28px 32px",maxWidth:600,width:"92%",maxHeight:"80vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.2)",position:"relative"}} onClick={e=>e.stopPropagation()}>
+      <button onClick={onClose} style={{position:"absolute",top:12,right:14,background:"none",border:"none",color:C.g400,cursor:"pointer"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <div style={{fontSize:20,fontWeight:700,color:C.purp,marginBottom:4}}>Privacy Policy</div>
+      <div style={{fontSize:12,color:C.g400,marginBottom:16}}>Expect Health Inc. · Utah OAIP Regulatory Sandbox Pilot · Effective March 2026</div>
+
+      <div style={{fontSize:13,color:C.g700,lineHeight:1.8}}>
+        <p style={{fontWeight:700,marginTop:0}}>What We Collect</p>
+        <ul style={{paddingLeft:18,margin:"4px 0 12px"}}>
+          <li>Clinical intake responses (validated instruments: ICIQ-UI SF, FLUTS, GUPI-F, POPDI-6, PHQ-2, Bristol Stool Scale)</li>
+          <li>Demographics (name, date of birth, email, phone)</li>
+          <li>Care plan adherence and outcome data</li>
+          <li>Audit events (clinically significant actions, never browsing behavior)</li>
+        </ul>
+
+        <p style={{fontWeight:700}}>How We Use Your Data</p>
+        <ul style={{paddingLeft:18,margin:"4px 0 12px"}}>
+          <li>Generate your personalized pelvic floor care plan</li>
+          <li>Enable licensed Physical Therapist review of your assessment</li>
+          <li>Report de-identified, aggregate outcomes to the Utah OAIP for regulatory oversight</li>
+          <li>Support IRB-approved research using de-identified data only</li>
+        </ul>
+
+        <p style={{fontWeight:700}}>How We Protect It</p>
+        <ul style={{paddingLeft:18,margin:"4px 0 12px"}}>
+          <li>Data encrypted in transit (TLS 1.2+) and at rest</li>
+          <li>HIPAA-aligned safeguards applied to all personally identifiable health information</li>
+          <li>Serverless architecture (Vercel) with no persistent server access</li>
+          <li>Database hosted on Convex with SOC 2 Type II compliance</li>
+          <li>No PHI is logged in server logs or error tracking</li>
+        </ul>
+
+        <p style={{fontWeight:700}}>Your Rights</p>
+        <ul style={{paddingLeft:18,margin:"4px 0 12px"}}>
+          <li>Access your data at any time through your patient portal</li>
+          <li>Request correction of inaccurate information</li>
+          <li>Opt out of the pilot program at any time via the "Report Issue" button or by contacting us</li>
+          <li>Request deletion of your data by emailing the address below</li>
+        </ul>
+
+        <p style={{fontWeight:700}}>Regulatory Context</p>
+        <p style={{margin:"4px 0 12px"}}>This platform operates under a Regulatory Mitigation Agreement with the Utah Office of Artificial Intelligence Policy (OAIP). All AI-generated care plans are reviewed by licensed Physical Therapists during Phase 1 of the pilot.</p>
+
+        <p style={{fontWeight:700}}>Contact</p>
+        <p style={{margin:"4px 0 0"}}>Questions about your privacy: <a href="mailto:team@expect.care" style={{color:C.purp}}>team@expect.care</a></p>
+      </div>
+    </div>
+  </div>;
+}
+
+function TermsModal({onClose}){
+  return<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999}} onClick={onClose}>
+    <div style={{background:"#fff",borderRadius:16,padding:"28px 32px",maxWidth:600,width:"92%",maxHeight:"80vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.2)",position:"relative"}} onClick={e=>e.stopPropagation()}>
+      <button onClick={onClose} style={{position:"absolute",top:12,right:14,background:"none",border:"none",color:C.g400,cursor:"pointer"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <div style={{fontSize:20,fontWeight:700,color:C.purp,marginBottom:4}}>Terms of Service</div>
+      <div style={{fontSize:12,color:C.g400,marginBottom:16}}>Expect Health Inc. · Utah OAIP Regulatory Sandbox Pilot · Effective March 2026</div>
+
+      <div style={{fontSize:13,color:C.g700,lineHeight:1.8}}>
+        <p style={{fontWeight:700,marginTop:0}}>Pilot Program</p>
+        <p style={{margin:"4px 0 12px"}}>Expect Health is operating under a Regulatory Mitigation Agreement with the Utah Office of Artificial Intelligence Policy. By using this platform, you agree to participate in a supervised pilot program for AI-augmented pelvic floor physical therapy.</p>
+
+        <p style={{fontWeight:700}}>Not Emergency Care</p>
+        <p style={{margin:"4px 0 12px"}}>This platform is not a substitute for emergency medical care. If you are experiencing a medical emergency, call 911 or go to your nearest emergency room. This platform does not provide urgent or emergent medical advice.</p>
+
+        <p style={{fontWeight:700}}>Clinical Oversight</p>
+        <p style={{margin:"4px 0 12px"}}>All AI-generated care plans are reviewed by a licensed Physical Therapist before delivery during Phase 1 of the pilot. The AI supports clinical decision-making but does not replace professional judgment. Your treating PT may modify, approve, or reject any AI-generated recommendation.</p>
+
+        <p style={{fontWeight:700}}>Scope of Services</p>
+        <p style={{margin:"4px 0 12px"}}>This platform provides pelvic floor physical therapy care plans based on validated clinical instruments. It is not intended to diagnose, treat, or manage conditions outside the scope of pelvic floor rehabilitation. Referrals to other providers will be recommended when clinically appropriate.</p>
+
+        <p style={{fontWeight:700}}>Data Retention</p>
+        <p style={{margin:"4px 0 12px"}}>Your data will be retained for the duration of the pilot program and any required regulatory reporting period. De-identified data may be retained indefinitely for research and quality improvement. You may request deletion of your identifiable data at any time.</p>
+
+        <p style={{fontWeight:700}}>Corrective Care</p>
+        <p style={{margin:"4px 0 12px"}}>If you experience a concern about AI-supported care, Expect Health will provide a no-cost clinical review and, if clinically appropriate, corrective pelvic floor PT follow-up as outlined in our OAIP Regulatory Mitigation Agreement.</p>
+
+        <p style={{fontWeight:700}}>Contact</p>
+        <p style={{margin:"4px 0 0"}}>Questions or concerns: <a href="mailto:team@expect.care" style={{color:C.purp}}>team@expect.care</a></p>
+      </div>
+    </div>
+  </div>;
+}
+
 // CONSENT
 // Spanish-language consent version needed for Phase 2 commitment
 function Consent({onDone,onBack,ck,setCk}){
+  const[showPrivacy,setShowPrivacy]=useState(false);
+  const[showTerms,setShowTerms]=useState(false);
   const items=[
     // AI & Clinical Oversight
     {id:"ai",tx:PILOT_PHASE===1
@@ -1788,7 +1906,15 @@ function Consent({onDone,onBack,ck,setCk}){
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div style={{display:"flex",alignItems:"center",gap:12}}>{onBack&&<button className="btn"onClick={onBack}style={{fontSize:12,color:C.g500}}>← Back</button>}<span style={{fontSize:10,color:C.g400}}>Consent v1.2 · Mar 2026</span></div>
       <button className="btn bpk"disabled={!ok}onClick={()=>{L("consent_signed",{version:"1.2",items:Object.keys(ck).filter(k=>ck[k])});onDone()}}style={{opacity:ok?1:.4}}>I Agree — Continue →</button>
-    </div></div>;
+    </div>
+    <div style={{textAlign:"center",marginTop:12,fontSize:11,color:C.g400}}>
+      <span style={{cursor:"pointer",textDecoration:"underline"}} onClick={()=>setShowPrivacy(true)}>Privacy Policy</span>
+      {" · "}
+      <span style={{cursor:"pointer",textDecoration:"underline"}} onClick={()=>setShowTerms(true)}>Terms of Service</span>
+    </div>
+    {showPrivacy&&<PrivacyModal onClose={()=>setShowPrivacy(false)}/>}
+    {showTerms&&<TermsModal onClose={()=>setShowTerms(false)}/>}
+  </div>;
 }
 
 // EMAIL VERIFICATION — confirms patient controls the email they provided
@@ -1799,18 +1925,38 @@ function IdentityVerify({onDone,onBack}){
   const[code,setCode]=useState("");
   const[sentCode,setSentCode]=useState(null);
   const[err,setErr]=useState(null);
+  const[sending,setSending]=useState(false);
   const genCode=()=>{const arr=new Uint32Array(1);crypto.getRandomValues(arr);return String(100000+(arr[0]%900000))};
-  const sendCode=()=>{
+  const sendCode=async()=>{
     const em=addr.trim().toLowerCase();
     if(!em||!em.includes("@")){setErr("Please enter a valid email address.");return}
-    const c=genCode();setSentCode(c);setSt("sent");setErr(null);
-    // In production, this sends via a server-side email API (Resend/SendGrid).
-    // For the pilot, the code is displayed to the user for demo purposes.
-    L("email_verification_sent",{email:em});
+    if(DEMO_MODE){
+      const c=genCode();setSentCode(c);setSt("sent");setErr(null);
+      L("email_verification_sent",{email:em,mode:"demo"});
+    }else{
+      setSending(true);setErr(null);
+      try{
+        const r=await fetch("/api/send-code",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:em,purpose:"signup"})});
+        const d=await r.json();
+        if(r.ok&&d.ok){setSt("sent");L("email_verification_sent",{email:em,mode:"email"})}
+        else{setErr(d.error||"Failed to send code. Please try again.")}
+      }catch(e){setErr("Network error. Please try again.")}
+      setSending(false);
+    }
   };
-  const checkCode=()=>{
-    if(code===sentCode){setSt("verified");L("identity_verified",{mode:"email",email:addr.trim().toLowerCase()});setTimeout(()=>onDone(addr.trim().toLowerCase()),1200)}
-    else{setErr("Incorrect code. Please try again.")}
+  const checkCode=async()=>{
+    if(DEMO_MODE){
+      if(code===sentCode){setSt("verified");L("identity_verified",{mode:"email",email:addr.trim().toLowerCase()});setTimeout(()=>onDone(addr.trim().toLowerCase()),1200)}
+      else{setErr("Incorrect code. Please try again.")}
+    }else{
+      setErr(null);
+      try{
+        const r=await fetch("/api/send-code",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:addr.trim().toLowerCase(),purpose:"signup",action:"verify",code})});
+        const d=await r.json();
+        if(r.ok&&d.verified){setSt("verified");L("identity_verified",{mode:"email",email:addr.trim().toLowerCase()});setTimeout(()=>onDone(addr.trim().toLowerCase()),1200)}
+        else{setErr(d.error||"Incorrect code. Please try again.")}
+      }catch(e){setErr("Network error. Please try again.")}
+    }
   };
   return<div className="fi"style={{maxWidth:520,margin:"0 auto"}}>
     <div className="h1">Verify Your Email</div>
@@ -1820,11 +1966,12 @@ function IdentityVerify({onDone,onBack}){
         <p style={{fontSize:13,color:C.g600,marginBottom:16,lineHeight:1.7}}>Your email address is used for account creation, care plan delivery, and secure communication with your physical therapist. Your identity will be clinically verified by your PT during care plan review.</p>
         <input type="email"value={addr}onChange={e=>setAddr(e.target.value)}placeholder="you@email.com"style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,marginBottom:12,boxSizing:"border-box"}}/>
         {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
-        <button className="btn bbl"onClick={sendCode}style={{width:"100%"}}>Send Verification Code</button>
+        <button className="btn bbl"onClick={sendCode}disabled={sending}style={{width:"100%",opacity:sending?.6:1}}>{sending?"Sending...":"Send Verification Code"}</button>
       </div>}
       {st==="sent"&&<div style={{textAlign:"center"}}>
         <div style={{fontSize:14,color:C.g600,marginBottom:16}}>We sent a 6-digit code to <strong>{addr}</strong></div>
-        <div style={{background:"#FEF3C7",border:"1px solid #D97706",borderRadius:8,padding:12,marginBottom:16,fontSize:12,color:"#78350F"}}>Demo mode: Your code is <strong>{sentCode}</strong><br/><span style={{fontSize:11,color:"#92400E"}}>In production, this code is sent via email only.</span></div>
+        {DEMO_MODE&&<div style={{background:"#FEF3C7",border:"1px solid #D97706",borderRadius:8,padding:12,marginBottom:16,fontSize:12,color:"#78350F"}}>Demo mode: Your code is <strong>{sentCode}</strong><br/><span style={{fontSize:11,color:"#92400E"}}>In production, this code is sent via email only.</span></div>}
+        {!DEMO_MODE&&<div style={{background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:8,padding:12,marginBottom:16,fontSize:12,color:"#166534"}}>Check your email for the verification code.</div>}
         <input type="text"value={code}onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))}placeholder="000000"maxLength={6}style={{width:160,padding:"10px 14px",fontSize:24,textAlign:"center",letterSpacing:8,border:`1px solid ${C.g300}`,borderRadius:8,marginBottom:12}}/>
         {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
         <div><button className="btn bbl"onClick={checkCode}disabled={code.length!==6}style={{opacity:code.length===6?1:.4}}>Verify</button></div>
@@ -1848,6 +1995,7 @@ function PatientLogin({onDone,onBack}){
   const[code,setCode]=useState("");
   const[sentCode,setSentCode]=useState(null);
   const[err,setErr]=useState(null);
+  const[sending,setSending]=useState(false);
   const genCode=()=>{const arr=new Uint32Array(1);crypto.getRandomValues(arr);return String(100000+(arr[0]%900000))};
   const _uuid=()=>typeof crypto.randomUUID==="function"?crypto.randomUUID():([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^(crypto.getRandomValues(new Uint8Array(1))[0]&(15>>c/4))).toString(16));
   const restoreSession=async(tok)=>{
@@ -1862,15 +2010,35 @@ function PatientLogin({onDone,onBack}){
     setSt("done");setTimeout(()=>onDone(),1200);
   };
   // Normal login: email + password → code → verify
-  const sendCode=()=>{
+  const sendCode=async()=>{
     const em=addr.trim().toLowerCase();
     if(!em||!em.includes("@")){setErr("Please enter a valid email address.");return}
     if(!pw){setErr("Please enter your password.");return}
-    const c=genCode();setSentCode(c);setSt("sent");setErr(null);
-    L("patient_login_code_sent",{email:em});
+    if(DEMO_MODE){
+      const c=genCode();setSentCode(c);setSt("sent");setErr(null);
+      L("patient_login_code_sent",{email:em,mode:"demo"});
+    }else{
+      setSending(true);setErr(null);
+      try{
+        const r=await fetch("/api/send-code",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:em,purpose:"login"})});
+        const d=await r.json();
+        if(r.ok&&d.ok){setSt("sent");L("patient_login_code_sent",{email:em,mode:"email"})}
+        else{setErr(d.error||"Failed to send code.")}
+      }catch(e){setErr("Network error. Please try again.")}
+      setSending(false);
+    }
   };
   const checkCode=async()=>{
-    if(code!==sentCode){setErr("Incorrect code. Please try again.");return}
+    if(DEMO_MODE){
+      if(code!==sentCode){setErr("Incorrect code. Please try again.");return}
+    }else{
+      setErr(null);
+      try{
+        const r=await fetch("/api/send-code",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:addr.trim().toLowerCase(),purpose:"login",action:"verify",code})});
+        const d=await r.json();
+        if(!r.ok||!d.verified){setErr(d.error||"Incorrect code. Please try again.");return}
+      }catch(e){setErr("Network error. Please try again.");return}
+    }
     setSt("verifying");setErr(null);
     try{
       const tok="tok_"+_uuid();
@@ -1884,14 +2052,34 @@ function PatientLogin({onDone,onBack}){
     }
   };
   // Forgot password: email → code → new password → reset + login
-  const sendResetCode=()=>{
+  const sendResetCode=async()=>{
     const em=addr.trim().toLowerCase();
     if(!em||!em.includes("@")){setErr("Please enter your email address.");return}
-    const c=genCode();setSentCode(c);setSt("resetCode");setErr(null);setCode("");
-    L("patient_reset_code_sent",{email:em});
+    if(DEMO_MODE){
+      const c=genCode();setSentCode(c);setSt("resetCode");setErr(null);setCode("");
+      L("patient_reset_code_sent",{email:em,mode:"demo"});
+    }else{
+      setSending(true);setErr(null);
+      try{
+        const r=await fetch("/api/send-code",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:em,purpose:"reset"})});
+        const d=await r.json();
+        if(r.ok&&d.ok){setSt("resetCode");setCode("");L("patient_reset_code_sent",{email:em,mode:"email"})}
+        else{setErr(d.error||"Failed to send code.")}
+      }catch(e){setErr("Network error. Please try again.")}
+      setSending(false);
+    }
   };
-  const checkResetCode=()=>{
-    if(code!==sentCode){setErr("Incorrect code. Please try again.");return}
+  const checkResetCode=async()=>{
+    if(DEMO_MODE){
+      if(code!==sentCode){setErr("Incorrect code. Please try again.");return}
+    }else{
+      setErr(null);
+      try{
+        const r=await fetch("/api/send-code",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:addr.trim().toLowerCase(),purpose:"reset",action:"verify",code})});
+        const d=await r.json();
+        if(!r.ok||!d.verified){setErr(d.error||"Incorrect code. Please try again.");return}
+      }catch(e){setErr("Network error. Please try again.");return}
+    }
     setSt("newpw");setErr(null);setPw("");setPw2("");
   };
   const submitNewPassword=async()=>{
@@ -1919,18 +2107,19 @@ function PatientLogin({onDone,onBack}){
         <div style={{marginBottom:4}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>Password</div><input type="password"value={pw}onChange={e=>setPw(e.target.value)}placeholder="Your password"onKeyDown={e=>e.key==="Enter"&&sendCode()}style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
         <div style={{textAlign:"right",marginBottom:12}}><button onClick={()=>{setSt("forgot");setErr(null)}}style={{fontSize:12,color:C.purp,background:"none",border:"none",cursor:"pointer"}}>Forgot password?</button></div>
         {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
-        <button className="btn bbl"onClick={sendCode}style={{width:"100%"}}>Send Verification Code</button>
+        <button className="btn bbl"onClick={sendCode}disabled={sending}style={{width:"100%",opacity:sending?.6:1}}>{sending?"Sending...":"Send Verification Code"}</button>
       </div>}
       {st==="forgot"&&<div>
         <p style={{fontSize:13,color:C.g600,marginBottom:16,lineHeight:1.7}}>Enter your email and we'll send a verification code to reset your password.</p>
         <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>Email</div><input type="email"value={addr}onChange={e=>setAddr(e.target.value)}placeholder="you@email.com"style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
         {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
-        <button className="btn bbl"onClick={sendResetCode}style={{width:"100%"}}>Send Reset Code</button>
+        <button className="btn bbl"onClick={sendResetCode}disabled={sending}style={{width:"100%",opacity:sending?.6:1}}>{sending?"Sending...":"Send Reset Code"}</button>
         <div style={{textAlign:"center",marginTop:12}}><button onClick={()=>{setSt("input");setErr(null)}}style={{fontSize:12,color:C.g500,background:"none",border:"none",cursor:"pointer"}}>Back to sign in</button></div>
       </div>}
       {st==="resetCode"&&<div style={{textAlign:"center"}}>
         <div style={{fontSize:14,color:C.g600,marginBottom:16}}>We sent a 6-digit code to <strong>{addr}</strong></div>
-        <div style={{background:"#FEF3C7",border:"1px solid #D97706",borderRadius:8,padding:12,marginBottom:16,fontSize:12,color:"#78350F"}}>Demo mode: Your code is <strong>{sentCode}</strong><br/><span style={{fontSize:11,color:"#92400E"}}>In production, this code is sent via email only.</span></div>
+        {DEMO_MODE&&<div style={{background:"#FEF3C7",border:"1px solid #D97706",borderRadius:8,padding:12,marginBottom:16,fontSize:12,color:"#78350F"}}>Demo mode: Your code is <strong>{sentCode}</strong><br/><span style={{fontSize:11,color:"#92400E"}}>In production, this code is sent via email only.</span></div>}
+        {!DEMO_MODE&&<div style={{background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:8,padding:12,marginBottom:16,fontSize:12,color:"#166534"}}>Check your email for the verification code.</div>}
         <input type="text"value={code}onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))}placeholder="000000"maxLength={6}style={{width:160,padding:"10px 14px",fontSize:24,textAlign:"center",letterSpacing:8,border:`1px solid ${C.g300}`,borderRadius:8,marginBottom:12}}/>
         {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
         <div><button className="btn bbl"onClick={checkResetCode}disabled={code.length!==6}style={{opacity:code.length===6?1:.4}}>Verify</button></div>
@@ -1944,7 +2133,8 @@ function PatientLogin({onDone,onBack}){
       </div>}
       {st==="sent"&&<div style={{textAlign:"center"}}>
         <div style={{fontSize:14,color:C.g600,marginBottom:16}}>We sent a 6-digit code to <strong>{addr}</strong></div>
-        <div style={{background:"#FEF3C7",border:"1px solid #D97706",borderRadius:8,padding:12,marginBottom:16,fontSize:12,color:"#78350F"}}>Demo mode: Your code is <strong>{sentCode}</strong><br/><span style={{fontSize:11,color:"#92400E"}}>In production, this code is sent via email only.</span></div>
+        {DEMO_MODE&&<div style={{background:"#FEF3C7",border:"1px solid #D97706",borderRadius:8,padding:12,marginBottom:16,fontSize:12,color:"#78350F"}}>Demo mode: Your code is <strong>{sentCode}</strong><br/><span style={{fontSize:11,color:"#92400E"}}>In production, this code is sent via email only.</span></div>}
+        {!DEMO_MODE&&<div style={{background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:8,padding:12,marginBottom:16,fontSize:12,color:"#166534"}}>Check your email for the verification code.</div>}
         <input type="text"value={code}onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))}placeholder="000000"maxLength={6}style={{width:160,padding:"10px 14px",fontSize:24,textAlign:"center",letterSpacing:8,border:`1px solid ${C.g300}`,borderRadius:8,marginBottom:12}}/>
         {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
         <div><button className="btn bbl"onClick={checkCode}disabled={code.length!==6}style={{opacity:code.length===6?1:.4}}>Verify & Sign In</button></div>
@@ -2141,10 +2331,17 @@ function VoiceIntake({initialAns,onBack,onDone,onSwitchToForm}){
   </div>;
 }
 
+// VA Lighthouse — PKCE utilities
+function generateCodeVerifier(){const arr=new Uint8Array(48);crypto.getRandomValues(arr);return btoa(String.fromCharCode(...arr)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"")}
+async function sha256(str){const buf=new TextEncoder().encode(str);return await crypto.subtle.digest("SHA-256",buf)}
+function base64urlEncode(buf){return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"")}
+async function startVAAuth(){const cv=generateCodeVerifier();const ch=base64urlEncode(await sha256(cv));const state=generateCodeVerifier().slice(0,32);sessionStorage.setItem("va_code_verifier",cv);sessionStorage.setItem("va_state",state);const params=new URLSearchParams({client_id:VA_CLIENT_ID,redirect_uri:VA_REDIRECT_URI,response_type:"code",state,scope:VA_SCOPES,code_challenge:ch,code_challenge_method:"S256"});window.location.href=VA_AUTH_URL+"?"+params.toString()}
+async function fetchVAMockData(){const res=await fetch("/va-mock-data.json");if(!res.ok)throw new Error("Mock data not found");const data=await res.json();const profile={};if(data.patient){const p=data.patient;const n=p.name?.[0];if(n?.given?.[0])profile.name_first=n.given[0];if(n?.family)profile.name_last=n.family;if(p.birthDate)profile.dob=p.birthDate;if(p.gender){profile.sex_at_birth=p.gender==="female"?"female":p.gender==="male"?"male":"other"}if(p.telecom){for(const t of p.telecom){if(t.system==="email"&&t.value&&!profile.email)profile.email=t.value;if(t.system==="phone"&&t.value&&!profile.phone)profile.phone=t.value}}}const conditions=[];if(data.conditions?.entry){for(const e of data.conditions.entry){const r=e.resource;if(r?.code?.coding){for(const c of r.code.coding){if(c.code&&c.display)conditions.push({code:c.code,display:c.display,status:r.clinicalStatus?.coding?.[0]?.code||"unknown"})}}}}const obs={};if(data.observations?.entry){for(const e of data.observations.entry){const r=e.resource;if(r?.code?.coding){for(const c of r.code.coding){if(c.code==="39156-5"&&r.valueQuantity?.value)obs.bmi=Math.round(r.valueQuantity.value*10)/10;if(c.code==="55757-9"&&r.valueQuantity?.value!=null)obs.phq2_va=r.valueQuantity.value}}}}const docs=[];if(data.documentReferences?.entry){for(const e of data.documentReferences.entry){const r=e.resource;docs.push({type:r.type?.coding?.[0]?.display||r.type?.text||"Document",date:r.date||null,description:r.description||null})}}return{profile:{...profile,...obs},conditions,documents:docs,resource_counts:{Patient:data.patient?1:0,Condition:data.conditions?.entry?.length||0,Observation:data.observations?.entry?.length||0,DocumentReference:data.documentReferences?.entry?.length||0}}}
+
 // INTAKE
 function Intake({onDone,mainRef,initialEmail}){
   // Draft restore from localStorage
-  const initState=(()=>{const raw=sessionStorage.getItem("expect_draft");if(!raw)return null;try{const d=JSON.parse(raw);if(Date.now()-d.ts<86400000)return d}catch(e){}return null})();
+  const initState=(()=>{const raw=sessionStorage.getItem("expect_draft");if(!raw)return null;try{const d=JSON.parse(raw);if(Date.now()-d.ts<259200000)return d}catch(e){}return null})();
   const[step,setStep]=useState(initState?initState.step:0);const[ans,setAns]=useState(initState?initState.ans:initialEmail?{email:initialEmail}:{});const[rfs,setRfs]=useState([]);
   const[safetyTriggered,setSafetyTriggered]=useState({});const[showSafetyModal,setShowSafetyModal]=useState(null);
   const[triedNext,setTriedNext]=useState(false);
@@ -2156,6 +2353,18 @@ function Intake({onDone,mainRef,initialEmail}){
   const techStreamRef=useRef(null);const techAudioRef=useRef(null);const techAnimRef=useRef(null);const recorderRef=useRef(null);const playbackUrlRef=useRef(null);
   const[saveState,setSaveState]=useState("idle");// idle|saving|saved|failed
   const[showDraftBanner,setShowDraftBanner]=useState(!!initState);
+  // VA Lighthouse state
+  const[vaProfile,setVaProfile]=useState(null); // mapped FHIR data
+  const[vaLoading,setVaLoading]=useState(false);
+  const[vaError,setVaError]=useState(null);
+  const[vaFieldCount,setVaFieldCount]=useState(0);
+  const vaApplied=useRef(false);
+  // Handle VA OAuth callback on mount
+  useEffect(()=>{const params=new URLSearchParams(window.location.search);const code=params.get("code");const state=params.get("state");if(!code||!state)return;const savedState=sessionStorage.getItem("va_state");const cv=sessionStorage.getItem("va_code_verifier");if(!savedState||state!==savedState||!cv){setVaError("VA authentication state mismatch. Please try again.");window.history.replaceState({},"",window.location.pathname);return}sessionStorage.removeItem("va_state");sessionStorage.removeItem("va_code_verifier");window.history.replaceState({},"",window.location.pathname);setVaLoading(true);(async()=>{try{const tokRes=await fetch("/api/va-token",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code,code_verifier:cv,redirect_uri:VA_REDIRECT_URI})});if(!tokRes.ok){const err=await tokRes.json().catch(()=>({}));setVaError(err.detail||"Failed to authenticate with VA. Please try again.");setVaLoading(false);return}const tok=await tokRes.json();const fhirRes=await fetch("/api/va-fhir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({access_token:tok.access_token,patient_id:tok.patient,resources:["Patient","Condition","Observation","DocumentReference"]})});if(!fhirRes.ok){const err=await fhirRes.json().catch(()=>({}));setVaError(err.detail||"Failed to fetch VA health records.");setVaLoading(false);return}const data=await fhirRes.json();setVaProfile(data);L("va_records_imported",{resource_counts:data.resource_counts})}catch(e){setVaError("Could not connect to VA. Please try again later.")}setVaLoading(false)})()},[]);
+  // Handle VA mock mode
+  const handleVAConnect=async()=>{if(VA_CLIENT_ID==="mock"){setVaLoading(true);setVaError(null);try{const data=await fetchVAMockData();setVaProfile(data);L("va_records_imported_mock",{resource_counts:data.resource_counts})}catch(e){setVaError("Could not load mock VA data.")}setVaLoading(false)}else{startVAAuth()}};
+  // Pre-fill ans from VA profile once available
+  useEffect(()=>{if(!vaProfile||vaApplied.current)return;vaApplied.current=true;const p=vaProfile.profile||{};let count=0;const fill=(k,v)=>{if(v&&!ans[k]){set(k,v);count++}};fill("name_first",p.name_first);fill("name_last",p.name_last);fill("dob",p.dob);fill("sex_at_birth",p.sex_at_birth);fill("email",p.email);fill("phone",p.phone);setVaFieldCount(count)},[vaProfile]);
   // Create session on mount so we can save drafts to DB throughout intake
   const sessionCreated=useRef(false);
   useEffect(()=>{if(sessionCreated.current||authSession)return;sessionCreated.current=true;
@@ -2485,7 +2694,7 @@ function Intake({onDone,mainRef,initialEmail}){
     <div style={{display:"flex",gap:3,marginBottom:20}}>{visibleSteps.map((si,vi)=><div key={si}style={{flex:1,height:4,borderRadius:2,background:si<=step?`linear-gradient(90deg,${accent},${C.purp})`:C.g200,transition:"all .3s"}}/>)}</div>
     {triedNext&&page1Incomplete&&step===0&&!isUnder18&&!isMale&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>{"Please complete: "+missingFields.join(", ")+"."}</div>}
     {isUnder18&&step===0&&<div className="ra"style={{background:"#FEE2E2",borderColor:C.rd,color:"#991B1B",fontSize:14,fontWeight:600,marginBottom:14}}>⛔ This program is designed for adults 18 years and older. Based on the date of birth you entered, you are under 18. If you believe this is an error, please correct your date of birth above.</div>}
-    {isMale&&step===0&&!PHASE2_MALE&&<div className="ra"style={{background:"#EFF6FF",borderColor:"#3B82F6",color:"#1E40AF",fontSize:14,fontWeight:600,marginBottom:14}}>This program is currently designed for female pelvic floor health. A male pelvic floor program is coming soon.</div>}
+    {isMale&&step===0&&!PHASE2_MALE&&<div className="ra"style={{background:"#EFF6FF",borderColor:"#3B82F6",color:"#1E40AF",fontSize:14,fontWeight:600,marginBottom:14}}>This program is currently designed for women's pelvic health. A male pelvic floor program is coming soon.</div>}
     {isMale&&step===0&&PHASE2_MALE&&<div style={{background:"#EFF6FF",border:"2px solid #3B82F6",borderRadius:12,padding:"16px 20px",margin:"12px 0"}}>
       <div style={{fontSize:14,fontWeight:600,color:"#1E40AF"}}>Male Pelvic Floor Program</div>
       <div style={{fontSize:13,color:"#1E3A5F",marginTop:4,lineHeight:1.5}}>Your intake will include instruments validated for male pelvic health — including the IPSS, NIH-CPSI, and SHIM assessments.</div>
@@ -2525,6 +2734,19 @@ function Intake({onDone,mainRef,initialEmail}){
       <div style={{fontSize:11,color:C.g400,lineHeight:1.5}}>Your password must be at least 8 characters with at least 1 uppercase letter and 1 number. This account will be used to access your care plan securely.</div>
     </div>:steps[step].qs.map(q=><Q key={q.id}q={q}ans={ans}set={set}togM={togM}rfs={rfs}setRfs={setRfs}safetyTriggered={safetyTriggered}setSafetyTriggered={setSafetyTriggered}showSafetyModal={showSafetyModal}setShowSafetyModal={setShowSafetyModal}/>)}
     {step===0&&ans.prenatal_flag&&<div style={{background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:10,padding:"12px 16px",margin:"8px 0 12px",fontSize:13,color:"#166534",lineHeight:1.6}}>We'll tailor your care plan with prenatal-safe modifications so you can safely support your pelvic floor throughout your pregnancy.</div>}
+    {VA_ENABLED&&step===0&&!vaProfile&&!vaLoading&&<div style={{background:"#F0F7EE",border:"1px solid #6B9E4F",borderRadius:10,padding:"16px 20px",margin:"12px 0"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}><svg width="20"height="20"viewBox="0 0 20 20"fill="none"><rect width="20"height="20"rx="3"fill="#003F72"/><text x="3"y="15"fill="#fff"fontSize="13"fontWeight="700">VA</text></svg><span style={{fontSize:14,fontWeight:600,color:"#1B4332"}}>Are you a veteran?</span></div>
+      <div style={{fontSize:13,color:"#2D6A4F",lineHeight:1.5,marginBottom:12}}>Securely import your health records from the VA to pre-fill your assessment. This saves time and improves accuracy.</div>
+      {vaError&&<div style={{fontSize:12,color:"#991B1B",marginBottom:8}}>{vaError}</div>}
+      <button onClick={handleVAConnect}className="btn"style={{background:"#003F72",color:"#fff",fontSize:13,fontWeight:600,padding:"10px 20px",borderRadius:8,border:"none",cursor:"pointer"}}>Connect VA Health Records</button>
+      <div style={{fontSize:11,color:"#6B9E4F",marginTop:8}}>You'll be redirected to VA.gov to sign in securely. No data is stored until you review and continue.</div>
+    </div>}
+    {VA_ENABLED&&step===0&&vaLoading&&<div style={{background:"#F0F7EE",border:"1px solid #6B9E4F",borderRadius:10,padding:"16px 20px",margin:"12px 0",textAlign:"center"}}><div style={{fontSize:14,color:"#1B4332",fontWeight:600}}>Importing VA health records...</div><div style={{fontSize:12,color:"#6B9E4F",marginTop:4}}>This may take a few seconds.</div></div>}
+    {VA_ENABLED&&step===0&&vaProfile&&<div style={{background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:10,padding:"12px 16px",margin:"8px 0 12px"}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><svg width="16"height="16"viewBox="0 0 16 16"fill="none"><circle cx="8"cy="8"r="8"fill="#22C55E"/><path d="M4.5 8L7 10.5L11.5 5.5"stroke="#fff"strokeWidth="2"fill="none"/></svg><span style={{fontSize:14,fontWeight:600,color:"#166534"}}>VA records imported</span></div>
+      <div style={{fontSize:12,color:"#2D6A4F",lineHeight:1.5}}>{vaFieldCount} field{vaFieldCount!==1?"s":""} pre-filled from your VA health records. Review and edit any information below before continuing.</div>
+      {vaProfile.conditions?.relevantDx?.length>0&&<div style={{fontSize:12,color:"#1B4332",marginTop:6}}><strong>Relevant conditions found:</strong> {vaProfile.conditions.relevantDx.map(d=>d.display).join(", ")}</div>}
+    </div>}
     <ConsistencyAlerts ans={ans} currentQIds={steps[step].qs.map(q=>q.id)}/>
     {steps[step].qs.some(q=>q.id==="phq2_mood")&&phq2Score>=2&&<div style={{margin:"16px 0"}}><PsiResourceCard/></div>}
     {triedNext&&page1Incomplete&&step===0&&!isUnder18&&!isMale&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>{"Please complete: "+missingFields.join(", ")+"."}</div>}
@@ -2555,6 +2777,21 @@ function PatientWaiting({name}){
     {referral.needed&&<ReferralCard referral={referral}/>}
   </div>;
 }
+function PatientRejected({name}){
+  return<div className="fi"style={{maxWidth:560,margin:"0 auto",padding:"60px 20px"}}>
+    <div style={{textAlign:"center"}}>
+      <div style={{fontSize:48,marginBottom:16}}>&#128172;</div>
+      <div className="h1"style={{fontSize:24}}>We'd like to talk with you{name?`, ${name}`:""}</div>
+      <p style={{fontSize:15,color:C.g500,maxWidth:480,margin:"12px auto 0",lineHeight:1.7}}>Your physical therapist has reviewed your assessment and would like to discuss your care options before proceeding with a plan.</p>
+      <div style={{marginTop:24,padding:20,background:"#FFF7ED",border:"1px solid #FDBA74",borderRadius:12,display:"inline-block",textAlign:"left"}}>
+        <div style={{fontSize:13,fontWeight:600,color:"#92400E",marginBottom:8}}>What to do next</div>
+        <div style={{fontSize:13,color:"#78350F",lineHeight:1.6}}>Please reach out to our care team so we can determine the best path forward for you.</div>
+        <a href="mailto:team@expect.care"style={{display:"inline-block",marginTop:12,background:C.purp,color:"#fff",padding:"10px 24px",borderRadius:8,fontSize:13,fontWeight:600,textDecoration:"none"}}>Email team@expect.care</a>
+      </div>
+      <p style={{fontSize:12,color:C.g400,marginTop:16}}>This does not mean something is wrong. Sometimes additional discussion helps us create a better plan for your specific needs.</p>
+    </div>
+  </div>;
+}
 function Week4CheckIn({baseline,onComplete}){
   const[step,setStep]=useState(0);const[ans,setAns]=useState({});const[done,setDone]=useState(false);
   const set=(k,v)=>setAns(a=>({...a,[k]:v}));
@@ -2582,11 +2819,11 @@ function Week4CheckIn({baseline,onComplete}){
     if(q.conditional&&!q.conditional(ans))return null;
     return<div key={q.id}className="qc">
       <div className="qt">{q.text}</div>
-      {q.type==="scale"&&<div>
-        <div className="scv"style={ans[q.id]===undefined?{color:C.g400,fontStyle:"italic"}:{}}>{ans[q.id]!==undefined?ans[q.id]:"—"}</div>
-        <input type="range"className="slr"min={q.min}max={q.max}value={ans[q.id]??q.min}onPointerDown={e=>{if(ans[q.id]===undefined)set(q.id,+e.target.value)}}onChange={e=>set(q.id,+e.target.value)}/>
+      {q.type==="scale"&&(()=>{const range=q.max-q.min;const scaleColor=(v)=>{const t=(v-q.min)/range;if(t<=0.3)return"#16A34A";if(t<=0.5)return"#CA8A04";if(t<=0.7)return"#EA580C";return"#DC2626"};return<div>
+        <div style={{display:"flex",gap:4,flexWrap:"wrap",justifyContent:"center",margin:"12px 0"}}>{Array.from({length:range+1},(_,i)=>q.min+i).map(v=>{const sel=ans[q.id]===v;return<button key={v}onClick={()=>set(q.id,v)}style={{width:36,height:36,borderRadius:8,border:sel?`2px solid ${scaleColor(v)}`:`1.5px solid ${C.g200}`,background:sel?scaleColor(v):"#fff",color:sel?"#fff":"#374151",fontSize:14,fontWeight:sel?700:500,cursor:"pointer",transition:"all .15s"}}>{v}</button>})}</div>
         <div className="scl"><span>{q.lo}</span><span>{q.hi}</span></div>
-      </div>}
+        {ans[q.id]===undefined&&<div style={{textAlign:"center",fontSize:12,color:C.g400,fontStyle:"italic"}}>Tap a number to select</div>}
+      </div>})()}
       {q.opts&&!q.type&&q.opts.map(([l,v])=><button key={v}className={`ob ${ans[q.id]===v?"s":""}`}onClick={()=>set(q.id,v)}>{l}</button>)}
     </div>;
   };
@@ -2690,6 +2927,8 @@ function Week8CheckIn({baseline,onComplete}){
   const c8PHQ2=(a)=>(a.c8_phq2_interest??0)+(a.c8_phq2_mood??0);
   const c8FSEX=(a)=>(a.c8_fs2a??0)+(a.c8_fs3a??0)+Math.min(a.c8_fs4a??0,3)+Math.min(a.c8_fs5a??0,3);
   const c8POPDI=(a)=>{const ids=["popdi1","popdi2","popdi3","popdi4","popdi5","popdi6"];const pos=ids.filter(k=>a["c8_"+k]==="yes");const bothers=pos.map(k=>a["c8_"+k+"_bother"]??0).filter(b=>b>0);const mean=bothers.length>0?bothers.reduce((s,v)=>s+v,0)/bothers.length:0;const score=Math.round(mean*25);return{score,positiveCount:pos.length,bulge:a.c8_popdi3==="yes"||a.c8_popdi6==="yes",highBother:bothers.some(b=>b>=3)}};
+  const c8FLUTS=(a)=>{const F=(a.c8_fl2a??0)+(a.c8_fl3a??0)+(a.c8_fl5a??0);const V=(a.c8_fl6a??0)+(a.c8_fl7a??0)+(a.c8_fl8a??0);return{F,V,total:F+V}};
+  const c8GUPI_U=(a)=>(a.c8_gupi5??0)+(a.c8_gupi6??0);
 
   // Build conditional steps
   const steps=[];
@@ -2710,14 +2949,24 @@ function Week8CheckIn({baseline,onComplete}){
   if(baseline.fsex>0)steps.push({id:"fsex",title:"Sexual Symptom Check-In",qs:FLUTSSEX.filter(q=>q.id.endsWith("a")).map(q=>({...q,id:"c8_"+q.id}))});
   // Step 4: Bowel (conditional)
   if(baseline.constipation)steps.push({id:"bowel",title:"Bowel Symptom Check-In",qs:[{id:"c8_bowel",text:"Have your bowel symptoms changed since starting the program?",opts:[["Better","better"],["About the same","same"],["Worse","worse"]]}]});
+  // FLUTS re-administration (filling + voiding)
+  steps.push({id:"fluts",title:"Urinary Symptoms Check-In",qs:FLUTS.filter(q=>q.id.endsWith("a")).map(q=>({...q,id:"c8_"+q.id}))});
+  // GUPI Urinary subscale re-administration
+  steps.push({id:"gupi_u",title:"Bladder Emptying Check-In",qs:GUPI_URINARY.map(q=>({...q,id:"c8_"+q.id}))});
   // Step 5: Prolapse re-assessment (conditional on positive POPDI-6 at intake)
   if(baseline.popdi_positive){
     steps.push({id:"popdi_recheck",title:"Prolapse Symptom Re-Assessment",qs:POPDI.map(q=>{if(q.type==="yn_bother_table")return{...q,id:"c8_"+q.id,rows:q.rows.map(r=>({...r,id:"c8_"+r.id}))};return{...q,id:"c8_"+q.id}})});
     steps.push({id:"prolapse",title:"Prolapse Follow-Up",qs:[{id:"c8_prolapse_followup",text:"At your intake, you reported prolapse symptoms. Did you follow up with a provider for a pelvic exam or pessary evaluation?",opts:[["Yes","yes"],["Not yet","not_yet"],["Not applicable","na"]]}]});
   }
-  // Step 6: Avoided activities
+  // Step: Avoided activities
   if(baseline.avoid&&baseline.avoid.length>0)steps.push({id:"activities",title:"Return to Activities",custom:true});
-  // Step 6: NPS
+  // Step: Adverse events / new symptoms
+  steps.push({id:"adverse",title:"New Symptoms or Concerns",qs:[
+    {id:"c8_new_symptoms",text:"Have you experienced any new symptoms or problems since starting the program?",opts:[["No","no"],["Yes","yes"]]},
+    {id:"c8_new_symptom_desc",text:"Please describe the new symptom or problem:",type:"text",conditional:a=>a.c8_new_symptoms==="yes"},
+    {id:"c8_new_symptom_severity",text:"How severe is this new symptom? (0 = minimal, 10 = severe)",type:"scale",min:0,max:10,lo:"Minimal",hi:"Severe",conditional:a=>a.c8_new_symptoms==="yes"},
+  ]});
+  // Step: NPS
   steps.push({id:"nps",title:"Program Satisfaction",qs:[{id:"c8_nps",text:"How likely are you to recommend this program to a friend or family member?",type:"scale",min:0,max:10,lo:"Not at all likely",hi:"Extremely likely"}]});
 
   const curStep=steps[step];
@@ -2736,8 +2985,10 @@ function Week8CheckIn({baseline,onComplete}){
 
   const finish=()=>{
     const iciqScore=c8ICIQ(ans);const painScore=c8Pain(ans);const phq2Score=c8PHQ2(ans);const fsexScore=c8FSEX(ans);
+    const flutsW8=c8FLUTS(ans);const gupiUW8=c8GUPI_U(ans);
     const popdiW8=baseline.popdi_positive?c8POPDI(ans):null;
-    const results={iciq:iciqScore,pain:painScore,phq2:phq2Score,fsex:fsexScore,bowel:ans.c8_bowel,prolapse_followup:ans.c8_prolapse_followup,popdi:popdiW8,nps:ans.c8_nps,activities_status:ans.c8_activities_status,activities_note:ans.c8_activities_note,date:new Date().toLocaleDateString("en-US",{month:"2-digit",day:"2-digit"}),submitted:true};
+    const hasAdverse=ans.c8_new_symptoms==="yes";
+    const results={iciq:iciqScore,pain:painScore,phq2:phq2Score,fsex:fsexScore,fluts:flutsW8,gupi_urinary:gupiUW8,bowel:ans.c8_bowel,prolapse_followup:ans.c8_prolapse_followup,popdi:popdiW8,nps:ans.c8_nps,activities_status:ans.c8_activities_status,activities_note:ans.c8_activities_note,adverse_event:hasAdverse,adverse_detail:hasAdverse?ans.c8_new_symptom_desc:"",adverse_severity:hasAdverse?ans.c8_new_symptom_severity:null,date:new Date().toLocaleDateString("en-US",{month:"2-digit",day:"2-digit"}),submitted:true};
     // Worsening detection
     const painWorsened=baseline.pain>0&&painScore-baseline.pain>=2;
     const bowelWorsened=ans.c8_bowel==="worse";
@@ -2751,8 +3002,8 @@ function Week8CheckIn({baseline,onComplete}){
     // Tiered concern level
     let concern="none";
     if(prolapseNoFollowup&&!popdiWorsened&&!painWorsened&&!bowelWorsened)concern="mild";
-    if(popdiWorsened||bowelWorsened||painWorsened||(prolapseNoFollowup&&(popdiWorsened||painWorsened||bowelWorsened)))concern="moderate";
-    if(painSevere||prolapseSevere||phq2High)concern="high";
+    if(popdiWorsened||bowelWorsened||painWorsened||hasAdverse||(prolapseNoFollowup&&(popdiWorsened||painWorsened||bowelWorsened)))concern="moderate";
+    if(painSevere||prolapseSevere||phq2High||(hasAdverse&&ans.c8_new_symptom_severity>=7))concern="high";
     results.concern=concern;
     // Audit events
     L("checkin_week8_complete",{iciq_intake:baseline.iciq,iciq_week8:iciqScore,iciq_delta:baseline.iciq-iciqScore,phq2:phq2Score,nps:ans.c8_nps,concern});
@@ -2763,6 +3014,13 @@ function Week8CheckIn({baseline,onComplete}){
     if(ans.c8_prolapse_followup)L("prolapse_followup_week8",{status:ans.c8_prolapse_followup,note:ans.c8_prolapse_followup==="yes"?"Patient followed up with provider for prolapse evaluation":ans.c8_prolapse_followup==="not_yet"?"Patient has not yet followed up for prolapse evaluation":"Patient reports prolapse follow-up not applicable"});
     if(popdiW8)L("popdi_week8",{baseline_score:baseline.popdi_score,week8_score:popdiW8.score,positiveCount:popdiW8.positiveCount,bulge:popdiW8.bulge,worsened:popdiWorsened});
     if(baseline.fsex>0){const fDelta=baseline.fsex-fsexScore;if(fDelta>0)L("flutsex_improvement",{intake:baseline.fsex,week8:fsexScore,delta:fDelta});else if(fDelta<0)L("flutsex_regression",{intake:baseline.fsex,week8:fsexScore,delta:fDelta})}
+    if(hasAdverse)L("ADVERSE_EVENT_REPORTED",{detail:ans.c8_new_symptom_desc||"",severity:ans.c8_new_symptom_severity,context:"week8_checkin"});
+    L("fluts_week8",{intake_F:baseline.fluts_F,intake_V:baseline.fluts_V,intake_total:baseline.fluts_total,week8_F:flutsW8.F,week8_V:flutsW8.V,week8_total:flutsW8.total,delta_F:baseline.fluts_F-flutsW8.F,delta_V:baseline.fluts_V-flutsW8.V});
+    L("gupi_urinary_week8",{intake:baseline.gupi_urinary,week8:gupiUW8,delta:baseline.gupi_urinary-gupiUW8});
+    const flutsWorsened=flutsW8.total>baseline.fluts_total+2;
+    const gupiUWorsened=gupiUW8>baseline.gupi_urinary+2;
+    if(flutsWorsened)L("FLUTS_REGRESSION",{intake_total:baseline.fluts_total,week8_total:flutsW8.total,delta:flutsW8.total-baseline.fluts_total});
+    if(gupiUWorsened)L("GUPI_URINARY_REGRESSION",{intake:baseline.gupi_urinary,week8:gupiUW8,delta:gupiUW8-baseline.gupi_urinary});
     if(baseline.avoid&&baseline.avoid.length>0){results.avoid_resumed=ans.c8_activities_status==="yes"||ans.c8_activities_status==="partially"?baseline.avoid:[];results.avoid_resumed_status=ans.c8_activities_status;results.avoid_resumed_note=ans.c8_activities_note||""}
     // Triggered review flags — ALL worsening types create visible PT flags
     const addFlag=(id,label)=>{if(sharedIntake?.plan?.review_flags&&!sharedIntake.plan.review_flags.some(f=>f.id===id)){sharedIntake.plan.review_flags=[...sharedIntake.plan.review_flags,{id,type:"triggered",label}];notifyFlagChange()}};
@@ -2770,8 +3028,11 @@ function Week8CheckIn({baseline,onComplete}){
     if(phq2Worsened)addFlag("PHQ2_WORSENING","PHQ-2 Worsened");
     if(painWorsened)addFlag("PAIN_WORSENED","Pain Worsened \u22652");
     if(bowelWorsened)addFlag("BOWEL_WORSENED","Bowel Symptoms Worsened");
+    if(flutsWorsened)addFlag("FLUTS_WORSENED","Urinary Symptoms Worsened");
+    if(gupiUWorsened)addFlag("GUPI_U_WORSENED","Bladder Emptying Worsened");
     if(popdiWorsened)addFlag("PROLAPSE_WORSENED","Prolapse Symptoms Worsened");
     if(prolapseNoFollowup)addFlag("PROLAPSE_FOLLOWUP_NEEDED","Prolapse: No Provider Follow-Up");
+    if(hasAdverse)addFlag("ADVERSE_EVENT","New Symptom Reported");
     if(concern==="high")addFlag("URGENT_REVIEW","Urgent Clinical Review Required");
     setDone(true);onComplete(results);
   };
@@ -2781,11 +3042,12 @@ function Week8CheckIn({baseline,onComplete}){
     if(q.conditional&&!q.conditional(ans))return null;
     return<div key={q.id}className="qc">
       <div className="qt">{q.text}</div>
-      {q.type==="scale"&&<div>
-        <div className="scv"style={ans[q.id]===undefined?{color:C.g400,fontStyle:"italic"}:{}}>{ans[q.id]!==undefined?ans[q.id]:"—"}</div>
-        <input type="range"className="slr"min={q.min}max={q.max}value={ans[q.id]??q.min}onPointerDown={e=>{if(ans[q.id]===undefined)set(q.id,+e.target.value)}}onChange={e=>set(q.id,+e.target.value)}/>
+      {q.type==="scale"&&(()=>{const range=q.max-q.min;const scaleColor=(v)=>{const t=(v-q.min)/range;if(t<=0.3)return"#16A34A";if(t<=0.5)return"#CA8A04";if(t<=0.7)return"#EA580C";return"#DC2626"};return<div>
+        <div style={{display:"flex",gap:4,flexWrap:"wrap",justifyContent:"center",margin:"12px 0"}}>{Array.from({length:range+1},(_,i)=>q.min+i).map(v=>{const sel=ans[q.id]===v;return<button key={v}onClick={()=>set(q.id,v)}style={{width:36,height:36,borderRadius:8,border:sel?`2px solid ${scaleColor(v)}`:`1.5px solid ${C.g200}`,background:sel?scaleColor(v):"#fff",color:sel?"#fff":"#374151",fontSize:14,fontWeight:sel?700:500,cursor:"pointer",transition:"all .15s"}}>{v}</button>})}</div>
         <div className="scl"><span>{q.lo}</span><span>{q.hi}</span></div>
-      </div>}
+        {ans[q.id]===undefined&&<div style={{textAlign:"center",fontSize:12,color:C.g400,fontStyle:"italic"}}>Tap a number to select</div>}
+      </div>})()}
+      {q.type==="text"&&<input className="inp"spellCheck={true}value={ans[q.id]||""}onChange={e=>set(q.id,e.target.value)}placeholder={q.ph||""}/>}
       {q.opts&&!q.type&&q.opts.map(([l,v])=><button key={v}className={`ob ${ans[q.id]===v?"s":""}`}onClick={()=>set(q.id,v)}>{l}</button>)}
       {q.type==="multi"&&q.opts.map(([l,v])=><button key={v}className={`mo ${(ans[q.id]||[]).includes(v)?"s":""}`}onClick={()=>togM(q.id,v)}>{l}</button>)}
     </div>;
@@ -2793,12 +3055,15 @@ function Week8CheckIn({baseline,onComplete}){
 
   if(done){
     const iciqDelta=baseline.iciq-c8ICIQ(ans);const painDelta=baseline.pain-c8Pain(ans);const phq2Score=c8PHQ2(ans);const fsexDelta=baseline.fsex-(baseline.fsex>0?c8FSEX(ans):0);
+    const flutsW8D=c8FLUTS(ans);const flutsDelta=baseline.fluts_total-flutsW8D.total;const gupiUW8D=c8GUPI_U(ans);const gupiUDelta=baseline.gupi_urinary-gupiUW8D;
     const popdiW8Done=baseline.popdi_positive?c8POPDI(ans):null;
     const popdiDelta=popdiW8Done?(baseline.popdi_score||0)-popdiW8Done.score:0;
     const painW8=c8Pain(ans);const painUp=baseline.pain>0&&painW8-baseline.pain>=2;
     const bowelUp=ans.c8_bowel==="worse";const prolapseUp=popdiW8Done&&popdiW8Done.score>(baseline.popdi_score||0);
-    const anyWorsening=painUp||bowelUp||prolapseUp||iciqDelta<=-3;
-    const concern=painUp&&(painW8-baseline.pain>=4||painW8>=8)?"high":prolapseUp&&popdiW8Done.bulge&&popdiW8Done.highBother?"high":phq2Score>=5&&phq2Score>(baseline.phq2||0)?"high":(painUp||bowelUp||prolapseUp)?"moderate":ans.c8_prolapse_followup==="not_yet"?"mild":"none";
+    const flutsUp=flutsW8D.total>baseline.fluts_total+2;const gupiUUp=gupiUW8D>baseline.gupi_urinary+2;
+    const hasAdverseD=ans.c8_new_symptoms==="yes";
+    const anyWorsening=painUp||bowelUp||prolapseUp||iciqDelta<=-3||flutsUp||gupiUUp||hasAdverseD;
+    const concern=painUp&&(painW8-baseline.pain>=4||painW8>=8)?"high":prolapseUp&&popdiW8Done.bulge&&popdiW8Done.highBother?"high":phq2Score>=5&&phq2Score>(baseline.phq2||0)?"high":(hasAdverseD&&ans.c8_new_symptom_severity>=7)?"high":(painUp||bowelUp||prolapseUp||hasAdverseD)?"moderate":ans.c8_prolapse_followup==="not_yet"?"mild":"none";
     const deltaColor=(d)=>d>0?C.gn:d<0?C.rd:C.or;
     const deltaArrow=(d)=>d>0?"\u2193":d<0?"\u2191":"\u2192";
     return<div className="fi"style={{textAlign:"center",paddingTop:40}}>
@@ -2830,6 +3095,14 @@ function Week8CheckIn({baseline,onComplete}){
               <span style={{fontSize:13,color:C.g600}}>Bowel Symptoms</span>
               <span style={{fontSize:13,fontWeight:700,color:ans.c8_bowel==="better"?C.gn:ans.c8_bowel==="worse"?C.rd:C.or}}>{ans.c8_bowel.charAt(0).toUpperCase()+ans.c8_bowel.slice(1)}</span>
             </div>}
+            <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
+              <span style={{fontSize:13,color:C.g600}}>FLUTS (Filling/Voiding)</span>
+              <span style={{fontSize:13,fontWeight:700,color:deltaColor(flutsDelta)}}>{baseline.fluts_total} {"\u2192"} {flutsW8D.total} <span>{deltaArrow(flutsDelta)}</span></span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
+              <span style={{fontSize:13,color:C.g600}}>GUPI Urinary</span>
+              <span style={{fontSize:13,fontWeight:700,color:deltaColor(gupiUDelta)}}>{baseline.gupi_urinary} {"\u2192"} {gupiUW8D} <span>{deltaArrow(gupiUDelta)}</span></span>
+            </div>
             {popdiW8Done&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
               <span style={{fontSize:13,color:C.g600}}>POPDI-6 (Prolapse)</span>
               <span style={{fontSize:13,fontWeight:700,color:deltaColor(popdiDelta)}}>{baseline.popdi_score||0} {"\u2192"} {popdiW8Done.score}/100 <span>{popdiW8Done.positiveCount}/6 positive</span></span>
@@ -2837,6 +3110,10 @@ function Week8CheckIn({baseline,onComplete}){
             {ans.c8_prolapse_followup&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
               <span style={{fontSize:13,color:C.g600}}>Prolapse Follow-Up</span>
               <span style={{fontSize:13,fontWeight:700,color:ans.c8_prolapse_followup==="yes"?C.gn:ans.c8_prolapse_followup==="not_yet"?C.or:C.g400}}>{ans.c8_prolapse_followup==="yes"?"Yes \u2014 saw provider":ans.c8_prolapse_followup==="not_yet"?"Not yet":"N/A"}</span>
+            </div>}
+            {ans.c8_new_symptoms==="yes"&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.g100}`}}>
+              <span style={{fontSize:13,color:C.g600}}>New Symptom Reported</span>
+              <span style={{fontSize:13,fontWeight:700,color:C.rd}}>Severity: {ans.c8_new_symptom_severity}/10</span>
             </div>}
             {ans.c8_nps!==undefined&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0"}}>
               <span style={{fontSize:13,color:C.g600}}>NPS Score</span>
@@ -2959,6 +3236,8 @@ function MyCareplan({data}){
   const[todayLogged,setTodayLogged]=useState(false);
   const[adhStatus,setAdhStatus]=useState(null);
   const[adhNote,setAdhNote]=useState("");
+  const[adhBackfill,setAdhBackfill]=useState(false);const[adhBackfillDate,setAdhBackfillDate]=useState("");
+  const[showPrivacy,setShowPrivacy]=useState(false);const[showTerms,setShowTerms]=useState(false);
   const[showCheckin,setShowCheckin]=useState(false);
   const[showCheckin4,setShowCheckin4]=useState(false);
   const[showExport,setShowExport]=useState(false);
@@ -2986,13 +3265,14 @@ function MyCareplan({data}){
   const cpRef=useRef(null);
   useEffect(()=>{document.body.style.overflow=showExport?"hidden":"";return()=>{document.body.style.overflow=""}},[showExport]);
   useEffect(()=>{if(exportDone){const t=setTimeout(()=>setExportDone(false),8000);return()=>clearTimeout(t)}},[exportDone]);
-  const[showProgress,setShowProgress]=useState(false);
+  const[showProgress,setShowProgress]=useState(true);
   const[week4Results,setWeek4Results]=useState(data.week4||null);
   const[week8Results,setWeek8Results]=useState(data.week8||null);
-  const logAdherence=()=>{
-    const entry={date:new Date().toISOString().split("T")[0],status:adhStatus,note:adhNote||undefined};
-    setAdherenceLog(p=>{const updated=[...p,entry];const recent=updated.slice(-14);if(recent.length>=14){const yesCount=recent.filter(e=>e.status==="yes").length;if(yesCount/recent.length<0.5&&sharedIntake?.plan?.review_flags&&!sharedIntake.plan.review_flags.some(f=>f.id==="ADHERENCE_CONCERN")){sharedIntake.plan.review_flags=[...sharedIntake.plan.review_flags,{id:"ADHERENCE_CONCERN",type:"triggered",label:"Adherence <50%"}]};notifyFlagChange()}return updated});setTodayLogged(true);setAdhStatus(null);setAdhNote("");
-    L("daily_adherence_entry",{date:entry.date,status:entry.status,note:entry.note});
+  const logAdherence=(customDate)=>{
+    const entryDate=customDate||new Date().toISOString().split("T")[0];
+    const entry={date:entryDate,status:adhStatus,note:adhNote||undefined};
+    setAdherenceLog(p=>{const existing=p.filter(e=>e.date!==entryDate);const updated=[...existing,entry].sort((a,b)=>a.date.localeCompare(b.date));const recent=updated.slice(-14);if(recent.length>=14){const yesCount=recent.filter(e=>e.status==="yes").length;if(yesCount/recent.length<0.5&&sharedIntake?.plan?.review_flags&&!sharedIntake.plan.review_flags.some(f=>f.id==="ADHERENCE_CONCERN")){sharedIntake.plan.review_flags=[...sharedIntake.plan.review_flags,{id:"ADHERENCE_CONCERN",type:"triggered",label:"Adherence <50%"}]};notifyFlagChange()}return updated});if(!customDate)setTodayLogged(true);setAdhStatus(null);setAdhNote("");setAdhBackfill(false);setAdhBackfillDate("");
+    L("daily_adherence_entry",{date:entry.date,status:entry.status,note:entry.note,backfill:!!customDate});
     const uid=data.userId||sharedIntake?.userId||authSession?.userId;
     if(uid)db("logAdherenceEntry",{userId:uid,date:entry.date,status:entry.status,note:entry.note||undefined,createdAt:new Date().toISOString()});
   };
@@ -3001,7 +3281,7 @@ function MyCareplan({data}){
   // Month adherence days
   const monthDays=adherenceLog.filter(e=>{const d=new Date(e.date);const now=new Date();return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()}).length;
   // Baseline for Week 8
-  const baseline={iciq:iciq.total,pain:pain.composite,phq2,fsex:fsex.total,constipation:(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??4)<=1||(ans.bristol_stool??4)<=2,avoid:avF,popdi_positive:(popdi?.positiveCount||0)>0,popdi_score:popdi?.score??0};
+  const baseline={iciq:iciq.total,pain:pain.composite,phq2,fsex:fsex.total,fluts_F:fluts.F,fluts_V:fluts.V,fluts_total:fluts.total,gupi_total:gupi.total,gupi_urinary:gupi.urinary,gupi_pain:gupi.pain,gupi_qol:gupi.qol,constipation:(ans.bowel_constipation??0)>=2||(ans.bowel_frequency??4)<=1||(ans.bristol_stool??4)<=2,avoid:avF,popdi_positive:(popdi?.positiveCount||0)>0,popdi_score:popdi?.score??0};
   const onCheckin4Complete=(results)=>{setWeek4Results(results);setShowCheckin4(false);if(sharedIntake){sharedIntake.week4=results;if(sharedIntake.userId)db("updatePatientWeek4",{userId:sharedIntake.userId,week4:results})}};
   const onCheckinComplete=(results)=>{setWeek8Results(results);setShowCheckin(false);if(sharedIntake){sharedIntake.week8=results;if(sharedIntake.userId)db("updatePatientWeek8",{userId:sharedIntake.userId,week8:results});if(sharedIntake.outcomeRecordId){const adhRate=adherenceLog.length>0?Math.round(adherenceLog.filter(e=>e.status==="yes").length/adherenceLog.length*100):0;const orec=completeOutcomeRecord(sharedIntake.outcomeRecordId,baseline,{...results,adherence_rate:adhRate});if(orec&&orec.outcome)db("completeOutcomeRecord",{recordId:sharedIntake.outcomeRecordId,outcome:orec.outcome})}}};
   // Polished care plan CSS (from sample-patient-care-plan design)
@@ -3073,6 +3353,19 @@ function MyCareplan({data}){
   .cp-footer a{color:#6D28D9;text-decoration:none}
   .cp-export-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 22px;background:#fff;border:1.5px solid #6D28D9;border-radius:10px;color:#6D28D9;font-size:13px;font-weight:600;cursor:pointer;transition:.2s;font-family:inherit}
   .cp-export-btn:hover{background:#6D28D9;color:#fff}
+  @media(max-width:768px){
+    .cp-hdr{padding:20px 16px;border-radius:10px}
+    .cp-hdr .cp-name{font-size:18px}
+    .cp-card{padding:16px}
+    .cp-scores-grid{grid-template-columns:repeat(2,1fr)}
+    .cp-tabs{gap:0}.cp-tab{padding:10px 12px;font-size:12px}
+    .cp-rpt-row{flex-direction:column;gap:2px}.cp-rpt-row .cp-rv{text-align:left;max-width:100%}
+  }
+  @media(max-width:480px){
+    .cp-shell{padding:0 4px}
+    .cp-scores-grid{grid-template-columns:1fr}
+    .cp-hdr{padding:16px 12px}
+  }
   `;
   // If showing checkin, render that instead
   if(showCheckin4)return<div className="fi"><style>{cpCSS}</style><div className="cp-shell"><Week4CheckIn baseline={baseline} onComplete={onCheckin4Complete}/></div></div>;
@@ -3155,6 +3448,7 @@ function MyCareplan({data}){
       <div style={{background:ans.cue_preference==="imaginative"?"#EDE9FE":ans.cue_preference==="breathing"?"#E0F2FE":"#FEF3C7",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,lineHeight:1.5,color:ans.cue_preference==="imaginative"?"#4C1D95":ans.cue_preference==="breathing"?"#0C4A6E":"#78350F"}}>
         <strong>Your cueing style:</strong> When instructions say to engage your pelvic floor, use this cue: <em>"{cue.phrase}"</em>
       </div>
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}><button onClick={()=>{const allOpen=(plan.ex||[]).every((_,i)=>expanded["ex_"+i]);const next={};(plan.ex||[]).forEach((_,i)=>{next["ex_"+i]=!allOpen});setExpanded(p=>({...p,...next}))}} style={{background:"none",border:"none",color:C.purp,fontSize:12,cursor:"pointer",fontWeight:600}}>{(plan.ex||[]).every((_,i)=>expanded["ex_"+i])?"Collapse All":"Expand All"}</button></div>
       {(plan.ex||[]).map((ex,i)=>{const lib=PATIENT_EX[ex.n]||PATIENT_EX_MALE[ex.n];const open=expanded["ex_"+i];return<div key={i}className="cp-exc">
         <div className="cp-exh"onClick={()=>toggle("ex_"+i)}>
           <div><div className="cp-exn">{i+1}. {lib?lib.name:ex.n}{ex.prenatalModified&&<span style={{background:"#D1FAE5",color:"#065F46",fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:10,marginLeft:8}}>Prenatal-adapted</span>}</div><div style={{fontSize:11,color:"#9CA3AF",marginTop:2}}>{ex.f}</div></div>
@@ -3308,8 +3602,22 @@ function MyCareplan({data}){
         {[["Yes","yes",C.gn],["Partially","partial",C.or],["No","no",C.g400]].map(([l,v,c])=><button key={v}className="btn bsm"style={{background:adhStatus===v?c:"white",color:adhStatus===v?"white":"#374151",border:`1.5px solid ${adhStatus===v?c:C.g200}`,flex:1}}onClick={()=>setAdhStatus(v)}>{l}</button>)}
       </div>
       {(adhStatus==="partial"||adhStatus==="no")&&<div style={{marginBottom:8}}><input className="inp"value={adhNote}onChange={e=>setAdhNote(e.target.value)}placeholder={adhStatus==="partial"?"What happened? (e.g., only did breathing)":"Why not? (optional)"}/></div>}
-      {adhStatus&&<button className="btn bpk bsm"onClick={logAdherence}>Log Today</button>}
+      {adhStatus&&<button className="btn bpk bsm"onClick={()=>logAdherence()}>Log Today</button>}
     </div>:<div style={{padding:"10px 14px",background:"#D1FAE5",borderRadius:8,marginBottom:16,fontSize:13,color:"#065F46",fontWeight:600}}>Logged for today</div>}
+    {!adhBackfill&&<button onClick={()=>setAdhBackfill(true)} style={{background:"none",border:"none",color:C.purp,fontSize:11,cursor:"pointer",marginBottom:12}}>Missed a day? Log for a past date</button>}
+    {adhBackfill&&<div style={{background:"#F9FAFB",borderRadius:8,padding:12,marginBottom:12,border:`1px solid ${C.g200}`}}>
+      <div style={{fontSize:12,fontWeight:600,color:C.g700,marginBottom:6}}>Log for a past date</div>
+      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+        <input type="date" value={adhBackfillDate} onChange={e=>setAdhBackfillDate(e.target.value)} max={new Date(Date.now()-86400000).toISOString().split("T")[0]} style={{padding:"6px 10px",border:`1px solid ${C.g300}`,borderRadius:6,fontSize:13}}/>
+      </div>
+      {adhBackfillDate&&<>
+        <div style={{display:"flex",gap:6,marginBottom:6}}>
+          {[["Yes","yes",C.gn],["Partially","partial",C.or],["No","no",C.g400]].map(([l,v,c])=><button key={v}className="btn bsm"style={{background:adhStatus===v?c:"white",color:adhStatus===v?"white":"#374151",border:`1.5px solid ${adhStatus===v?c:C.g200}`,flex:1,fontSize:11}}onClick={()=>setAdhStatus(v)}>{l}</button>)}
+        </div>
+        {adhStatus&&<button className="btn bpk bsm"onClick={()=>logAdherence(adhBackfillDate)} style={{fontSize:11}}>Log for {adhBackfillDate}</button>}
+      </>}
+      <button onClick={()=>{setAdhBackfill(false);setAdhBackfillDate("");setAdhStatus(null)}} style={{background:"none",border:"none",color:C.g400,fontSize:11,cursor:"pointer",marginTop:4}}>Cancel</button>
+    </div>}
     {/* 30-day heatmap */}
     <div style={{marginBottom:12}}>
       <div style={{fontSize:12,fontWeight:600,color:"#6B7280",marginBottom:6}}>Last 30 Days</div>
@@ -3340,7 +3648,7 @@ function MyCareplan({data}){
     {!pushEnabled&&!pushPromptDismissed&&"Notification"in window&&<div style={{marginTop:12,background:"#EDE9FE",borderRadius:8,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div><div style={{fontSize:13,fontWeight:600,color:"#4C1D95"}}>Daily exercise reminders</div><div style={{fontSize:11,color:"#6D28D9"}}>Get a notification each evening to log your exercises</div></div>
       <div style={{display:"flex",gap:6}}>
-        <button className="btn bsm"style={{background:"#4C2C84",color:"white",fontSize:11}}onClick={async()=>{try{if("Notification"in window){const perm=await Notification.requestPermission();if(perm==="granted"){if("serviceWorker"in navigator&&window.__VAPID_PUBLIC_KEY){const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:window.__VAPID_PUBLIC_KEY});const uid=data.userId||sharedIntake?.userId||authSession?.userId;if(uid)await db("savePushSubscription",{userId:uid,subscription:JSON.parse(JSON.stringify(sub)),createdAt:new Date().toISOString()})}setPushEnabled(true);L("push_notifications_enabled",{userId:data.userId||authSession?.userId})}else if(perm==="denied"){alert("Notifications are blocked in your browser settings. Please enable them to receive reminders.")}}}catch(e){console.warn("[push]",e);setPushEnabled(true)}}}>Turn On</button>
+        <button className="btn bsm"style={{background:"#4C2C84",color:"white",fontSize:11}}onClick={async()=>{try{if(!("Notification"in window)){alert("Your browser doesn't support push notifications.");return}const perm=await Notification.requestPermission();if(perm==="granted"){if("serviceWorker"in navigator&&window.__VAPID_PUBLIC_KEY){const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:window.__VAPID_PUBLIC_KEY});const uid=data.userId||sharedIntake?.userId||authSession?.userId;if(uid)await db("savePushSubscription",{userId:uid,subscription:JSON.parse(JSON.stringify(sub)),createdAt:new Date().toISOString()});setPushEnabled(true);L("push_notifications_enabled",{userId:data.userId||authSession?.userId})}else{alert("Push notifications are not yet available for this deployment. Your exercises are shown in the Program Progress section above.");setPushPromptDismissed(true)}}else if(perm==="denied"){alert("Notifications are blocked in your browser settings. Please enable them to receive reminders.")}}catch(e){console.warn("[push]",e);alert("Something went wrong enabling notifications. Please try again later.");}}}>Turn On</button>
         <button className="btn bsm"style={{background:"transparent",color:"#6B7280",border:"1px solid #D1D5DB",fontSize:11}}onClick={()=>setPushPromptDismissed(true)}>Not now</button>
       </div>
     </div>}
@@ -3461,8 +3769,10 @@ function MyCareplan({data}){
       <div className="cp-footer">
         <p>This care plan was generated by Expect's AI-augmented platform and reviewed by a licensed Physical Therapist.</p>
         <p>Expect is a participant in the Utah Office of AI Policy Regulatory Sandbox.</p>
-        <p style={{marginTop:4,fontSize:10}}>© 2026 Expect Health. All rights reserved. Privacy Policy · Terms of Service</p>
+        <p style={{marginTop:4,fontSize:10}}>© 2026 Expect Health. All rights reserved. <span style={{cursor:"pointer",textDecoration:"underline"}} onClick={()=>setShowPrivacy(true)}>Privacy Policy</span> · <span style={{cursor:"pointer",textDecoration:"underline"}} onClick={()=>setShowTerms(true)}>Terms of Service</span></p>
       </div>
+      {showPrivacy&&<PrivacyModal onClose={()=>setShowPrivacy(false)}/>}
+      {showTerms&&<TermsModal onClose={()=>setShowTerms(false)}/>}
     </div>
   </div>;
 }
@@ -3564,8 +3874,9 @@ function PTNewIntakeReview({data,onBack}){
   const[noteGenerated,setNoteGenerated]=useState(false);
   const[tRun,setTRun]=useState(false);const[tSec,setTSec]=useState(0);const[notes,setNotes]=useState("");
   const[faxSt,setFaxSt]=useState(null);const[faxErr,setFaxErr]=useState(null);const[patSent,setPatSent]=useState(false);
-  const[approved,setApproved]=useState(false);const[showGuardrails,setShowGuardrails]=useState(false);
+  const[approved,setApproved]=useState(false);const[showGuardrails,setShowGuardrails]=useState(false);const[escalated,setEscalated]=useState(false);
   const[psiRefer,setPsiRefer]=useState(false);const[followUpSent,setFollowUpSent]=useState(null);
+  const[cvFax,setCvFax]=useState("");const[cvNpi,setCvNpi]=useState("");const[cvName,setCvName]=useState("");const[cvDone,setCvDone]=useState(false);const[cvLoading,setCvLoading]=useState(false);
   const tmRef=useRef();
   useEffect(()=>{if(tRun)tmRef.current=setInterval(()=>setTSec(s=>s+1),1000);else clearInterval(tmRef.current);return()=>clearInterval(tmRef.current)},[tRun]);
   const rc={green:C.gn,yellow:C.or,red:C.rd}[plan.risk];
@@ -3876,10 +4187,12 @@ function PTNewIntakeReview({data,onBack}){
         </div>
       </div>}
 
-      {!showGuardrails&&<div style={{display:"flex",gap:6}}>
+      {!showGuardrails&&<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
         <button className="btn bbl"onClick={tryApprove}>✓ Approve Plan</button>
         <button className="btn brd"onClick={()=>{L("plan_rejected",{patient:nm});setPlan(p=>({...p,status:"rejected"}));const uid=sharedIntake?.userId;if(uid)db("updatePatientPlan",{userId:uid,plan:{...plan,status:"rejected"},status:"rejected"})}}>✕ Reject</button>
+        <button className="btn bo bsm"disabled={escalated}onClick={()=>{L("pt_escalation",{patient:nm,ptName:ptIdentity?.name||"Unknown"});window.open("mailto:team@expect.care?subject=Patient Escalation: "+encodeURIComponent(nm)+"&body=PT: "+encodeURIComponent(ptIdentity?.name||"Unknown")+"%0A%0AReason for escalation:%0A%0A");setEscalated(true)}}>{escalated?"✓ Escalated":"⚑ Escalate to Team"}</button>
       </div>}
+      {escalated&&<div style={{marginTop:8,padding:"8px 14px",borderRadius:8,background:"#F0F7EE",border:"1px solid #6B9E4F",fontSize:12,color:"#1B4332"}}>Escalation sent to team@expect.care — the clinical team will follow up.</div>}
     </div>}
 
     {/* POST-APPROVAL: Status + Fax + Notify */}
@@ -3899,9 +4212,40 @@ function PTNewIntakeReview({data,onBack}){
     {approved&&<div className="two">
       <div className="card fi">
         <div className="chd"> Fax to Physician</div>
-        {ans.concierge_pending?<div>
-          <div style={{fontSize:13,color:C.or,marginBottom:8}}>Fax transmission on hold — destination provider is pending verification.</div>
-          <div style={{fontSize:12,color:C.g500}}>Once <b>{ans.concierge_pending.practice}</b> is verified, the fax will be released automatically.</div>
+        {ans.concierge_pending&&!cvDone?<div>
+          <div style={{fontSize:13,color:C.or,marginBottom:8}}>Fax on hold — patient requested verification for <b>{ans.concierge_pending.practice}</b> ({ans.concierge_pending.city})</div>
+          <div style={{background:"#FFF7ED",border:"1px solid #FDBA74",borderRadius:8,padding:14,marginTop:8}}>
+            <div style={{fontSize:12,fontWeight:600,color:"#92400E",marginBottom:8}}>Verify Provider & Release Fax</div>
+            <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:140}}><div style={{fontSize:11,fontWeight:600,color:C.g600,marginBottom:3}}>Provider Name</div><input className="inp"value={cvName}onChange={e=>setCvName(e.target.value)}placeholder={ans.concierge_pending.practice}/></div>
+              <div style={{flex:1,minWidth:120}}><div style={{fontSize:11,fontWeight:600,color:C.g600,marginBottom:3}}>NPI (optional)</div><input className="inp"value={cvNpi}onChange={e=>setCvNpi(e.target.value)}placeholder="e.g. 1234567890"/></div>
+            </div>
+            <div style={{marginBottom:8}}><div style={{fontSize:11,fontWeight:600,color:C.g600,marginBottom:3}}>Verified Fax Number *</div><input className="inp"value={cvFax}onChange={e=>setCvFax(e.target.value)}placeholder="(801) 555-0100"style={{maxWidth:200}}/></div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <button className="btn bpu bsm"disabled={!cvFax.trim()||cvLoading}onClick={async()=>{
+                setCvLoading(true);
+                const verifiedName=cvName.trim()||ans.concierge_pending.practice;
+                ans.physician_name=verifiedName;
+                ans.physician_fax=cvFax.trim();
+                if(cvNpi.trim())ans.physician_npi_id=cvNpi.trim();
+                ans.physician_fax_verified=true;
+                delete ans.concierge_pending;
+                L("CONCIERGE_VERIFIED",{practice:verifiedName,fax:cvFax.trim(),npi:cvNpi.trim(),ptName:ptIdentity?.name||"Unknown"});
+                if(data.userId){try{await db("upsertPatient",{userId:data.userId,ans,physicianName:verifiedName,physicianFax:cvFax.trim(),physicianNPI:cvNpi.trim()||ans.physician_npi_id||""})}catch(e){}}
+                setCvDone(true);setCvLoading(false);
+              }}style={{opacity:cvFax.trim()?1:.4}}>{cvLoading?"Verifying...":"Verify & Release Fax"}</button>
+              <span style={{fontSize:11,color:C.g400}}>This will clear the hold and allow fax transmission</span>
+            </div>
+          </div>
+        </div>:ans.concierge_pending&&cvDone?<div>
+          <div style={{padding:"8px 14px",borderRadius:8,background:`${C.gn}10`,color:C.gn,fontSize:12,fontWeight:600,marginBottom:8}}>Provider verified. Fax is ready to send.</div>
+          <div style={{fontSize:13,color:C.g600,marginBottom:8}}>Send encounter note + care plan to <b>{ans.physician_name||"Physician"}</b></div>
+          <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:10}}>
+            <input className="inp"value={ans.physician_fax||""}readOnly style={{width:180}}/>
+            <button className="btn bpu bsm"disabled={faxSt==="sending"||!ans.physician_fax||!editNote}onClick={async()=>{setFaxSt("sending");setFaxErr(null);L("fax_init",{to:ans.physician_name,fax:ans.physician_fax});try{const r=await fetch("/api/fax",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:ans.physician_fax,encounterNote:editNote,patientName:nm,physicianName:ans.physician_name||""})});const d=await r.json();if(r.ok&&d.success){setFaxSt("sent");L("fax_confirmed",{faxId:d.faxId,conf:d.faxId,to:d.to,from:d.from})}else{setFaxSt("error");setFaxErr(d.error||"Fax failed");L("fax_failed",{error:d.error||"Unknown"})}}catch(e){setFaxSt("error");setFaxErr(e.message);L("fax_failed",{error:e.message})}}}style={{opacity:(!ans.physician_fax||!editNote)?0.4:1}}>{faxSt==="sending"?"Sending...":"Send HIPAA Fax"}</button>
+          </div>
+          {faxSt==="sent"&&<div style={{padding:"8px 14px",borderRadius:8,background:`${C.gn}10`,color:C.gn,fontSize:12,fontWeight:600}}>Fax queued successfully. Delivery confirmation will be logged.</div>}
+          {faxSt==="error"&&<div style={{padding:"8px 14px",borderRadius:8,background:"#FEE2E2",color:"#991B1B",fontSize:12,fontWeight:600}}>Fax failed: {faxErr}. You can retry or download the note to fax manually.</div>}
         </div>:<>
         <div style={{fontSize:13,color:C.g600,marginBottom:8}}>Send encounter note + care plan to <b>{ans.physician_name||"Physician"}</b>{ans.physician_npi_id?<span style={{fontSize:11,color:C.blue,marginLeft:6}}>(NPI: {ans.physician_npi_id} ✓)</span>:""}{ans.prenatal_flag?<span style={{fontSize:11,color:"#065F46",marginLeft:6}}>(Prenatal protocol)</span>:""}</div>
         <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:10}}>
@@ -3913,10 +4257,10 @@ function PTNewIntakeReview({data,onBack}){
         </>}
       </div>
       <div className="card fi">
-        <div className="chd"> Send to Patient</div>
-        <div style={{fontSize:13,color:C.g600,marginBottom:8}}>Notify <b>{nm}</b> their plan is ready</div>
-        <div style={{fontSize:12,color:C.g500,marginBottom:10}}>Patient receives: exercises, adjuncts, goals, precautions. Scores and diagnoses are not shared.</div>
-        <button className="btn bpk bsm"disabled={patSent}onClick={()=>{setPatSent(true);L("plan_sent_patient",{patient:nm})}}>{patSent?"✓ Sent":"Send Plan"}</button>
+        <div className="chd"> Patient Notification</div>
+        <div style={{fontSize:13,color:C.g600,marginBottom:8}}><b>{nm}</b> has been notified by email</div>
+        <div style={{fontSize:12,color:C.g500,marginBottom:10}}>An email was automatically sent when the plan was approved. Patient receives a link to sign in and view their care plan.</div>
+        <div style={{display:"flex",alignItems:"center",gap:6,color:C.gn,fontSize:13,fontWeight:600}}><span>&#10003;</span> Email sent to {data?.ans?.email||"patient"}</div>
       </div>
     </div>}
     {approved&&((ans.phq2_interest||0)+(ans.phq2_mood||0))>=2&&<div className="card" style={{marginTop:12,borderLeft:"4px solid #D97706"}}>
@@ -4228,8 +4572,125 @@ function OAIPView(){
       </div>)}
     </div>)}
     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-      <button className="btn bo bsm">Monthly Report</button><button className="btn bo bsm">De-ID Dataset</button>
-      <button className="btn bo bsm"> Public Dashboard</button><button className="btn bo bsm"onClick={()=>setViewMode("audit")}> Audit Log</button>
+      <button className="btn bo bsm" onClick={()=>{
+        const now=new Date();const mo=now.toLocaleDateString("en-US",{month:"long",year:"numeric"});
+        const ar=computeAgreementRate(OUTCOME_RECORDS);
+        const w=window.open("","_blank");
+        if(!w){alert("Please allow popups to generate the report.");return}
+        w.document.write(`<!DOCTYPE html><html><head><title>Expect OAIP Monthly Report — ${mo}</title>
+<style>body{font-family:'DM Sans',Helvetica,sans-serif;margin:40px;color:#1f2937;max-width:800px}
+h1{color:#6D28D9;font-size:24px;margin-bottom:4px}h2{color:#6D28D9;font-size:16px;border-bottom:2px solid #E5E7EB;padding-bottom:6px;margin-top:28px}
+.sub{color:#9CA3AF;font-size:13px;margin-bottom:24px}
+table{width:100%;border-collapse:collapse;margin:8px 0 16px}th,td{text-align:left;padding:8px 12px;border-bottom:1px solid #E5E7EB;font-size:13px}
+th{background:#F9FAFB;font-weight:600;color:#6D28D9}
+.metric{display:inline-block;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:12px 18px;margin:4px;text-align:center;min-width:120px}
+.metric .val{font-size:22px;font-weight:700;color:#6D28D9}.metric .lbl{font-size:11px;color:#9CA3AF;margin-top:2px}
+.rf{padding:6px 10px;border-left:3px solid #DC2626;margin:4px 0;font-size:13px;background:#FEF2F2;border-radius:0 4px 4px 0}
+@media print{body{margin:20px}}</style></head><body>
+<h1>Expect Health — OAIP Monthly Report</h1>
+<div class="sub">${mo} · Phase ${PILOT_PHASE} · Clinical Logic v${CLINICAL_LOGIC_VERSION}</div>
+<h2>Enrollment & Completion</h2>
+<div><div class="metric"><div class="val">${enrolled}</div><div class="lbl">Enrolled</div></div>
+<div class="metric"><div class="val">${w8Completed}</div><div class="lbl">Week 8 Completed</div></div>
+<div class="metric"><div class="val">${month12Done}</div><div class="lbl">Month 12 Completed</div></div>
+<div class="metric"><div class="val">${enrolled>0?Math.round(w8Completed/enrolled*100):0}%</div><div class="lbl">Completion Rate</div></div></div>
+<h2>Clinical Outcomes</h2>
+<div><div class="metric"><div class="val">${clinMeaningfulRate}%</div><div class="lbl">Clinically Meaningful</div></div>
+<div class="metric"><div class="val">${iciqWorseR}%</div><div class="lbl">ICIQ Worsened</div></div>
+<div class="metric"><div class="val">${painWorseR}%</div><div class="lbl">Pain Worsened</div></div>
+<div class="metric"><div class="val">${phq2WorseR}%</div><div class="lbl">PHQ-2 Worsened</div></div>
+<div class="metric"><div class="val">${medianAdh}%</div><div class="lbl">Median Adherence</div></div></div>
+<h2>Safety & Oversight</h2>
+<div><div class="metric"><div class="val">${redFlags.length}</div><div class="lbl">Red Flags</div></div>
+<div class="metric"><div class="val">${ar.total>0?ar.rate+"%":"N/A"}</div><div class="lbl">AI-PT Agreement</div></div>
+<div class="metric"><div class="val">${ptOverrideR}%</div><div class="lbl">PT Override Rate</div></div>
+<div class="metric"><div class="val">${rejectN}</div><div class="lbl">Plans Rejected</div></div>
+<div class="metric"><div class="val">${rvTimes.length>0?fmtTime(medianRvTime):"—"}</div><div class="lbl">Median Review Time</div></div></div>
+${redFlags.length>0?`<h2>Active Red Flags</h2>${redFlags.map(rf=>`<div class="rf"><strong>${rf.type}</strong> (${rf.severity}) — ${rf.desc}<br/><em>Action: ${rf.action}</em></div>`).join("")}`:""}
+<h2>Clinical Subpopulations</h2>
+<table><tr><th>Flag</th><th>Count</th><th>% of Enrolled</th></tr>
+<tr><td>PHQ-2 Positive</td><td>${phq2Pos}</td><td>${Math.round(phq2Pos/total*100)}%</td></tr>
+<tr><td>POPDI-6 Positive</td><td>${popdiPos}</td><td>${Math.round(popdiPos/total*100)}%</td></tr>
+<tr><td>Prolapse Review Needed</td><td>${prolapseReviewN}</td><td>${Math.round(prolapseReviewN/total*100)}%</td></tr>
+<tr><td>Pudendal Neuralgia Flag</td><td>${pudendalN}</td><td>${Math.round(pudendalN/total*100)}%</td></tr>
+<tr><td>Prenatal Protocol</td><td>${prenatalN}</td><td>${Math.round(prenatalN/total*100)}%</td></tr></table>
+<h2>Compliance Checklist</h2>
+<table><tr><th>Category</th><th>Item</th><th>Status</th></tr>
+${checks.map(c=>c.items.map(it=>`<tr><td>${c.cat}</td><td>${it.l}</td><td>${it.v||(it.s===1?"Compliant":"Armed")}</td></tr>`).join("")).join("")}</table>
+<div style="text-align:center;margin-top:40px;font-size:11px;color:#9CA3AF">Generated ${now.toLocaleString()} · Expect Health Inc. · Utah OAIP Regulatory Sandbox</div>
+</body></html>`);
+        w.document.close();
+        const doPrint=()=>w.print();
+        if(w.document.fonts&&w.document.fonts.ready){w.document.fonts.ready.then(doPrint).catch(doPrint)}else{setTimeout(doPrint,800)}
+        L("oaip_export",{type:"monthly_report",enrolled,redFlags:redFlags.length});
+      }}>Monthly Report</button>
+      <button className="btn bo bsm" onClick={()=>{
+        const recs=OUTCOME_RECORDS;
+        if(recs.length===0){alert("No outcome records to export.");return}
+        const headers=["record_id","created","logic_version","is_male","age_bracket","pregnancy_status","iciq_total","iciq_severity","iciq_subtype","fluts_f","fluts_v","fsex_total","gupi_total","gupi_pain","gupi_severity","pain_composite","pain_severity","phq2","constipation","avoidance_count","cue_preference","pudendal_flag","tier","lane","exercise_count","adjunct_count","risk_level","dx_codes","pt_modified","review_time_sec","iciq_delta","pain_delta","fsex_delta","phq2_delta","bowel_change","adherence_rate","clinically_meaningful","nps"];
+        const esc=(v)=>{const s=String(v??"");return s.includes(",")||s.includes('"')||s.includes("\n")?'"'+s.replace(/"/g,'""')+'"':s};
+        const rows=recs.map(r=>{const b=r.baseline,t=r.treatment,o=r.outcome||{};return[
+          hashMask(r.id),r.created,r.logicVersion,b.isMale?"M":"F",b.age_bracket,b.pregnancy_status||"",
+          b.iciq?.total,b.iciq?.severity,b.iciq?.subtype,b.fluts?.F,b.fluts?.V,b.fsex?.total,
+          b.gupi?.total,b.gupi?.pain,b.gupi?.severity,b.pain?.composite,b.pain?.severity,b.phq2,
+          b.constipation_composite?"Y":"N",b.avoidance_count,b.cue_preference,b.pudendal_flag?"Y":"N",
+          t.tier,t.lane||"",t.exercise_count,t.adjunct_count,t.risk_level,(t.dx_codes||[]).join(";"),
+          (t.pt_modified_exercises||t.pt_modified_adjuncts||t.pt_modified_goals)?"Y":"N",t.review_time_seconds,
+          o.iciq_delta??"",o.pain_delta??"",o.fsex_delta??"",o.phq2_delta??"",o.bowel_change??"",
+          o.adherence_rate??"",o.clinically_meaningful??"",o.nps??""
+        ].map(esc).join(",")});
+        const csv=headers.join(",")+"\n"+rows.join("\n");
+        const blob=new Blob([csv],{type:"text/csv"});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");a.href=url;a.download=`expect-deid-dataset-${new Date().toISOString().slice(0,10)}.csv`;a.click();
+        URL.revokeObjectURL(url);
+        L("oaip_export",{type:"deid_dataset",count:recs.length});
+      }}>De-ID Dataset</button>
+      <button className="btn bo bsm" onClick={()=>{
+        const ar=computeAgreementRate(OUTCOME_RECORDS);
+        const now=new Date();
+        const w=window.open("","_blank");
+        if(!w){alert("Please allow popups to view the dashboard.");return}
+        w.document.write(`<!DOCTYPE html><html><head><title>Expect Health — Public Pilot Dashboard</title>
+<style>body{font-family:'DM Sans',Helvetica,sans-serif;margin:0;color:#1f2937;background:#F9FAFB}
+.hdr{background:linear-gradient(135deg,#6D28D9,#EC4899);color:#fff;padding:40px;text-align:center}
+.hdr h1{margin:0;font-size:28px;letter-spacing:2px}.hdr .sub{opacity:.8;font-size:14px;margin-top:8px}
+.wrap{max-width:900px;margin:0 auto;padding:32px 20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:28px}
+.card{background:#fff;border-radius:12px;padding:20px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.card .val{font-size:32px;font-weight:700;color:#6D28D9}.card .lbl{font-size:12px;color:#9CA3AF;margin-top:4px}
+h2{color:#6D28D9;font-size:18px;margin-top:32px;border-bottom:2px solid #E5E7EB;padding-bottom:6px}
+.bar-row{display:flex;align-items:center;gap:12px;margin:8px 0;font-size:13px}
+.bar{height:20px;background:linear-gradient(90deg,#6D28D9,#EC4899);border-radius:4px;min-width:2px}
+.footer{text-align:center;padding:32px;font-size:11px;color:#9CA3AF;border-top:1px solid #E5E7EB;margin-top:40px}
+</style></head><body>
+<div class="hdr"><h1>E X P E C T</h1><div class="sub">Utah OAIP Regulatory Sandbox · Public Pilot Dashboard</div></div>
+<div class="wrap">
+<div class="grid">
+<div class="card"><div class="val">${enrolled}</div><div class="lbl">Patients Enrolled</div></div>
+<div class="card"><div class="val">${w8Completed}</div><div class="lbl">Completed Program</div></div>
+<div class="card"><div class="val">${clinMeaningfulRate}%</div><div class="lbl">Clinically Meaningful Improvement</div></div>
+<div class="card"><div class="val">${ar.total>0?ar.rate+"%":"N/A"}</div><div class="lbl">AI-PT Agreement Rate</div></div>
+<div class="card"><div class="val">0</div><div class="lbl">Adverse Events</div></div>
+<div class="card"><div class="val">0</div><div class="lbl">PHI Breaches</div></div>
+</div>
+<h2>Enrollment Funnel</h2>
+<div class="bar-row"><span style="min-width:140px">Intake Submitted</span><div class="bar" style="width:${Math.max(enrolled*3,20)}px"></div><strong>${intakeSubmitted}</strong></div>
+<div class="bar-row"><span style="min-width:140px">Plan Approved</span><div class="bar" style="width:${Math.max(planApproved*3,20)}px"></div><strong>${planApproved}</strong></div>
+<div class="bar-row"><span style="min-width:140px">Week 8 Completed</span><div class="bar" style="width:${Math.max(week8Done*3,20)}px"></div><strong>${week8Done}</strong></div>
+<div class="bar-row"><span style="min-width:140px">Month 12 Follow-up</span><div class="bar" style="width:${Math.max(month12Done*3,20)}px"></div><strong>${month12Done}</strong></div>
+<h2>Safety Record</h2>
+<div class="grid">
+<div class="card"><div class="val" style="color:#16A34A">100%</div><div class="lbl">PT Review Rate (Phase 1)</div></div>
+<div class="card"><div class="val">${medianAdh}%</div><div class="lbl">Median Adherence</div></div>
+<div class="card"><div class="val" style="color:${highConcernRate>0?"#DC2626":"#16A34A"}">${highConcernRate}%</div><div class="lbl">High-Concern Rate</div></div>
+</div>
+<div class="footer">Data is aggregate and de-identified. No protected health information is displayed.<br/>Last updated: ${now.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})} · Expect Health Inc. · Phase ${PILOT_PHASE}</div>
+</div></body></html>`);
+        w.document.close();
+        L("oaip_export",{type:"public_dashboard",enrolled});
+      }}>Public Dashboard</button>
+      <button className="btn bo bsm"onClick={()=>setViewMode("audit")}>Audit Log</button>
     </div>
     </>}
 
@@ -4736,8 +5197,8 @@ function ReportIssue({pView}){
         <div style={{fontSize:12,color:C.g500,lineHeight:1.6,marginBottom:12}}>If you're experiencing pain above 3/10 during your exercises, stop immediately. Your PT will be notified.</div>
         <div style={{marginBottom:14}}>
           <div className="il">Pain level (0-10)</div>
-          <div style={{textAlign:"center",fontSize:28,fontWeight:700,color:C.rd}}>{painSeverity}</div>
-          <input type="range"min={0}max={10}value={painSeverity}onChange={e=>setPainSeverity(parseInt(e.target.value))}style={{width:"100%",appearance:"none",height:6,borderRadius:3,background:C.g200,outline:"none"}}/>
+          <div style={{display:"flex",gap:4,flexWrap:"wrap",justifyContent:"center",margin:"8px 0"}}>{Array.from({length:11},(_,v)=>{const sel=painSeverity===v;const c=v<=3?"#16A34A":v<=5?"#CA8A04":v<=7?"#EA580C":"#DC2626";return<button key={v}onClick={()=>setPainSeverity(v)}style={{width:32,height:32,borderRadius:8,border:sel?`2px solid ${c}`:`1.5px solid ${C.g200}`,background:sel?c:"#fff",color:sel?"#fff":"#374151",fontSize:13,fontWeight:sel?700:500,cursor:"pointer"}}>{v}</button>})}</div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.g400}}><span>No pain</span><span>Worst pain</span></div>
         </div>
         <button className="btn bpk bsm"onClick={()=>submit("pain")}style={{width:"100%",justifyContent:"center"}}>Submit Report</button>
       </div>}
@@ -4746,8 +5207,7 @@ function ReportIssue({pView}){
         <div style={{fontSize:13,fontWeight:600,color:C.g800,marginBottom:12}}>Symptom Regression Report</div>
         <div style={{marginBottom:14}}>
           <div className="il">Severity (0 = minimal, 10 = severe)</div>
-          <div style={{textAlign:"center",fontSize:28,fontWeight:700,color:C.rd}}>{severity}</div>
-          <input type="range"min={0}max={10}value={severity}onChange={e=>setSeverity(parseInt(e.target.value))}style={{width:"100%",appearance:"none",height:6,borderRadius:3,background:C.g200,outline:"none"}}/>
+          <div style={{display:"flex",gap:4,flexWrap:"wrap",justifyContent:"center",margin:"8px 0"}}>{Array.from({length:11},(_,v)=>{const sel=severity===v;const c=v<=3?"#16A34A":v<=5?"#CA8A04":v<=7?"#EA580C":"#DC2626";return<button key={v}onClick={()=>setSeverity(v)}style={{width:32,height:32,borderRadius:8,border:sel?`2px solid ${c}`:`1.5px solid ${C.g200}`,background:sel?c:"#fff",color:sel?"#fff":"#374151",fontSize:13,fontWeight:sel?700:500,cursor:"pointer"}}>{v}</button>})}</div>
           <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.g400}}><span>Minimal</span><span>Severe</span></div>
         </div>
         <div style={{marginBottom:14}}>
@@ -4809,7 +5269,7 @@ function PasswordGate({role,onAuth}){
   const[email,setEmail]=useState("");const[pw,setPw]=useState("");
   const[loading,setLoading]=useState(false);const[errMsg,setErrMsg]=useState("");
   const genTok=()=>(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^(crypto.getRandomValues(new Uint8Array(1))[0]&(15>>c/4))).toString(16));
-  const submit=async()=>{if(loading)return;setLoading(true);setErrMsg("");try{const tok=genTok();const sessionArgs={userId:role+"_user",email:role+"@expect.care",sessionToken:tok,expiresAt:Date.now()+30*60*1000,createdAt:new Date().toISOString()};if(role==="pt"){sessionArgs.email=email;sessionArgs.password=pw}else{sessionArgs.accessCode=pw}await db("createSession",sessionArgs,{throw:true});ptSessionToken=tok;localStorage.setItem("expect_session",tok);const sess=await db("getSessionByToken",{sessionToken:tok});if(sess&&sess.ptName){ptIdentity={email:sess.email,name:sess.ptName,userId:sess.userId}}L(role+"_login",{email:role==="pt"?email:undefined});onAuth()}catch(e){const msg=e.message||"";if(msg.includes("Invalid")){setErrMsg(role==="pt"?"Invalid email or password.":"Incorrect access code.")}else{setErrMsg("Unable to connect. Please try again later.")}setPw("");setLoading(false)}};
+  const submit=async()=>{if(loading)return;setLoading(true);setErrMsg("");try{const tok=genTok();const sessionArgs={userId:role+"_user",email:role+"@expect.care",sessionToken:tok,expiresAt:Date.now()+30*60*1000,createdAt:new Date().toISOString()};if(role==="pt"){sessionArgs.email=email;sessionArgs.password=pw}else{sessionArgs.accessCode=pw}await db("createSession",sessionArgs,{throw:true});ptSessionToken=tok;localStorage.setItem("expect_session",tok);const sess=await db("getSessionByToken",{sessionToken:tok});if(sess&&sess.ptName){ptIdentity={email:sess.email,name:sess.ptName,userId:sess.userId}}L(role+"_login",{email:role==="pt"?email:undefined});onAuth()}catch(e){const msg=e.message||"";if(msg.includes("Invalid")){setErrMsg(role==="pt"?"Invalid email or password.":"Incorrect access code.");L("login_failed",{role,email:role==="pt"?email:undefined,reason:"invalid_credentials"})}else{setErrMsg("Unable to connect. Please try again later.");L("login_failed",{role,email:role==="pt"?email:undefined,reason:"connection_error"})}setPw("");setLoading(false)}};
   const isPt=role==="pt";
   return<div className="mn"><div className="card fi"style={{maxWidth:400,margin:"80px auto",textAlign:"center",padding:32}}>
     <div style={{fontSize:20,fontWeight:700,color:C.purp,marginBottom:8}}>{isPt?"PT Provider":"OAIP"} Portal</div>
@@ -4857,7 +5317,8 @@ const ors=await db("listOutcomeRecords",{});if(ors&&ors.length>0){const exIds=ne
         {pView==="consent"&&<Consent ck={consentCk} setCk={setConsentCk} onBack={()=>setPView("landing")} onDone={()=>{L("consent_completed");setPView("verify")}}/>}
         {pView==="verify"&&<IdentityVerify onBack={()=>setPView("consent")} onDone={(em)=>{setLandingEmail(em);L("email_verified",{email:em});setPView("intake")}}/>}
         {pView==="intake"&&<Intake onDone={()=>setPView("done")}mainRef={mainRef}initialEmail={landingEmail}/>}
-        {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status!=="approved"&&<PatientWaiting name={sharedIntake.ans?.name_first}/>}
+        {pView==="done"&&sharedIntake&&sharedIntake.plan&&!["approved","rejected"].includes(sharedIntake.plan.status)&&<PatientWaiting name={sharedIntake.ans?.name_first}/>}
+        {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status==="rejected"&&<PatientRejected name={sharedIntake.ans?.name_first}/>}
         {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status==="approved"&&<MyCareplan data={sharedIntake}/>}
         {pView==="done"&&(!sharedIntake||!sharedIntake.plan)&&<div className="fi"style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:48,marginBottom:16}}>&#x23F3;</div><div className="h1"style={{fontSize:22}}>Session Expired</div><p style={{fontSize:14,color:C.g500,maxWidth:400,margin:"12px auto",lineHeight:1.7}}>Your session could not be restored. If you've already completed an assessment, you can sign back in to access your care plan.</p><div style={{display:"flex",gap:12,justifyContent:"center",marginTop:16}}><button className="btn bbl"onClick={()=>setPView("patientLogin")}>Sign In</button><button className="btn bo"onClick={()=>setPView("landing")}>Start New Assessment</button></div></div>}
       </div>

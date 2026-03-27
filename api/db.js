@@ -349,6 +349,89 @@ export default async function handler(req, res) {
         }
       })();
     }
+
+    // Patient notification — care plan approved
+    if (fn === "functions:updatePatientPlan" && args?.status === "approved" && args?.userId) {
+      (async () => {
+        try {
+          if (!process.env.RESEND_API_KEY) return;
+          const { Resend } = await import("resend");
+          const resend = new Resend(process.env.RESEND_API_KEY);
+          const patient = await client.query("functions:getPatientByUserId", { userId: args.userId });
+          if (!patient?.email) return;
+          const firstName = (patient.name || "").split(" ")[0] || "there";
+          await resend.emails.send({
+            from: "Expect Health <notifications@expect.care>",
+            to: [patient.email],
+            subject: "Your care plan is ready — Expect Health",
+            html: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#F3F4F6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F4F6;padding:40px 20px">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1)">
+<tr><td style="background:linear-gradient(135deg,#4C2C84 0%,#C91A6E 50%,#E879A8 100%);padding:40px 20px;text-align:center">
+<span style="font-size:24px;font-weight:700;color:#fff;letter-spacing:8px">E X P E C T</span>
+</td></tr>
+<tr><td style="padding:48px 40px 40px;text-align:center">
+<h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:#1F2937">Hi ${firstName},</h1>
+<p style="margin:0 0 32px;font-size:16px;color:#4B5563;line-height:1.6">You have a new document available in your secure Expect portal.</p>
+<a href="https://expecthealth.com" style="display:inline-block;background:#4C2C84;color:#fff;font-size:16px;font-weight:600;padding:16px 40px;border-radius:50px;text-decoration:none">Sign in to View</a>
+</td></tr>
+<tr><td style="background:#F9FAFB;padding:24px 40px;border-top:1px solid #F3F4F6">
+<p style="margin:0;font-size:13px;color:#9CA3AF;text-align:center;line-height:1.6;font-style:italic">For your security, this link will expire in 24 hours. If you did not request this, please ignore this email. Do not reply to this email. This inbox is not monitored.</p>
+</td></tr>
+</table>
+<p style="margin:24px 0 0;font-size:12px;color:#9CA3AF;text-align:center">&copy; 2026 Expect. All rights reserved.</p>
+</td></tr>
+</table>
+</body></html>`
+          });
+        } catch (e) {
+          console.error("Patient approval notify error:", e.code || "UNKNOWN");
+        }
+      })();
+    }
+
+    // Patient notification — plan rejected
+    if (fn === "functions:updatePatientPlan" && args?.status === "rejected" && args?.userId) {
+      (async () => {
+        try {
+          if (!process.env.RESEND_API_KEY) return;
+          const { Resend } = await import("resend");
+          const resend = new Resend(process.env.RESEND_API_KEY);
+          const patient = await client.query("functions:getPatientByUserId", { userId: args.userId });
+          if (!patient?.email) return;
+          const firstName = (patient.name || "").split(" ")[0] || "there";
+          await resend.emails.send({
+            from: "Expect Health <notifications@expect.care>",
+            to: [patient.email],
+            subject: "Update on your assessment — Expect Health",
+            html: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#F3F4F6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F3F4F6;padding:40px 20px">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1)">
+<tr><td style="background:linear-gradient(135deg,#4C2C84 0%,#C91A6E 50%,#E879A8 100%);padding:40px 20px;text-align:center">
+<span style="font-size:24px;font-weight:700;color:#fff;letter-spacing:8px">E X P E C T</span>
+</td></tr>
+<tr><td style="padding:48px 40px 40px;text-align:center">
+<h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:#1F2937">Hi ${firstName},</h1>
+<p style="margin:0 0 16px;font-size:16px;color:#4B5563;line-height:1.6">Your physical therapist has reviewed your assessment and would like to discuss next steps with you.</p>
+<p style="margin:0 0 32px;font-size:16px;color:#4B5563;line-height:1.6">Please reach out to our care team so we can help determine the best path forward for your care.</p>
+<a href="mailto:team@expect.care" style="display:inline-block;background:#4C2C84;color:#fff;font-size:16px;font-weight:600;padding:16px 40px;border-radius:50px;text-decoration:none">Contact Care Team</a>
+</td></tr>
+<tr><td style="background:#F9FAFB;padding:24px 40px;border-top:1px solid #F3F4F6">
+<p style="margin:0;font-size:13px;color:#9CA3AF;text-align:center;line-height:1.6;font-style:italic">If you have questions, email us at team@expect.care. Do not reply to this email. This inbox is not monitored.</p>
+</td></tr>
+</table>
+<p style="margin:24px 0 0;font-size:12px;color:#9CA3AF;text-align:center">&copy; 2026 Expect. All rights reserved.</p>
+</td></tr>
+</table>
+</body></html>`
+          });
+        } catch (e) {
+          console.error("Patient rejection notify error:", e.code || "UNKNOWN");
+        }
+      })();
+    }
   } catch (e) {
     console.error("Convex proxy error:", fn, e.code || "UNKNOWN");
     res.status(502).json({ error: "An internal error occurred" });

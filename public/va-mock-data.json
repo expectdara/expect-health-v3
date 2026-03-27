@@ -1,0 +1,216 @@
+{
+  "patient": {
+    "resourceType": "Patient",
+    "id": "32000225",
+    "name": [
+      {
+        "use": "official",
+        "family": "Morrison",
+        "given": ["Judy", "A"]
+      }
+    ],
+    "gender": "female",
+    "birthDate": "1962-07-19",
+    "telecom": [
+      { "system": "phone", "value": "801-555-0147", "use": "home" },
+      { "system": "email", "value": "judy.morrison@example.com" }
+    ],
+    "address": [
+      {
+        "use": "home",
+        "line": ["456 Elm Street"],
+        "city": "Salt Lake City",
+        "state": "UT",
+        "postalCode": "84101"
+      }
+    ]
+  },
+  "conditions": {
+    "resourceType": "Bundle",
+    "type": "searchset",
+    "total": 8,
+    "entry": [
+      {
+        "resource": {
+          "resourceType": "Condition",
+          "id": "cond-1",
+          "clinicalStatus": { "coding": [{ "code": "active" }] },
+          "code": {
+            "coding": [{ "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "N39.3", "display": "Stress incontinence (female)" }],
+            "text": "Stress incontinence"
+          },
+          "recordedDate": "2024-03-15"
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "Condition",
+          "id": "cond-2",
+          "clinicalStatus": { "coding": [{ "code": "active" }] },
+          "code": {
+            "coding": [{ "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "N81.2", "display": "Incomplete uterovaginal prolapse" }],
+            "text": "Uterovaginal prolapse"
+          },
+          "recordedDate": "2024-01-10"
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "Condition",
+          "id": "cond-3",
+          "clinicalStatus": { "coding": [{ "code": "active" }] },
+          "code": {
+            "coding": [{ "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "K59.00", "display": "Constipation, unspecified" }],
+            "text": "Constipation"
+          },
+          "recordedDate": "2023-11-22"
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "Condition",
+          "id": "cond-4",
+          "clinicalStatus": { "coding": [{ "code": "active" }] },
+          "code": {
+            "coding": [{ "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "E11.9", "display": "Type 2 diabetes mellitus without complications" }],
+            "text": "Type 2 diabetes"
+          },
+          "recordedDate": "2020-06-14"
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "Condition",
+          "id": "cond-5",
+          "clinicalStatus": { "coding": [{ "code": "resolved" }] },
+          "code": {
+            "coding": [{ "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "I10", "display": "Essential (primary) hypertension" }],
+            "text": "Hypertension"
+          },
+          "recordedDate": "2019-02-28"
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "Condition",
+          "id": "cond-6",
+          "clinicalStatus": { "coding": [{ "code": "active" }] },
+          "code": {
+            "coding": [{ "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "R35.1", "display": "Nocturia" }],
+            "text": "Nocturia"
+          },
+          "recordedDate": "2024-03-15"
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "Condition",
+          "id": "cond-7",
+          "clinicalStatus": { "coding": [{ "code": "active" }] },
+          "code": {
+            "coding": [{ "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "M54.5", "display": "Low back pain" }],
+            "text": "Low back pain"
+          },
+          "recordedDate": "2023-08-01"
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "Condition",
+          "id": "cond-8",
+          "clinicalStatus": { "coding": [{ "code": "active" }] },
+          "code": {
+            "coding": [{ "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "N94.1", "display": "Dyspareunia" }],
+            "text": "Dyspareunia"
+          },
+          "recordedDate": "2024-02-20"
+        }
+      }
+    ]
+  },
+  "observations": {
+    "resourceType": "Bundle",
+    "type": "searchset",
+    "total": 3,
+    "entry": [
+      {
+        "resource": {
+          "resourceType": "Observation",
+          "id": "obs-1",
+          "status": "final",
+          "code": {
+            "coding": [{ "system": "http://loinc.org", "code": "39156-5", "display": "Body mass index (BMI)" }]
+          },
+          "valueQuantity": { "value": 28.4, "unit": "kg/m2" },
+          "effectiveDateTime": "2024-09-12"
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "Observation",
+          "id": "obs-2",
+          "status": "final",
+          "code": {
+            "coding": [{ "system": "http://loinc.org", "code": "55757-9", "display": "Patient Health Questionnaire 2 item (PHQ-2)" }]
+          },
+          "valueQuantity": { "value": 2, "unit": "score" },
+          "effectiveDateTime": "2024-09-12"
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "Observation",
+          "id": "obs-3",
+          "status": "final",
+          "code": {
+            "coding": [{ "system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel" }]
+          },
+          "component": [
+            {
+              "code": { "coding": [{ "code": "8480-6", "display": "Systolic blood pressure" }] },
+              "valueQuantity": { "value": 138, "unit": "mmHg" }
+            },
+            {
+              "code": { "coding": [{ "code": "8462-4", "display": "Diastolic blood pressure" }] },
+              "valueQuantity": { "value": 82, "unit": "mmHg" }
+            }
+          ],
+          "effectiveDateTime": "2024-09-12"
+        }
+      }
+    ]
+  },
+  "documentReferences": {
+    "resourceType": "Bundle",
+    "type": "searchset",
+    "total": 2,
+    "entry": [
+      {
+        "resource": {
+          "resourceType": "DocumentReference",
+          "id": "doc-1",
+          "status": "current",
+          "type": {
+            "coding": [{ "system": "http://loinc.org", "code": "11506-3", "display": "Progress note" }],
+            "text": "Physical Therapy Progress Note"
+          },
+          "date": "2024-08-20",
+          "description": "Pelvic floor PT evaluation — initial assessment"
+        }
+      },
+      {
+        "resource": {
+          "resourceType": "DocumentReference",
+          "id": "doc-2",
+          "status": "current",
+          "type": {
+            "coding": [{ "system": "http://loinc.org", "code": "28570-0", "display": "Procedure note" }],
+            "text": "Surgical Report"
+          },
+          "date": "2023-06-05",
+          "description": "Hysterectomy — total abdominal"
+        }
+      }
+    ]
+  }
+}

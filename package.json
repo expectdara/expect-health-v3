@@ -6,7 +6,9 @@
   "main": "index.js",
   "scripts": {
     "build": "npx esbuild src/app.jsx --bundle --outfile=public/app.js --jsx=transform --jsx-factory=React.createElement --jsx-fragment=React.Fragment --target=es2020 --platform=browser --minify",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npx playwright test",
+    "test:headed": "npx playwright test --headed",
+    "test:ui": "npx playwright test --ui"
   },
   "repository": {
     "type": "git",
@@ -27,6 +29,7 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "esbuild": "^0.24.0"
   }
 }
