@@ -1,11 +1,11 @@
 // Vercel serverless function — exchanges OAuth 2.0 authorization code for access token
-// via VA Lighthouse Clinical Health API token endpoint (PKCE flow)
+// via VA Lighthouse Patient Health API token endpoint (PKCE flow)
 // Accepts POST with { code, code_verifier, redirect_uri }
 
 export const config = { maxDuration: 15 };
 
 const VA_CLIENT_ID = (process.env.VA_CLIENT_ID || "").trim();
-const VA_TOKEN_URL = (process.env.VA_TOKEN_URL || "https://sandbox-api.va.gov/oauth2/clinical-health/v1/token").trim();
+const VA_TOKEN_URL = (process.env.VA_TOKEN_URL || "https://sandbox-api.va.gov/oauth2/patient-health/v1/token").trim();
 
 // Rate limiter — 10 token exchanges per 5 min per IP
 const rateMap = new Map();
