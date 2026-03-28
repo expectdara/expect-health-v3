@@ -49,7 +49,7 @@ function mapPatient(resource) {
   if (resource.birthDate) profile.dob = resource.birthDate; // YYYY-MM-DD
 
   if (resource.gender) {
-    const genderMap = { male: "Male", female: "Female", other: "Other", unknown: "Other" };
+    const genderMap = { male: "male", female: "female", other: "other", unknown: "other" };
     profile.sex_at_birth = genderMap[resource.gender] || "Other";
   }
 
