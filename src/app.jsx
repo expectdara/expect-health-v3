@@ -15,9 +15,9 @@ const DEMO_MODE=true;  // true = show verification code on screen; false = send 
 
 // VA Lighthouse Integration — OAuth 2.0 + PKCE
 const VA_ENABLED=true; // set false to hide VA connect option
-const VA_CLIENT_ID=(typeof window!=="undefined"&&window.__VA_CLIENT_ID)||"0oa1aa0e4olgtNMQd2p8"; // VA Patient Health API sandbox
+const VA_CLIENT_ID=(typeof window!=="undefined"&&window.__VA_CLIENT_ID)||"0oa1aa1sgrc6Il4r62p8"; // VA Patient Health API sandbox
 const VA_AUTH_URL="https://sandbox-api.va.gov/oauth2/authorization";
-const VA_REDIRECT_URI="https://expect-utah-landing.vercel.app/va-callback"; // must match VA-registered redirect URI
+const VA_REDIRECT_URI="https://expect-health-platform.vercel.app/va-callback"; // must match VA-registered redirect URI
 const VA_SCOPES="patient/Patient.read patient/Condition.read patient/Observation.read patient/DocumentReference.read launch/patient";
 
 const C={
