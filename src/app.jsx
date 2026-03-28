@@ -5282,7 +5282,7 @@ function PasswordGate({role,onAuth}){
 }
 
 function App(){
-  const[mode,setMode]=useState("patient");const[pView,setPView]=useState("landing");const[landingEmail,setLandingEmail]=useState("");const[consentCk,setConsentCk]=useState({});
+  const[mode,setMode]=useState("patient");const[pView,setPView]=useState(()=>{if(typeof window!=="undefined"&&window.location.pathname.includes("va-callback")){const p=new URLSearchParams(window.location.search);if(p.get("code"))return"intake"}return"landing"});const[landingEmail,setLandingEmail]=useState("");const[consentCk,setConsentCk]=useState({});
   const[ptView,setPtView]=useState("dash");
   const[rk,setRk]=useState(0);
   const mainRef=useRef(null);
