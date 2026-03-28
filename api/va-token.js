@@ -5,7 +5,7 @@
 export const config = { maxDuration: 15 };
 
 const VA_CLIENT_ID = (process.env.VA_CLIENT_ID || "").trim();
-const VA_TOKEN_URL = (process.env.VA_TOKEN_URL || "https://sandbox-api.va.gov/oauth2/patient-health/v1/token").trim();
+const VA_TOKEN_URL = (process.env.VA_TOKEN_URL || "https://sandbox-api.va.gov/oauth2/token").trim();
 
 // Rate limiter — 10 token exchanges per 5 min per IP
 const rateMap = new Map();
