@@ -2692,6 +2692,19 @@ function Intake({onDone,mainRef,initialEmail}){
       <div style={{background:C.purp,color:C.white,padding:"6px 14px",borderRadius:20,fontSize:12,fontWeight:600,flexShrink:0}}>{visibleIdx+1} / {visibleSteps.length}</div>
     </div>
     <div style={{display:"flex",gap:3,marginBottom:20}}>{visibleSteps.map((si,vi)=><div key={si}style={{flex:1,height:4,borderRadius:2,background:si<=step?`linear-gradient(90deg,${accent},${C.purp})`:C.g200,transition:"all .3s"}}/>)}</div>
+    {VA_ENABLED&&step===0&&!vaProfile&&!vaLoading&&<div style={{background:"#F0F7EE",border:"1px solid #6B9E4F",borderRadius:10,padding:"16px 20px",margin:"0 0 16px"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}><svg width="20"height="20"viewBox="0 0 20 20"fill="none"><rect width="20"height="20"rx="3"fill="#003F72"/><text x="3"y="15"fill="#fff"fontSize="13"fontWeight="700">VA</text></svg><span style={{fontSize:14,fontWeight:600,color:"#1B4332"}}>Are you a veteran?</span></div>
+      <div style={{fontSize:13,color:"#2D6A4F",lineHeight:1.5,marginBottom:12}}>Securely import your health records from the VA to pre-fill your assessment. This saves time and improves accuracy.</div>
+      {vaError&&<div style={{fontSize:12,color:"#991B1B",marginBottom:8}}>{vaError}</div>}
+      <button onClick={handleVAConnect}className="btn"style={{background:"#003F72",color:"#fff",fontSize:13,fontWeight:600,padding:"10px 20px",borderRadius:8,border:"none",cursor:"pointer"}}>Connect VA Health Records</button>
+      <div style={{fontSize:11,color:"#6B9E4F",marginTop:8}}>You'll be redirected to VA.gov to sign in securely. No data is stored until you review and continue.</div>
+    </div>}
+    {VA_ENABLED&&step===0&&vaLoading&&<div style={{background:"#F0F7EE",border:"1px solid #6B9E4F",borderRadius:10,padding:"16px 20px",margin:"0 0 16px",textAlign:"center"}}><div style={{fontSize:14,color:"#1B4332",fontWeight:600}}>Importing VA health records...</div><div style={{fontSize:12,color:"#6B9E4F",marginTop:4}}>This may take a few seconds.</div></div>}
+    {VA_ENABLED&&step===0&&vaProfile&&<div style={{background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:10,padding:"12px 16px",margin:"0 0 16px"}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><svg width="16"height="16"viewBox="0 0 16 16"fill="none"><circle cx="8"cy="8"r="8"fill="#22C55E"/><path d="M4.5 8L7 10.5L11.5 5.5"stroke="#fff"strokeWidth="2"fill="none"/></svg><span style={{fontSize:14,fontWeight:600,color:"#166534"}}>VA records imported</span></div>
+      <div style={{fontSize:12,color:"#2D6A4F",lineHeight:1.5}}>{vaFieldCount} field{vaFieldCount!==1?"s":""} pre-filled from your VA health records. Review and edit any information below before continuing.</div>
+      {vaProfile.conditions?.relevantDx?.length>0&&<div style={{fontSize:12,color:"#1B4332",marginTop:6}}><strong>Relevant conditions found:</strong> {vaProfile.conditions.relevantDx.map(d=>d.display).join(", ")}</div>}
+    </div>}
     {triedNext&&page1Incomplete&&step===0&&!isUnder18&&!isMale&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>{"Please complete: "+missingFields.join(", ")+"."}</div>}
     {isUnder18&&step===0&&<div className="ra"style={{background:"#FEE2E2",borderColor:C.rd,color:"#991B1B",fontSize:14,fontWeight:600,marginBottom:14}}>⛔ This program is designed for adults 18 years and older. Based on the date of birth you entered, you are under 18. If you believe this is an error, please correct your date of birth above.</div>}
     {isMale&&step===0&&!PHASE2_MALE&&<div className="ra"style={{background:"#EFF6FF",borderColor:"#3B82F6",color:"#1E40AF",fontSize:14,fontWeight:600,marginBottom:14}}>This program is currently designed for women's pelvic health. A male pelvic floor program is coming soon.</div>}
@@ -2734,19 +2747,6 @@ function Intake({onDone,mainRef,initialEmail}){
       <div style={{fontSize:11,color:C.g400,lineHeight:1.5}}>Your password must be at least 8 characters with at least 1 uppercase letter and 1 number. This account will be used to access your care plan securely.</div>
     </div>:steps[step].qs.map(q=><Q key={q.id}q={q}ans={ans}set={set}togM={togM}rfs={rfs}setRfs={setRfs}safetyTriggered={safetyTriggered}setSafetyTriggered={setSafetyTriggered}showSafetyModal={showSafetyModal}setShowSafetyModal={setShowSafetyModal}/>)}
     {step===0&&ans.prenatal_flag&&<div style={{background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:10,padding:"12px 16px",margin:"8px 0 12px",fontSize:13,color:"#166534",lineHeight:1.6}}>We'll tailor your care plan with prenatal-safe modifications so you can safely support your pelvic floor throughout your pregnancy.</div>}
-    {VA_ENABLED&&step===0&&!vaProfile&&!vaLoading&&<div style={{background:"#F0F7EE",border:"1px solid #6B9E4F",borderRadius:10,padding:"16px 20px",margin:"12px 0"}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}><svg width="20"height="20"viewBox="0 0 20 20"fill="none"><rect width="20"height="20"rx="3"fill="#003F72"/><text x="3"y="15"fill="#fff"fontSize="13"fontWeight="700">VA</text></svg><span style={{fontSize:14,fontWeight:600,color:"#1B4332"}}>Are you a veteran?</span></div>
-      <div style={{fontSize:13,color:"#2D6A4F",lineHeight:1.5,marginBottom:12}}>Securely import your health records from the VA to pre-fill your assessment. This saves time and improves accuracy.</div>
-      {vaError&&<div style={{fontSize:12,color:"#991B1B",marginBottom:8}}>{vaError}</div>}
-      <button onClick={handleVAConnect}className="btn"style={{background:"#003F72",color:"#fff",fontSize:13,fontWeight:600,padding:"10px 20px",borderRadius:8,border:"none",cursor:"pointer"}}>Connect VA Health Records</button>
-      <div style={{fontSize:11,color:"#6B9E4F",marginTop:8}}>You'll be redirected to VA.gov to sign in securely. No data is stored until you review and continue.</div>
-    </div>}
-    {VA_ENABLED&&step===0&&vaLoading&&<div style={{background:"#F0F7EE",border:"1px solid #6B9E4F",borderRadius:10,padding:"16px 20px",margin:"12px 0",textAlign:"center"}}><div style={{fontSize:14,color:"#1B4332",fontWeight:600}}>Importing VA health records...</div><div style={{fontSize:12,color:"#6B9E4F",marginTop:4}}>This may take a few seconds.</div></div>}
-    {VA_ENABLED&&step===0&&vaProfile&&<div style={{background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:10,padding:"12px 16px",margin:"8px 0 12px"}}>
-      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><svg width="16"height="16"viewBox="0 0 16 16"fill="none"><circle cx="8"cy="8"r="8"fill="#22C55E"/><path d="M4.5 8L7 10.5L11.5 5.5"stroke="#fff"strokeWidth="2"fill="none"/></svg><span style={{fontSize:14,fontWeight:600,color:"#166534"}}>VA records imported</span></div>
-      <div style={{fontSize:12,color:"#2D6A4F",lineHeight:1.5}}>{vaFieldCount} field{vaFieldCount!==1?"s":""} pre-filled from your VA health records. Review and edit any information below before continuing.</div>
-      {vaProfile.conditions?.relevantDx?.length>0&&<div style={{fontSize:12,color:"#1B4332",marginTop:6}}><strong>Relevant conditions found:</strong> {vaProfile.conditions.relevantDx.map(d=>d.display).join(", ")}</div>}
-    </div>}
     <ConsistencyAlerts ans={ans} currentQIds={steps[step].qs.map(q=>q.id)}/>
     {steps[step].qs.some(q=>q.id==="phq2_mood")&&phq2Score>=2&&<div style={{margin:"16px 0"}}><PsiResourceCard/></div>}
     {triedNext&&page1Incomplete&&step===0&&!isUnder18&&!isMale&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>{"Please complete: "+missingFields.join(", ")+"."}</div>}
