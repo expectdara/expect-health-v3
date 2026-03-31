@@ -20,6 +20,9 @@ const VA_AUTH_URL="https://sandbox-api.va.gov/oauth2/authorization";
 const VA_REDIRECT_URI="https://expect-health-platform.vercel.app/va-callback"; // must match VA-registered redirect URI
 const VA_SCOPES="patient/Patient.read patient/Condition.read patient/Observation.read patient/DocumentReference.read launch/patient";
 
+// Health system partner registry — URL slug → display name
+const PARTNERS={intermountain:"Intermountain Health",uofu:"University of Utah Health",va:"VA Salt Lake City",reborn:"Reborn Pelvic Health & Wellness"};
+
 const C={
   pink:"#FC228A",pinkL:"#FF5CA8",pinkD:"#C91A6E",
   purp:"#4C2C84",purpL:"#6B45A8",purpD:"#3A1F68",
@@ -83,7 +86,7 @@ function buildOutcomeRecord(intake,plan,reviewTimeSec){
   const orIsMale=intake.isMale||a.sex_at_birth==="male";
   const maleBaseline=orIsMale?{ipss:intake.ipss?{total:intake.ipss.total,severity:intake.ipss.severity,storage:intake.ipss.storage,voiding:intake.ipss.voiding,qol:intake.ipss.qol}:null,cpsi:intake.cpsi?{total:intake.cpsi.total,pain:intake.cpsi.pain,urinary:intake.cpsi.urinary,qol:intake.cpsi.qol,severity:intake.cpsi.severity}:null,shim:intake.shim?{total:intake.shim.total,severity:intake.shim.severity}:null,lane:intake.lane||plan.lane||null}:{};
   const rec={id:`OR-${++_orid}-${Date.now()}`,created:new Date().toISOString(),logicVersion:CLINICAL_LOGIC_VERSION,
-    baseline:{isMale:orIsMale,iciq:{total:iciq.total,severity:iciq.severity,subtype:iciq.subtype},fluts:{F:fluts.F,V:fluts.V,total:fluts.total},fsex:{total:fsex.total},gupi:{total:gupi.total,pain:gupi.pain,urinary:gupi.urinary,qol:gupi.qol,severity:gupi.severity},pain:{composite:pain.composite,functional:pain.functional,severity:pain.severity},phq2,age_bracket:ageBracket(a.dob),pregnancy_status:orIsMale?null:(a.pregnancy_status||"none"),delivery_type:orIsMale?null:(a.delivery_type||null),weeks_postpartum:orIsMale?null:(a.delivery_date?Math.round((Date.now()-new Date(a.delivery_date).getTime())/(7*24*60*60*1000)):null),constipation_composite:constip,avoidance_count:avoid.length,cue_preference:a.cue_preference||"default",pudendal_flag:triggers.includes("sitting_long")&&pain.composite>6,med_modify:a.med_modify??0,prior_treatment:a.prior_treatment||[],symptom_triggers:(a.symptoms_trigger||[]).filter(x=>x!=="none"),subtype:iciq.subtype,screener_pain:orIsMale?(a.screen_pain_male==="yes"):(a.screen_pain==="yes"),screener_sexual:orIsMale?(a.screen_sexual_male==="yes"):(a.screen_sexual==="yes"),pelvic_history:(a.pelvic_history||[]).filter(x=>x!=="none"),popdi:orIsMale?null:{score:popdi.score,positiveCount:popdi.positiveCount,bulge:popdi.bulge,highBother:popdi.highBother},...maleBaseline},
+    baseline:{isMale:orIsMale,iciq:{total:iciq.total,severity:iciq.severity,subtype:iciq.subtype},fluts:{F:fluts.F,V:fluts.V,total:fluts.total},fsex:{total:fsex.total},gupi:{total:gupi.total,pain:gupi.pain,urinary:gupi.urinary,qol:gupi.qol,severity:gupi.severity},pain:{composite:pain.composite,functional:pain.functional,severity:pain.severity},phq2,age_bracket:ageBracket(a.dob),pregnancy_status:orIsMale?null:(a.pregnancy_status||"none"),delivery_type:orIsMale?null:(a.delivery_type||null),weeks_postpartum:orIsMale?null:(a.delivery_date?Math.round((Date.now()-new Date(a.delivery_date).getTime())/(7*24*60*60*1000)):null),constipation_composite:constip,avoidance_count:avoid.length,cue_preference:a.cue_preference||"default",pudendal_flag:triggers.includes("sitting_long")&&pain.composite>6,med_modify:a.med_modify??0,prior_treatment:a.prior_treatment||[],symptom_triggers:(a.symptoms_trigger||[]).filter(x=>x!=="none"),subtype:iciq.subtype,screener_pain:orIsMale?(a.screen_pain_male==="yes"):(a.screen_pain==="yes"),screener_sexual:orIsMale?(a.screen_sexual_male==="yes"):(a.screen_sexual==="yes"),pelvic_history:(a.pelvic_history||[]).filter(x=>x!=="none"),popdi:orIsMale?null:{score:popdi.score,positiveCount:popdi.positiveCount,bulge:popdi.bulge,highBother:popdi.highBother},partner:a.partner||null,...maleBaseline},
     treatment:{tier:orIsMale?(plan.tier||"general"):(iciq.total>=13?"Beginner":iciq.total>=6?"Moderate":iciq.total>0?"Advanced":"Foundation"),lane:orIsMale?(plan.lane||null):null,exercise_ids:(plan.ex||[]).map(e=>e.n),exercise_count:(plan.ex||[]).length,adjunct_types:(plan.adjuncts||[]).map(x=>x.type),adjunct_count:(plan.adjuncts||[]).length,cue_type:a.cue_preference||"default",dx_codes:(plan.dx||[]).map(d=>d.c),risk_level:plan.risk||"green",prenatal_modified:!!plan.prenatal,pt_modified_exercises:false,pt_modified_adjuncts:false,pt_modified_goals:false,pt_rejection:false,review_time_seconds:reviewTimeSec||0},
     outcome:null};
   OUTCOME_RECORDS.push(rec);
@@ -2339,10 +2342,11 @@ async function startVAAuth(){const cv=generateCodeVerifier();const ch=base64urlE
 async function fetchVAMockData(){const res=await fetch("/va-mock-data.json");if(!res.ok)throw new Error("Mock data not found");const data=await res.json();const profile={};if(data.patient){const p=data.patient;const n=p.name?.[0];if(n?.given?.[0])profile.name_first=n.given[0];if(n?.family)profile.name_last=n.family;if(p.birthDate)profile.dob=p.birthDate;if(p.gender){profile.sex_at_birth=p.gender==="female"?"female":p.gender==="male"?"male":"other"}if(p.telecom){for(const t of p.telecom){if(t.system==="email"&&t.value&&!profile.email)profile.email=t.value;if(t.system==="phone"&&t.value&&!profile.phone)profile.phone=t.value}}}const conditions=[];if(data.conditions?.entry){for(const e of data.conditions.entry){const r=e.resource;if(r?.code?.coding){for(const c of r.code.coding){if(c.code&&c.display)conditions.push({code:c.code,display:c.display,status:r.clinicalStatus?.coding?.[0]?.code||"unknown"})}}}}const obs={};if(data.observations?.entry){for(const e of data.observations.entry){const r=e.resource;if(r?.code?.coding){for(const c of r.code.coding){if(c.code==="39156-5"&&r.valueQuantity?.value)obs.bmi=Math.round(r.valueQuantity.value*10)/10;if(c.code==="55757-9"&&r.valueQuantity?.value!=null)obs.phq2_va=r.valueQuantity.value}}}}const docs=[];if(data.documentReferences?.entry){for(const e of data.documentReferences.entry){const r=e.resource;docs.push({type:r.type?.coding?.[0]?.display||r.type?.text||"Document",date:r.date||null,description:r.description||null})}}return{profile:{...profile,...obs},conditions,documents:docs,resource_counts:{Patient:data.patient?1:0,Condition:data.conditions?.entry?.length||0,Observation:data.observations?.entry?.length||0,DocumentReference:data.documentReferences?.entry?.length||0}}}
 
 // INTAKE
-function Intake({onDone,mainRef,initialEmail}){
+function Intake({onDone,mainRef,initialEmail,partnerRef}){
   // Draft restore from localStorage
   const initState=(()=>{const raw=sessionStorage.getItem("expect_draft");if(!raw)return null;try{const d=JSON.parse(raw);if(Date.now()-d.ts<259200000)return d}catch(e){}return null})();
-  const[step,setStep]=useState(initState?initState.step:0);const[ans,setAns]=useState(initState?initState.ans:initialEmail?{email:initialEmail}:{});const[rfs,setRfs]=useState([]);
+  const initAns=initState?initState.ans:(()=>{const a={};if(initialEmail)a.email=initialEmail;if(partnerRef)a.partner=partnerRef;return a})();
+  const[step,setStep]=useState(initState?initState.step:0);const[ans,setAns]=useState(initAns);const[rfs,setRfs]=useState([]);
   const[safetyTriggered,setSafetyTriggered]=useState({});const[showSafetyModal,setShowSafetyModal]=useState(null);
   const[triedNext,setTriedNext]=useState(false);
   const[acctPw,setAcctPw]=useState("");const[acctPwC,setAcctPwC]=useState("");const[acctErr,setAcctErr]=useState(null);const doneRef=useRef(false);
@@ -2493,7 +2497,7 @@ function Intake({onDone,mainRef,initialEmail}){
     const cpsi_score=isMale?sCPSI(ans):{total:0,pain:0,urinary:0,qol:0,severity:"N/A"};
     const shim_score=isMale?sSHIM(ans):{total:0,severity:"N/A"};
     const plan=isMale?genPlanMale(ipss,cpsi_score,shim_score,iciq,pain,ans):genPlan(iciq,pain,gupi,ans);
-    L("intake_done",{iciq:iciq.total,pain:pain.composite,gupi:gupi.total,isMale,ipss:ipss.total,cpsi:cpsi_score.total,shim:shim_score.total});
+    L("intake_done",{iciq:iciq.total,pain:pain.composite,gupi:gupi.total,isMale,ipss:ipss.total,cpsi:cpsi_score.total,shim:shim_score.total,partner:ans.partner||null});
     const phq2Total=calcPHQ2(ans);
     const depressionFlag=phq2Total>=3?{positive:true,score:phq2Total,maxScore:6,interest:ans.phq2_interest||0,mood:ans.phq2_mood||0,threshold:3,recommendation:"PHQ-9 full screening recommended. Consider mental health resource referral.",oaip_report:{flagType:"DEPRESSION_RISK",severity:phq2Total>=5?"HIGH":"MODERATE",score:phq2Total,maxScore:6,timestamp:new Date().toISOString()}}:{positive:false,score:phq2Total};
     sharedIntake={ans,iciq,pain,gupi,fluts,fsex,popdi,plan,depressionFlag,prenatalFlag:!!ans.prenatal_flag,name:(ans.name_first||"")+" "+(ans.name_last||""),physicianName:ans.physician_name,physicianFax:ans.physician_fax,physicianNPI:ans.physician_npi_id,safetyAnswerChanged:ans._safety_answer_changed||false,safetyChanges:ans._safety_changes||[],userId:authSession?.userId,screeners:{pain:isMale?ans.screen_pain_male:ans.screen_pain,sexual:isMale?ans.screen_sexual_male:ans.screen_sexual},pelvicHistory:ans.pelvic_history||[],isMale,ipss,cpsi:cpsi_score,shim:shim_score,lane:plan.lane};
@@ -3810,17 +3814,21 @@ function PTReview(){
   const[sel,setSel]=useState(null);const[viewNew,setViewNew]=useState(false);
   const[viewDbPt,setViewDbPt]=useState(null);
   const[dbPatients,setDbPatients]=useState([]);const[dbLoading,setDbLoading]=useState(true);
+  const[partnerFilter,setPartnerFilter]=useState("all");
   const fetchPatients=async()=>{try{const pts=await db("listPatients");if(pts)setDbPatients(pts)}catch(e){}finally{setDbLoading(false)}};
   useEffect(()=>{fetchPatients();const iv=setInterval(fetchPatients,15000);return()=>clearInterval(iv)},[]);
   // Filter out in-progress drafts, incomplete intakes (no plan), and sharedIntake duplicates
-  const filteredDb=dbPatients.filter(p=>p.status!=="in_progress"&&p.plan&&(!sharedIntake||!authSession||p.userId!==authSession.userId));
+  const filteredDb=dbPatients.filter(p=>p.status!=="in_progress"&&p.plan&&(!sharedIntake||!authSession||p.userId!==authSession.userId)&&(partnerFilter==="all"||(p.ans?.partner||null)===(partnerFilter==="direct"?null:partnerFilter)));
+  const partnerSlugs=[...new Set(dbPatients.map(p=>p.ans?.partner).filter(Boolean))];
   if(viewDbPt)return<PTNewIntakeReview data={viewDbPt}onBack={()=>setViewDbPt(null)}/>;
   if(viewNew&&sharedIntake)return<PTNewIntakeReview data={sharedIntake}onBack={()=>setViewNew(false)}/>;
   if(sel)return<PTPatientDetail pt={sel}onBack={()=>setSel(null)}/>;
   const dbPending=filteredDb.filter(p=>p.status==="pending_review").length;
   const pend=DPTS.filter(p=>p.ps==="pending_review").length+dbPending+(sharedIntake?1:0);
   const total=DPTS.length+filteredDb.length+(sharedIntake?1:0);
-  return<div className="fi"><div className="h1">Patient Caseload</div><div className="sub">{pend} pending review · {total} total</div>
+  return<div className="fi"><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><div><div className="h1">Patient Caseload</div><div className="sub">{pend} pending review · {total} total</div></div>
+    {partnerSlugs.length>0&&<select value={partnerFilter} onChange={e=>setPartnerFilter(e.target.value)} style={{padding:"6px 10px",fontSize:12,border:`1px solid ${C.g300}`,borderRadius:6,color:C.g700,background:"#fff",cursor:"pointer"}}><option value="all">All Partners</option><option value="direct">Direct (no partner)</option>{partnerSlugs.map(s=><option key={s} value={s}>{PARTNERS[s]||s}</option>)}</select>}
+    </div>
     {sharedIntake&&<div className="card fi"style={{borderColor:C.pink,cursor:"pointer"}}onClick={()=>setViewNew(true)}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div><div style={{fontWeight:700,fontSize:15,color:C.pink}}> New Intake — {sharedIntake.name}</div>
@@ -3831,7 +3839,7 @@ function PTReview(){
     {filteredDb.map(pt=>{const iciqTotal=pt.iciq?.total??0;const painVal=pt.pain?.composite??pt.pain?.current??0;const submitted=new Date(pt.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric"});return<div className="card fi"key={pt._id}style={{borderColor:pt.status==="pending_review"?C.or:C.gn,cursor:"pointer"}}onClick={()=>setViewDbPt({userId:pt.userId,ans:pt.ans,iciq:pt.iciq,pain:pt.pain,gupi:pt.gupi,fluts:pt.fluts,fsex:pt.fsex,popdi:pt.popdi,plan:pt.plan,depressionFlag:pt.depressionFlag,prenatalFlag:pt.prenatalFlag,name:pt.name,physicianName:pt.physicianName,physicianFax:pt.physicianFax,physicianNPI:pt.physicianNPI,safetyAnswerChanged:pt.safetyAnswerChanged,safetyChanges:pt.safetyChanges,outcomeRecordId:pt.outcomeRecordId,week8:pt.week8,psiRefer:pt.psiRefer})}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div><div style={{fontWeight:700,fontSize:15,color:pt.status==="pending_review"?C.purp:C.g700}}>{pt.name}</div>
-        <div style={{fontSize:12,color:C.g500,marginTop:2}}>Submitted {submitted} · ICIQ {iciqTotal} · Pain {painVal}{pt.plan?.status==="approved"?" · Plan approved":" · Awaiting review"}</div>
+        <div style={{fontSize:12,color:C.g500,marginTop:2}}>Submitted {submitted} · ICIQ {iciqTotal} · Pain {painVal}{pt.plan?.status==="approved"?" · Plan approved":" · Awaiting review"}{pt.ans?.partner?` · ${PARTNERS[pt.ans.partner]||pt.ans.partner}`:""}</div>
         {pt.plan?.review_flags?.length>0&&<div style={{display:"flex",gap:3,marginTop:4,flexWrap:"wrap"}}>{pt.plan.review_flags.map(f=><span key={f.id}className="bdg"style={{background:f.type==="always"?`${C.rd}15`:`${C.or}15`,color:f.type==="always"?C.rd:C.or,fontSize:9}}>{f.label}</span>)}</div>}</div>
         <span className="bdg pu"style={{background:pt.status==="pending_review"?`${C.or}15`:`${C.gn}15`,color:pt.status==="pending_review"?C.or:C.gn}}>{pt.status==="pending_review"?"⏳ Review":"✓ Reviewed"}</span>
       </div></div>})}
@@ -3948,7 +3956,7 @@ function PTNewIntakeReview({data,onBack}){
   return<div className="fi">
     <button className="btn bo bsm"onClick={onBack}style={{marginBottom:16}}>← Back to Patients</button>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-      <div><div className="h1">Intake Review — {nm}</div><div className="sub">DOB: {ans.dob||"—"} · {ans.pregnancy_status?.replace(/_/g," ")||"—"} · Ref: {ans.referral_source||"—"} · Insurance: {ans.insurance_type||"—"}{ans.email?` · Email: ${ans.email}`:""}{ans.phone?` · Phone: ${ans.phone}`:""}{ans.patient_goal?` · Goal: "${ans.patient_goal}"`:""}{ans.physician_npi_id?` · NPI: ${ans.physician_npi_id}`:""}</div></div>
+      <div><div className="h1">Intake Review — {nm}</div><div className="sub">DOB: {ans.dob||"—"} · {ans.pregnancy_status?.replace(/_/g," ")||"—"} · Ref: {ans.referral_source||"—"}{ans.partner?` · Partner: ${PARTNERS[ans.partner]||ans.partner}`:""} · Insurance: {ans.insurance_type||"—"}{ans.email?` · Email: ${ans.email}`:""}{ans.phone?` · Phone: ${ans.phone}`:""}{ans.patient_goal?` · Goal: "${ans.patient_goal}"`:""}{ans.physician_npi_id?` · NPI: ${ans.physician_npi_id}`:""}</div></div>
       <AW/>
     </div>
     {!approved&&<div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,padding:"8px 16px",background:C.purp,borderRadius:10,color:C.white}}>
@@ -5283,6 +5291,7 @@ function PasswordGate({role,onAuth}){
 
 function App(){
   const[mode,setMode]=useState("patient");const[pView,setPView]=useState(()=>{if(typeof window!=="undefined"&&window.location.pathname.includes("va-callback")){const p=new URLSearchParams(window.location.search);if(p.get("code"))return"intake"}return"landing"});const[landingEmail,setLandingEmail]=useState("");const[consentCk,setConsentCk]=useState({});
+  const[partnerRef]=useState(()=>{if(typeof window==="undefined")return null;const p=new URLSearchParams(window.location.search);const slug=p.get("partner");if(slug&&PARTNERS[slug]){if(!window.location.pathname.includes("va-callback"))window.history.replaceState({},"",window.location.pathname);return slug}return null});
   const[ptView,setPtView]=useState("dash");
   const[rk,setRk]=useState(0);
   const mainRef=useRef(null);
@@ -5316,7 +5325,7 @@ const ors=await db("listOutcomeRecords",{});if(ors&&ors.length>0){const exIds=ne
         {pView==="patientLogin"&&<PatientLogin onBack={()=>setPView("landing")} onDone={()=>setPView("done")}/>}
         {pView==="consent"&&<Consent ck={consentCk} setCk={setConsentCk} onBack={()=>setPView("landing")} onDone={()=>{L("consent_completed");setPView("verify")}}/>}
         {pView==="verify"&&<IdentityVerify onBack={()=>setPView("consent")} onDone={(em)=>{setLandingEmail(em);L("email_verified",{email:em});setPView("intake")}}/>}
-        {pView==="intake"&&<Intake onDone={()=>setPView("done")}mainRef={mainRef}initialEmail={landingEmail}/>}
+        {pView==="intake"&&<Intake onDone={()=>setPView("done")}mainRef={mainRef}initialEmail={landingEmail}partnerRef={partnerRef}/>}
         {pView==="done"&&sharedIntake&&sharedIntake.plan&&!["approved","rejected"].includes(sharedIntake.plan.status)&&<PatientWaiting name={sharedIntake.ans?.name_first}/>}
         {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status==="rejected"&&<PatientRejected name={sharedIntake.ans?.name_first}/>}
         {pView==="done"&&sharedIntake&&sharedIntake.plan&&sharedIntake.plan.status==="approved"&&<MyCareplan data={sharedIntake}/>}
