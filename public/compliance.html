@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Expect Health — Security & Compliance Overview</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: #F8F7FC; color: #252238; line-height: 1.7; }
+  .top { background: linear-gradient(135deg, #4C2C84, #3A1F68); padding: 24px 32px; display: flex; align-items: center; gap: 16px; }
+  .top img { height: 32px; }
+  .top .tag { font-size: 11px; color: rgba(255,255,255,.6); background: rgba(255,255,255,.1); padding: 3px 10px; border-radius: 10px; margin-left: 12px; }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 28px; color: #4C2C84; margin-bottom: 8px; }
+  .subtitle { font-size: 14px; color: #6E6887; margin-bottom: 32px; }
+  .updated { font-size: 11px; color: #9CA3AF; margin-bottom: 40px; }
+  h2 { font-size: 18px; color: #4C2C84; margin: 36px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #E2E0EC; }
+  h3 { font-size: 14px; color: #3A1F68; margin: 20px 0 8px; font-weight: 700; }
+  p, li { font-size: 14px; line-height: 1.7; color: #3A3650; }
+  ul { padding-left: 20px; margin: 8px 0 16px; }
+  li { margin-bottom: 6px; }
+  .card { background: #fff; border: 1px solid #E2E0EC; border-radius: 10px; padding: 20px; margin: 16px 0; }
+  .card-h { font-weight: 700; font-size: 14px; color: #4C2C84; margin-bottom: 8px; }
+  .badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 10px; border-radius: 10px; margin-right: 6px; }
+  .badge-green { background: #D1FAE5; color: #065F46; }
+  .badge-blue { background: #DBEAFE; color: #1D4ED8; }
+  .badge-purple { background: #EDE9FE; color: #5B21B6; }
+  .badge-orange { background: #FEF3C7; color: #92400E; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 13px; }
+  th { text-align: left; padding: 10px 12px; background: #F0EFF5; color: #4C2C84; font-weight: 600; border-bottom: 2px solid #E2E0EC; }
+  td { padding: 10px 12px; border-bottom: 1px solid #F0EFF5; color: #3A3650; }
+  .note { background: #FEF3C7; border-left: 3px solid #D97706; padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 16px 0; font-size: 13px; color: #78350F; }
+  .footer { text-align: center; padding: 40px 20px; font-size: 11px; color: #9CA3AF; border-top: 1px solid #E2E0EC; margin-top: 40px; }
+  a { color: #4C2C84; }
+  .toc { background: #fff; border: 1px solid #E2E0EC; border-radius: 10px; padding: 20px 24px; margin: 20px 0 32px; }
+  .toc-title { font-weight: 700; font-size: 13px; color: #4C2C84; margin-bottom: 10px; }
+  .toc a { font-size: 13px; color: #6B45A8; text-decoration: none; display: block; padding: 4px 0; }
+  .toc a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="top">
+  <img src="Expect_Logo_WhiteTM.png" alt="Expect Health">
+  <span class="tag">Confidential — Not for distribution</span>
+</div>
+
+<div class="wrap">
+
+<h1>Security & Compliance Overview</h1>
+<p class="subtitle">Expect Health — AI-Augmented Pelvic Floor Physical Therapy Platform<br>Utah OAIP Regulatory Sandbox Pilot</p>
+<p class="updated">Last updated: March 2026 &nbsp;|&nbsp; Document version: 1.0 &nbsp;|&nbsp; Clinical logic version: 1.0.0</p>
+
+<div class="toc">
+  <div class="toc-title">Contents</div>
+  <a href="#overview">1. Platform Overview</a>
+  <a href="#architecture">2. Architecture & Infrastructure</a>
+  <a href="#data">3. Data Handling & PHI</a>
+  <a href="#access">4. Access Controls & Authentication</a>
+  <a href="#audit">5. Audit Logging</a>
+  <a href="#clinical">6. Clinical Governance</a>
+  <a href="#instruments">7. Validated Instruments</a>
+  <a href="#safety">8. Safety Escalation</a>
+  <a href="#hipaa">9. HIPAA Compliance</a>
+  <a href="#incident">10. Incident Response</a>
+  <a href="#retention">11. Data Retention & Deletion</a>
+  <a href="#vendor">12. Vendor & Subprocessor Security</a>
+  <a href="#regulatory">13. Regulatory Status</a>
+  <a href="#contact">14. Contact</a>
+</div>
+
+<!-- 1. PLATFORM OVERVIEW -->
+<h2 id="overview">1. Platform Overview</h2>
+<p>Expect Health is a digitally-delivered pelvic floor physical therapy platform that provides validated clinical screening, automated care plan generation, and physical therapist oversight. The platform serves patients who lack access to specialty pelvic floor care, particularly in rural and underserved communities.</p>
+
+<div class="card">
+  <div class="card-h">Key Design Principles</div>
+  <ul>
+    <li><strong>Deterministic clinical logic</strong> — All scoring, tier assignment, exercise selection, and ICD-10 diagnosis is rule-based. No large language model (LLM), generative AI, or machine learning is used at runtime for clinical decisions.</li>
+    <li><strong>PT-in-the-loop</strong> — Every care plan is reviewed and approved by a licensed physical therapist before reaching the patient.</li>
+    <li><strong>Auditable by design</strong> — Every clinically significant action generates a timestamped, immutable audit event.</li>
+    <li><strong>Minimal data collection</strong> — The platform collects only the data necessary for clinical screening and care plan generation.</li>
+  </ul>
+</div>
+
+<!-- 2. ARCHITECTURE -->
+<h2 id="architecture">2. Architecture & Infrastructure</h2>
+
+<table>
+  <tr><th>Component</th><th>Provider</th><th>Security Posture</th></tr>
+  <tr><td>Application hosting</td><td>Vercel</td><td><span class="badge badge-green">SOC 2 Type II</span> <span class="badge badge-green">ISO 27001</span></td></tr>
+  <tr><td>Database / backend</td><td>Convex</td><td><span class="badge badge-green">SOC 2 Type II</span> Encrypted at rest (AES-256)</td></tr>
+  <tr><td>CDN / static assets</td><td>Vercel Edge Network</td><td>TLS 1.2+ enforced, global edge caching</td></tr>
+  <tr><td>VA health records API</td><td>VA Lighthouse (sandbox)</td><td><span class="badge badge-blue">FedRAMP</span> OAuth 2.0 + PKCE</td></tr>
+  <tr><td>NPI registry lookup</td><td>CMS NPI Registry (proxied)</td><td>Public API, no PHI transmitted</td></tr>
+</table>
+
+<div class="card">
+  <div class="card-h">Data Flow</div>
+  <p>Patient browser (TLS 1.2+) &rarr; Vercel edge (auto-HTTPS) &rarr; Serverless API functions &rarr; Convex database (encrypted at rest)</p>
+  <p style="margin-top:8px;">PT review portal uses the same architecture with role-based access controls. No PHI is stored client-side beyond the active session. Session data is cleared on timeout or logout.</p>
+</div>
+
+<h3>Transport Security</h3>
+<ul>
+  <li>All traffic served over HTTPS with HSTS enforcement (max-age: 1 year, includeSubDomains)</li>
+  <li>TLS 1.2 minimum enforced by Vercel infrastructure</li>
+  <li>WebSocket connections (voice features) use WSS (TLS-encrypted)</li>
+  <li>No mixed content — CSP blocks HTTP resources</li>
+</ul>
+
+<h3>Security Headers</h3>
+<table>
+  <tr><th>Header</th><th>Value</th><th>Purpose</th></tr>
+  <tr><td>X-Frame-Options</td><td>DENY</td><td>Prevents clickjacking</td></tr>
+  <tr><td>X-Content-Type-Options</td><td>nosniff</td><td>Prevents MIME-type sniffing</td></tr>
+  <tr><td>Strict-Transport-Security</td><td>max-age=31536000; includeSubDomains</td><td>Forces HTTPS for 1 year</td></tr>
+  <tr><td>Referrer-Policy</td><td>strict-origin-when-cross-origin</td><td>Limits referrer leakage</td></tr>
+  <tr><td>Permissions-Policy</td><td>camera=(), geolocation=()</td><td>Denies unnecessary device access</td></tr>
+  <tr><td>Content-Security-Policy</td><td>Restrictive; object-src 'none', base-uri 'self'</td><td>Limits script/resource origins</td></tr>
+</table>
+
+<!-- 3. DATA HANDLING -->
+<h2 id="data">3. Data Handling & PHI</h2>
+
+<h3>PHI Categories Collected</h3>
+<table>
+  <tr><th>Category</th><th>Data Elements</th><th>Purpose</th></tr>
+  <tr><td>Demographics</td><td>Name, DOB, email, phone</td><td>Identity verification, care coordination</td></tr>
+  <tr><td>Clinical screening</td><td>Symptom responses, instrument scores</td><td>Care plan generation, severity scoring</td></tr>
+  <tr><td>Provider information</td><td>Physician name, NPI, fax</td><td>Care coordination, encounter notes</td></tr>
+  <tr><td>Care plan data</td><td>Exercises, adjuncts, diagnoses</td><td>Treatment delivery</td></tr>
+  <tr><td>Outcome data</td><td>Adherence, score changes, NPS</td><td>Clinical effectiveness tracking</td></tr>
+</table>
+
+<h3>PHI Masking</h3>
+<p>The platform includes a built-in PHI masking system for auditor access. When Auditor Mode is enabled, 17 categories of PHI fields are automatically masked using one-way hashing, allowing clinical pattern review without exposing patient identity. Masked fields include: name, email, DOB, phone, fax, SSN, MRN, address, and clinical notes.</p>
+
+<h3>Data Not Collected</h3>
+<ul>
+  <li>Social Security numbers (not required for clinical screening)</li>
+  <li>Financial or payment information (not processed on-platform)</li>
+  <li>Geolocation data (Permissions-Policy: geolocation=())</li>
+  <li>Camera/photo data (Permissions-Policy: camera=())</li>
+</ul>
+
+<!-- 4. ACCESS CONTROLS -->
+<h2 id="access">4. Access Controls & Authentication</h2>
+
+<div class="card">
+  <div class="card-h">Role-Based Access</div>
+  <table>
+    <tr><th>Role</th><th>Access</th><th>Authentication</th></tr>
+    <tr><td>Patient</td><td>Own intake, care plan, adherence tracking</td><td>Email verification + password</td></tr>
+    <tr><td>Physical Therapist</td><td>Patient dashboard, plan review, messaging, audit log</td><td>Credential-based login</td></tr>
+    <tr><td>OAIP Auditor</td><td>De-identified audit stream, outcome metrics, compliance dashboard</td><td>Credential-based login + PHI masking enforced</td></tr>
+  </table>
+</div>
+
+<h3>Session Management</h3>
+<ul>
+  <li><strong>Session timeout:</strong> 15 minutes of inactivity triggers warning; 60-second countdown to automatic logout</li>
+  <li><strong>Activity detection:</strong> Click, keypress, touch, and scroll events reset the idle timer</li>
+  <li><strong>Logout actions:</strong> Server-side session deletion, localStorage clearance, auth token nullification, audit event logged</li>
+  <li><strong>Token storage:</strong> Session tokens stored in localStorage with server-side validation on each request; tokens are cryptographically generated UUIDs</li>
+  <li><strong>Session expiration:</strong> 60-minute absolute expiration enforced server-side regardless of activity</li>
+</ul>
+
+<h3>VA OAuth 2.0 Integration</h3>
+<ul>
+  <li>Authorization Code Grant with PKCE (Proof Key for Code Exchange)</li>
+  <li>Code verifier generated client-side using crypto.getRandomValues (48 bytes)</li>
+  <li>SHA-256 code challenge transmitted; code verifier never leaves the client until token exchange</li>
+  <li>Access tokens used only for immediate FHIR resource fetch, not persisted</li>
+  <li>Redirect URI strictly validated against VA-registered callback URL</li>
+</ul>
+
+<!-- 5. AUDIT LOGGING -->
+<h2 id="audit">5. Audit Logging</h2>
+<p>Every clinically significant action generates an immutable, timestamped audit event that is persisted to the database. The audit system is designed for regulatory transparency and clinical accountability.</p>
+
+<h3>Audited Event Categories</h3>
+<table>
+  <tr><th>Category</th><th>Events</th></tr>
+  <tr><td>Patient flow</td><td>consent_signed, intake_done, plan_generated, account_created</td></tr>
+  <tr><td>Clinical review</td><td>plan_reviewed, plan_rejected, PT_PLAN_MODIFIED, clinical_review_request</td></tr>
+  <tr><td>Safety</td><td>SAFETY_TRIGGER, SAFETY_ANSWER_CHANGED, depression_screen_positive, adverse_event_report, CLINICAL_ESCALATION</td></tr>
+  <tr><td>Outcomes</td><td>OUTCOME_RECORD_CREATED, OUTCOME_RECORD_COMPLETED, daily_adherence_entry, checkin_week8_complete</td></tr>
+  <tr><td>Care coordination</td><td>fax_init, fax_confirmed, plan_sent_patient, referral_initiated, care_coordination_request</td></tr>
+  <tr><td>Session security</td><td>session_timeout, identity_verified, pt_login, oaip_login, manual_logout</td></tr>
+  <tr><td>Clinical regression</td><td>CLINICAL_REGRESSION_FLAG, BOWEL_REGRESSION, EXERCISE_PAIN_REPORT, PT_ALERT_NO_ICIQ_PROGRESS</td></tr>
+</table>
+
+<h3>Audit Record Structure</h3>
+<p>Each event includes: unique event ID, ISO 8601 timestamp, event type, associated user ID, and event-specific details. Events are append-only and cannot be modified or deleted through the application interface.</p>
+
+<!-- 6. CLINICAL GOVERNANCE -->
+<h2 id="clinical">6. Clinical Governance</h2>
+
+<div class="card">
+  <div class="card-h">Clinical Leadership</div>
+  <p><strong>Clinical Lead:</strong> Nicole Dugan, PT, DPT, WCS (Board-Certified Women's Health Clinical Specialist)</p>
+  <p style="margin-top:8px;"><strong>Founder:</strong> Dara Cook</p>
+  <p style="margin-top:8px;">All clinical content — instrument selection, exercise protocols, cue wording, adjunct therapy recommendations — is developed and approved under Dr. Dugan's clinical authority.</p>
+</div>
+
+<h3>Care Plan Review Workflow</h3>
+<ol style="padding-left:20px;margin:8px 0 16px;">
+  <li>Patient completes validated clinical intake (all instruments scored deterministically)</li>
+  <li>Platform generates personalized care plan using rule-based clinical logic</li>
+  <li>Care plan enters PT review queue with risk flags highlighted</li>
+  <li>Licensed PT reviews plan, exercises, adjuncts, and diagnoses</li>
+  <li>PT approves, modifies, or rejects the plan (all actions audit-logged)</li>
+  <li>Only approved plans are delivered to the patient</li>
+</ol>
+
+<h3>Pilot Phase Controls</h3>
+<table>
+  <tr><th>Phase</th><th>PT Review</th><th>Timeline</th></tr>
+  <tr><td><span class="badge badge-purple">Phase 1 (Current)</span></td><td>100% of care plans reviewed by PT</td><td>Months 1-4</td></tr>
+  <tr><td>Phase 2</td><td>Low-risk auto-approved with 10% audit; high-risk 100% PT review</td><td>Months 5-8</td></tr>
+  <tr><td>Phase 3</td><td>Auto-approval expanded; PT review for high-risk + first-time patients</td><td>Months 9-12</td></tr>
+</table>
+
+<h3>Clinical Logic Versioning</h3>
+<p>All scoring algorithms, tier assignments, and care plan generation logic carry a version identifier (<code>CLINICAL_LOGIC_VERSION</code>). Any change to clinical logic increments the version, and the version is recorded in every outcome record for traceability.</p>
+
+<!-- 7. INSTRUMENTS -->
+<h2 id="instruments">7. Validated Clinical Instruments</h2>
+
+<table>
+  <tr><th>Instrument</th><th>Range</th><th>Purpose</th></tr>
+  <tr><td>ICIQ-UI Short Form</td><td>0-21</td><td>Incontinence severity + subtype classification (stress, urge, mixed)</td></tr>
+  <tr><td>ICIQ-FLUTS (selected items)</td><td>F: 0-12, V: 0-12</td><td>Filling symptoms (nocturia, urgency, frequency) + voiding symptoms (hesitancy, straining)</td></tr>
+  <tr><td>ICIQ-FLUTSsex</td><td>0-12</td><td>Sexual symptom burden</td></tr>
+  <tr><td>GUPI (Female)</td><td>0-45</td><td>Genitourinary pain index (pain + urinary + QOL)</td></tr>
+  <tr><td>PHQ-2</td><td>0-6</td><td>Depression screening (validated wording, unmodified)</td></tr>
+  <tr><td>Bristol Stool Scale</td><td>Types 1-7</td><td>Bowel form assessment</td></tr>
+  <tr><td>POPDI-6</td><td>0-100</td><td>Pelvic organ prolapse symptom screening</td></tr>
+  <tr><td>Pain Composite</td><td>Custom</td><td>Multi-domain pelvic pain severity</td></tr>
+</table>
+
+<p>All instrument scoring is deterministic — identical inputs always produce identical outputs. No probabilistic or AI-generated interpretations are applied to clinical scores.</p>
+
+<!-- 8. SAFETY -->
+<h2 id="safety">8. Safety Escalation Pathways</h2>
+
+<div class="card">
+  <div class="card-h">Automated Safety Triggers</div>
+  <table>
+    <tr><th>Trigger</th><th>Condition</th><th>Response</th></tr>
+    <tr><td>Depression flag</td><td>PHQ-2 score &ge; 3</td><td>PSI resource card displayed, OAIP red flag generated, PCP referral recommended</td></tr>
+    <tr><td>Prolapse review</td><td>POPDI-6 positive (bulge or high bother &ge; 3)</td><td>Risk level elevated to yellow, clinician review flagged, in-person referral triggered</td></tr>
+    <tr><td>Pudendal neuralgia</td><td>Sitting trigger + pain composite &gt; 6</td><td>G57.91 diagnosis code added, specialist referral recommended</td></tr>
+    <tr><td>Clinical regression</td><td>Score worsening at week 8 vs. baseline</td><td>PT alert generated, care plan reassessment triggered</td></tr>
+    <tr><td>Exercise pain</td><td>Patient reports pain during exercises</td><td>Audit event logged, PT notification</td></tr>
+    <tr><td>Safety answer change</td><td>Patient revises a safety-critical response</td><td>Both original and revised answers logged for clinical review</td></tr>
+  </table>
+</div>
+
+<h3>Crisis Resources</h3>
+<p>When depression screening is positive (PHQ-2 &ge; 3), the platform immediately displays crisis resources including the 988 Suicide & Crisis Lifeline, Crisis Text Line, and Postpartum Support International helpline. These resources are displayed before any other content and cannot be dismissed without acknowledgment.</p>
+
+<h3>Risk Classification</h3>
+<table>
+  <tr><th>Level</th><th>Criteria</th><th>Handling</th></tr>
+  <tr><td><span class="badge badge-green">Green</span></td><td>No safety flags, low-moderate severity</td><td>Standard PT review (Phase 1: 100%)</td></tr>
+  <tr><td><span class="badge badge-orange">Yellow</span></td><td>Prolapse, high pain, severe incontinence</td><td>PT review required + in-person referral recommended</td></tr>
+  <tr><td><span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 10px;border-radius:10px;background:#FEE2E2;color:#991B1B;">Red</span></td><td>Depression screen positive, adverse event, clinical escalation</td><td>Immediate PT alert + crisis resources + OAIP notification</td></tr>
+</table>
+
+<!-- 9. HIPAA -->
+<h2 id="hipaa">9. HIPAA Compliance</h2>
+
+<div class="card">
+  <div class="card-h">Technical Safeguards</div>
+  <ul>
+    <li><strong>Encryption in transit:</strong> TLS 1.2+ enforced on all connections (HSTS with 1-year max-age)</li>
+    <li><strong>Encryption at rest:</strong> Database provider (Convex) encrypts all stored data using AES-256</li>
+    <li><strong>Access controls:</strong> Role-based access (Patient, PT, OAIP Auditor) with credential-based authentication</li>
+    <li><strong>Audit controls:</strong> Comprehensive audit logging of all access and clinical actions</li>
+    <li><strong>Automatic logoff:</strong> 15-minute idle timeout with 60-second warning</li>
+    <li><strong>Integrity controls:</strong> Audit events are append-only; clinical logic is versioned</li>
+  </ul>
+</div>
+
+<div class="card">
+  <div class="card-h">Administrative Safeguards</div>
+  <ul>
+    <li><strong>Designated Privacy Officer:</strong> Dara Cook, Founder & CEO</li>
+    <li><strong>Workforce training:</strong> All team members with PHI access complete HIPAA training</li>
+    <li><strong>Business Associate Agreements:</strong> BAAs in place with infrastructure providers handling PHI</li>
+    <li><strong>Minimum necessary standard:</strong> Each role accesses only the PHI required for its function</li>
+    <li><strong>OAIP auditor access:</strong> PHI masking enforced — auditors see de-identified data only</li>
+  </ul>
+</div>
+
+<div class="card">
+  <div class="card-h">BAA Readiness</div>
+  <p>Expect Health is prepared to execute a Business Associate Agreement with any covered entity or health system partner. We maintain BAAs with all subprocessors who handle PHI on our behalf.</p>
+</div>
+
+<!-- 10. INCIDENT RESPONSE -->
+<h2 id="incident">10. Incident Response</h2>
+
+<h3>Breach Notification</h3>
+<ul>
+  <li>Suspected breaches are investigated within 24 hours of discovery</li>
+  <li>Affected individuals notified within 30 days of confirmed breach (ahead of the HIPAA 60-day requirement)</li>
+  <li>HHS Office for Civil Rights notified as required by HIPAA Breach Notification Rule</li>
+  <li>Covered entity partners (health systems) notified within 24 hours of confirmed breach</li>
+</ul>
+
+<h3>Vulnerability Management</h3>
+<ul>
+  <li>Dependencies monitored for known vulnerabilities via automated tooling</li>
+  <li>Critical patches applied within 72 hours of disclosure</li>
+  <li>Infrastructure providers (Vercel, Convex) maintain their own vulnerability management and patching programs</li>
+  <li>Application code reviewed for OWASP Top 10 vulnerabilities</li>
+</ul>
+
+<h3>Incident Classification</h3>
+<table>
+  <tr><th>Severity</th><th>Definition</th><th>Response Time</th></tr>
+  <tr><td>Critical</td><td>Confirmed PHI breach, system compromise</td><td>Immediate (within 1 hour)</td></tr>
+  <tr><td>High</td><td>Suspected breach, unauthorized access attempt</td><td>Within 4 hours</td></tr>
+  <tr><td>Medium</td><td>Service disruption affecting patient care</td><td>Within 24 hours</td></tr>
+  <tr><td>Low</td><td>Non-PHI technical issue, UI bug</td><td>Within 72 hours</td></tr>
+</table>
+
+<!-- 11. DATA RETENTION -->
+<h2 id="retention">11. Data Retention & Deletion</h2>
+
+<ul>
+  <li><strong>Active patient data:</strong> Retained for the duration of the care episode plus 7 years (consistent with medical record retention requirements)</li>
+  <li><strong>Audit logs:</strong> Retained for the duration of the OAIP pilot plus 3 years for regulatory compliance</li>
+  <li><strong>Session data:</strong> Automatically purged on logout or timeout; server-side sessions expire after 60 minutes</li>
+  <li><strong>Draft intake data:</strong> Stored in browser sessionStorage; expires after 72 hours; cleared on completion or abandonment</li>
+  <li><strong>VA access tokens:</strong> Used for immediate FHIR fetch only; not persisted to database or localStorage</li>
+</ul>
+
+<h3>Patient Data Deletion</h3>
+<p>Patients may request permanent deletion of all their data by contacting <a href="mailto:privacy@expect.care">privacy@expect.care</a>. Deletion is completed within 45 days of the request. Deletion includes all PHI, intake responses, care plans, adherence data, and outcome records. De-identified audit events may be retained for regulatory compliance.</p>
+
+<!-- 12. VENDOR SECURITY -->
+<h2 id="vendor">12. Vendor & Subprocessor Security</h2>
+
+<table>
+  <tr><th>Vendor</th><th>Role</th><th>Certifications</th><th>BAA</th></tr>
+  <tr><td>Vercel</td><td>Application hosting, serverless functions, CDN</td><td>SOC 2 Type II, ISO 27001</td><td><span class="badge badge-green">Signed</span></td></tr>
+  <tr><td>Convex</td><td>Database, backend functions</td><td>SOC 2 Type II</td><td><span class="badge badge-green">Signed</span></td></tr>
+  <tr><td>VA Lighthouse</td><td>Veteran health records API (sandbox)</td><td>FedRAMP</td><td>N/A (federal API)</td></tr>
+  <tr><td>CMS NPI Registry</td><td>Provider lookup</td><td>N/A (public API, no PHI)</td><td>N/A</td></tr>
+</table>
+
+<p>All subprocessors who handle PHI are bound by Business Associate Agreements. Third-party use or disclosure of patient information is prohibited without patient consent.</p>
+
+<!-- 13. REGULATORY -->
+<h2 id="regulatory">13. Regulatory Status</h2>
+
+<div class="card">
+  <div class="card-h">Utah OAIP Regulatory Sandbox</div>
+  <p><span class="badge badge-purple">In Review</span> Application submitted to the Utah Office of Artificial Intelligence Policy for the AI regulatory sandbox pilot program. Internal review completed; external reviewer evaluation in progress.</p>
+</div>
+
+<div class="card">
+  <div class="card-h">VA Cooperative Research and Development Agreement</div>
+  <p><span class="badge badge-green">Active</span> CRADAs in place with Veterans Health Administration sites nationally. VA Lighthouse API integration active in developer sandbox with OAuth 2.0 + PKCE.</p>
+</div>
+
+<div class="card">
+  <div class="card-h">FDA Classification</div>
+  <p>Expect Health functions as a clinical decision support tool under 21 CFR 3060(o)(1)(E) — it provides recommendations that a licensed PT independently reviews before any care plan reaches a patient. The platform does not make autonomous clinical decisions.</p>
+</div>
+
+<!-- 14. CONTACT -->
+<h2 id="contact">14. Contact</h2>
+
+<div class="card">
+  <table>
+    <tr><td style="font-weight:600;width:180px;">General inquiries</td><td><a href="mailto:dara@expect.care">dara@expect.care</a></td></tr>
+    <tr><td style="font-weight:600;">Privacy & data requests</td><td><a href="mailto:privacy@expect.care">privacy@expect.care</a></td></tr>
+    <tr><td style="font-weight:600;">Security concerns</td><td><a href="mailto:security@expect.care">security@expect.care</a></td></tr>
+    <tr><td style="font-weight:600;">Clinical questions</td><td>Nicole Dugan, PT, DPT, WCS — via <a href="mailto:dara@expect.care">dara@expect.care</a></td></tr>
+  </table>
+</div>
+
+<div class="footer">
+  &copy; 2026 Expect Health, Inc. &nbsp;|&nbsp; This document is confidential and intended for prospective partners and regulatory reviewers only.<br>
+  Do not distribute without permission.
+</div>
+
+</div>
+</body>
+</html>
