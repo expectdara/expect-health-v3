@@ -1402,7 +1402,7 @@ function ConciergeSearch({ans,set}){
       <div className="il">Doctor's Last Name</div>
       <input className="inp"value={searchLast}onChange={e=>setSearchLast(e.target.value)}onKeyDown={e=>e.key==="Enter"&&searchLast.trim()&&doSearch()}placeholder="e.g. Miller"/>
     </div>
-    {!showFilters&&<div style={{marginBottom:10}}><button onClick={()=>setShowFilters(true)}style={{fontSize:11,color:C.purp,background:"none",border:"none",cursor:"pointer"}}>+ Narrow by first name or city</button></div>}
+    {!showFilters&&<div style={{marginBottom:10}}><button onClick={()=>setShowFilters(true)}style={{fontSize:12,color:C.purp,background:"none",border:`1px solid ${C.g200}`,borderRadius:6,cursor:"pointer",padding:"6px 12px"}}>+ Narrow by first name or city</button></div>}
     {showFilters&&<div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
       <div style={{flex:1,minWidth:120}}><div className="il">First Name</div><input className="inp"value={searchFirst}onChange={e=>setSearchFirst(e.target.value)}placeholder="e.g. Kristen"/></div>
       <div style={{flex:1,minWidth:120}}><div className="il">City</div><input className="inp"value={searchCity}onChange={e=>setSearchCity(e.target.value)}placeholder="e.g. Salt Lake City"/></div>
@@ -1412,7 +1412,7 @@ function ConciergeSearch({ans,set}){
     {npiResults!==null&&npiResults.length>0&&<div style={{marginBottom:10}}>
       <div style={{fontSize:11,fontWeight:600,color:C.gn,marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>✓ Verified Providers</div>
       <div style={{border:`1px solid ${C.g200}`,borderRadius:8,overflow:"hidden",maxHeight:240,overflowY:"auto"}}>
-        {npiResults.map(p=><div key={p.id}onClick={()=>selectProvider(p)}style={{padding:"12px 16px",borderBottom:`1px solid ${C.g100}`,cursor:"pointer",background:"white",transition:"background .15s"}}
+        {npiResults.map(p=><div key={p.id}onClick={e=>{e.preventDefault();e.stopPropagation();selectProvider(p)}}style={{padding:"12px 16px",borderBottom:`1px solid ${C.g100}`,cursor:"pointer",background:"white",transition:"background .15s"}}
           onMouseOver={e=>e.currentTarget.style.background="#F0FDF4"}onMouseOut={e=>e.currentTarget.style.background="white"}>
           <div style={{fontWeight:600,fontSize:13,color:C.g800}}>{fmtName(p)}{p.credential?`, ${p.credential}`:""}</div>
           <div style={{fontSize:11,color:C.g500}}>{p.specialty}{p.practice?` · ${p.practice}`:""}</div>
