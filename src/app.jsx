@@ -1215,7 +1215,7 @@ function Q({q,ans,set,togM,rfs,setRfs,safetyTriggered,setSafetyTriggered,showSaf
       /*1*/<svg viewBox="0 0 80 28" width="80" height="28"><circle cx="10" cy="14" r="6" fill="#8B6914"/><circle cx="26" cy="14" r="5" fill="#8B6914"/><circle cx="40" cy="14" r="6.5" fill="#8B6914"/><circle cx="55" cy="14" r="5.5" fill="#8B6914"/><circle cx="69" cy="14" r="5" fill="#8B6914"/></svg>,
       /*2*/<svg viewBox="0 0 80 28" width="80" height="28"><path d="M6 14c0-6 4-9 10-9s8 2 12 1 8-2 12-1 8 2 12 1 8-3 12-2 8 4 10 10c0 6-4 9-10 9s-8-2-12-1-8 2-12 1-8-2-12-1-8 3-12 2S6 20 6 14z" fill="#8B6914"/></svg>,
       /*3*/<svg viewBox="0 0 80 28" width="80" height="28"><rect x="6" y="5" width="68" height="18" rx="9" fill="#7A5C12"/><line x1="20" y1="6" x2="22" y2="22" stroke="#5C440E" strokeWidth="1.2"/><line x1="35" y1="6" x2="33" y2="22" stroke="#5C440E" strokeWidth="1.2"/><line x1="48" y1="6" x2="50" y2="22" stroke="#5C440E" strokeWidth="1.2"/><line x1="62" y1="6" x2="60" y2="22" stroke="#5C440E" strokeWidth="1.2"/></svg>,
-      /*4*/<svg viewBox="0 0 80 28" width="80" height="28"><rect x="6" y="6" width="68" height="16" rx="8" fill="#6B8C23"/></svg>,
+      /*4*/<svg viewBox="0 0 80 28" width="80" height="28"><rect x="6" y="6" width="68" height="16" rx="8" fill="#7A5C12"/></svg>,
       /*5*/<svg viewBox="0 0 80 28" width="80" height="28"><ellipse cx="16" cy="14" rx="10" ry="8" fill="#8B7B2A"/><ellipse cx="38" cy="14" rx="9" ry="7" fill="#8B7B2A"/><ellipse cx="60" cy="14" rx="11" ry="8" fill="#8B7B2A"/></svg>,
       /*6*/<svg viewBox="0 0 80 28" width="80" height="28"><ellipse cx="12" cy="10" rx="7" ry="5" fill="#A08830" opacity=".8"/><ellipse cx="30" cy="16" rx="8" ry="5" fill="#A08830" opacity=".7"/><ellipse cx="48" cy="11" rx="6" ry="4" fill="#A08830" opacity=".75"/><ellipse cx="64" cy="17" rx="7" ry="5" fill="#A08830" opacity=".7"/><ellipse cx="22" cy="22" rx="5" ry="3" fill="#A08830" opacity=".6"/><ellipse cx="55" cy="6" rx="5" ry="3" fill="#A08830" opacity=".6"/></svg>,
       /*7*/<svg viewBox="0 0 80 28" width="80" height="28"><ellipse cx="40" cy="16" rx="34" ry="10" fill="#B8A040" opacity=".4"/><ellipse cx="36" cy="16" rx="24" ry="7" fill="#B8A040" opacity=".3"/></svg>,
@@ -1402,12 +1402,12 @@ function ConciergeSearch({ans,set}){
       <div className="il">Doctor's Last Name</div>
       <input className="inp"value={searchLast}onChange={e=>setSearchLast(e.target.value)}onKeyDown={e=>e.key==="Enter"&&searchLast.trim()&&doSearch()}placeholder="e.g. Miller"/>
     </div>
-    {!showFilters&&<button onClick={()=>setShowFilters(true)}style={{fontSize:11,color:C.purp,background:"none",border:"none",cursor:"pointer",marginBottom:8}}>+ Narrow by first name or city</button>}
-    {showFilters&&<div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
+    {!showFilters&&<div style={{marginBottom:10}}><button onClick={()=>setShowFilters(true)}style={{fontSize:11,color:C.purp,background:"none",border:"none",cursor:"pointer"}}>+ Narrow by first name or city</button></div>}
+    {showFilters&&<div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
       <div style={{flex:1,minWidth:120}}><div className="il">First Name</div><input className="inp"value={searchFirst}onChange={e=>setSearchFirst(e.target.value)}placeholder="e.g. Kristen"/></div>
       <div style={{flex:1,minWidth:120}}><div className="il">City</div><input className="inp"value={searchCity}onChange={e=>setSearchCity(e.target.value)}placeholder="e.g. Salt Lake City"/></div>
     </div>}
-    <button className="btn bpu bsm"onClick={doSearch}disabled={!searchLast.trim()||npiLoading}style={{marginBottom:10,opacity:!searchLast.trim()?0.4:1}}>{npiLoading?"Searching...":"Search Providers"}</button>
+    <button className="btn bpk"onClick={doSearch}disabled={!searchLast.trim()||npiLoading}style={{width:"100%",marginBottom:10,opacity:!searchLast.trim()?0.4:1}}>{npiLoading?"Searching...":"Search Providers"}</button>
 
     {npiResults!==null&&npiResults.length>0&&<div style={{marginBottom:10}}>
       <div style={{fontSize:11,fontWeight:600,color:C.gn,marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>✓ Verified Providers</div>
