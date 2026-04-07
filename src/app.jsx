@@ -908,7 +908,7 @@ function genPlanMale(ipss,cpsi,shim,iciq,pain,intake){
 function needsInPersonCare(plan,iciq,pain,popdi){
   const reasons=[];
   if(plan.review_flags?.some(f=>f.id==="PROLAPSE_REVIEW"))reasons.push({id:"prolapse",label:"Prolapse symptoms detected — pelvic exam recommended",urgency:"soon"});
-  if(plan.review_flags?.some(f=>f.id==="PUDENDAL_SUSPECTED"))reasons.push({id:"pudendal",label:"Suspected pudendal nerve involvement",urgency:"soon"});
+  if(plan.review_flags?.some(f=>f.id==="PUDENDAL_SUSPECTED"))reasons.push({id:"pudendal",label:"Suspected pudendal nerve involvement (possible pinched nerve in the pelvic area)",urgency:"soon"});
   if(plan.review_flags?.some(f=>f.id==="DEPRESSION_RISK"))reasons.push({id:"depression",label:"Depression screening positive — integrated care recommended",urgency:"standard"});
   if((iciq?.total??0)>=13)reasons.push({id:"severe_iciq",label:"Severe incontinence — may benefit from hands-on assessment",urgency:"week4"});
   if((pain?.composite??0)>=6)reasons.push({id:"high_pain",label:"Significant pelvic pain — in-person evaluation recommended",urgency:"soon"});
@@ -1289,7 +1289,8 @@ const MOCK_PROVIDERS=[
 ];
 // Utah in-person referral partner directory — curated list, add providers as partnerships form
 const UTAH_PROVIDERS=[
-  {id:"reborn_pt",name:"Reborn Pelvic Health & Wellness",provider:"Pelvic Floor Physical Therapy",credential:"",cities:["Lehi","Murray","Layton","Provo"],phone:"(801) 702-8475",telehealth:true,intakeMethod:"phone",callNote:"When you call, mention you completed an Expect Health assessment and would like to book an appointment.",payers:["BCBS","Tricare","EMI","Medicare","Select Health","Cash/HSA/FSA"],treats:["bladder","bowel","postpartum","prolapse","pain","sexual"],website:"https://rebornpt.com",type:"pt",relevantFor:["prolapse","pudendal","severe_iciq","high_pain","bulge"],whyMap:{prolapse:"Your screening detected prolapse symptoms — in-person pelvic floor PT can perform a hands-on assessment and fit a pessary (a small, removable device inserted to support pelvic organs) if appropriate.",pudendal:"Your pain pattern suggests possible pudendal nerve involvement — a specialist pelvic floor PT can evaluate this in person.",severe_iciq:"Your incontinence severity may benefit from hands-on biofeedback and manual techniques alongside your home program.",high_pain:"Your pain level is significant — in-person manual therapy can complement your home exercises.",bulge:"You reported a bulge or protrusion — a pelvic floor PT can assess this with a physical exam."}},
+  {id:"intermountain_pt",name:"Intermountain Health",provider:"Pelvic Health Physical Therapy / Pelvic Rehabilitation",credential:"",cities:["Murray","Riverton","American Fork","Layton","Provo","St. George"],phone:"(801) 507-2050",telehealth:false,intakeMethod:"phone",callNote:"When you call, mention you completed an Expect assessment and would like to book with pelvic health physical therapy. Ask the clinic to verify your insurance benefits. Locations: Murray (801) 507-2050 \u00B7 Riverton (801) 285-3400 \u00B7 American Fork (801) 492-2405 \u00B7 Layton (801) 543-6070 \u00B7 Provo (801) 357-1250 \u00B7 St. George (435) 251-2250",payers:[],treats:["bladder","bowel","postpartum","prolapse","pain","sexual"],website:"",type:"pt",relevantFor:["prolapse","pudendal","severe_iciq","high_pain","bulge"],whyMap:{prolapse:"Your screening detected prolapse symptoms \u2014 in-person pelvic floor PT can perform a hands-on assessment.",pudendal:"Your pain pattern suggests possible pudendal nerve involvement (possible pinched nerve in the pelvic area) \u2014 a specialist pelvic floor PT can evaluate this in person.",severe_iciq:"Your incontinence severity may benefit from hands-on biofeedback and manual techniques alongside your home program.",high_pain:"Your pain level is significant \u2014 in-person manual therapy can complement your home exercises.",bulge:"You reported a bulge or protrusion \u2014 a pelvic floor PT can assess this with a physical exam."}},
+  {id:"reborn_pt",name:"Reborn Pelvic Health & Wellness",provider:"Pelvic Floor Physical Therapy",credential:"",cities:["Lehi","Murray","Layton","Provo"],phone:"(801) 702-8475",telehealth:true,intakeMethod:"phone",callNote:"When you call, mention you completed an Expect assessment and would like to book an appointment.",payers:["BCBS","Tricare","EMI","Medicare","Select Health","Cash/HSA/FSA"],treats:["bladder","bowel","postpartum","prolapse","pain","sexual"],website:"https://rebornpt.com",type:"pt",relevantFor:["prolapse","pudendal","severe_iciq","high_pain","bulge"],whyMap:{prolapse:"Your screening detected prolapse symptoms — in-person pelvic floor PT can perform a hands-on assessment and fit a pessary (a small, removable device inserted to support pelvic organs) if appropriate.",pudendal:"Your pain pattern suggests possible pudendal nerve involvement — a specialist pelvic floor PT can evaluate this in person.",severe_iciq:"Your incontinence severity may benefit from hands-on biofeedback and manual techniques alongside your home program.",high_pain:"Your pain level is significant — in-person manual therapy can complement your home exercises.",bulge:"You reported a bulge or protrusion — a pelvic floor PT can assess this with a physical exam."}},
   {id:"uofu_urogyn",name:"University of Utah Urogynecology",provider:"Urogynecology Clinic",credential:"MD",cities:["Salt Lake City"],phone:"(801) 213-2995",telehealth:false,intakeMethod:"phone",payers:[],treats:["mesh","prolapse","complex_incontinence","neurourology"],website:"https://healthcare.utah.edu",type:"specialist",relevantFor:["prolapse","pudendal","bulge"],whyMap:{prolapse:"Your screening detected prolapse symptoms — a urogynecologist can stage the prolapse and discuss treatment options.",pudendal:"Your symptoms suggest possible pudendal nerve involvement — a urogynecologist can perform diagnostic evaluation.",bulge:"You reported a vaginal bulge or protrusion — a urogynecologist can examine this and determine if treatment is needed."}},
   {id:"uofu_mfm",name:"University of Utah Maternal-Fetal Medicine",provider:"MFM Clinic",credential:"MD",cities:["Salt Lake City"],phone:"(801) 213-2995",telehealth:false,intakeMethod:"phone",payers:[],treats:["high_risk_pregnancy"],website:"https://healthcare.utah.edu",type:"specialist",relevantFor:["high_risk_pregnancy"],whyMap:{high_risk_pregnancy:"Your pregnancy history indicates you may benefit from maternal-fetal medicine evaluation."}},
   {id:"huntsman",name:"Huntsman Cancer Institute \u2014 Gynecologic Oncology",provider:"Gynecologic Oncology",credential:"MD",cities:["Salt Lake City"],phone:"(801) 587-7000",telehealth:false,intakeMethod:"phone",payers:[],treats:["gynecologic_cancer"],website:"https://healthcare.utah.edu/huntsmancancerinstitute",type:"specialist",relevantFor:["cancer"],whyMap:{cancer:"Your screening indicated a known or suspected pelvic cancer — a gynecologic oncologist should coordinate your care."}},
@@ -1333,7 +1334,7 @@ function ConciergeSearch({ans,set}){
       if(searchFirst.trim())params.set("first_name",searchFirst.trim());
       if(searchCity.trim())params.set("city",searchCity.trim());
       params.set("state","UT");
-      const mapNpi=(r)=>{const b=r.basic||{};const addr=(r.addresses||[]).find(a=>a.address_purpose==="LOCATION")||(r.addresses||[])[0]||{};const tax=(r.taxonomies||[]).find(t=>t.primary)||{};return{id:`NPI-${r.number}`,first:b.first_name||"",last:b.last_name||"",specialty:tax.desc||"",practice:b.organization_name||addr.organization_name||"",city:addr.city||"",state:addr.state||"",npi:r.number,fax:(addr.fax_number||"").replace(/[^\d]/g,""),credential:b.credential||""}};
+      const mapNpi=(r)=>{const b=r.basic||{};const addr=(r.addresses||[]).find(a=>a.address_purpose==="LOCATION")||(r.addresses||[])[0]||{};const tax=(r.taxonomies||[]).find(t=>t.primary)||{};return{id:`NPI-${r.number}`,first:b.first_name||"",last:b.last_name||"",specialty:tax.desc||"",practice:b.organization_name||addr.organization_name||"",city:addr.city||"",state:addr.state||"",address:addr.address_1||"",address2:addr.address_2||"",zip:addr.postal_code||"",npi:r.number,fax:(addr.fax_number||"").replace(/[^\d]/g,""),credential:b.credential||""}};
       const baseUrl=location.protocol==="file:"?"https://npiregistry.cms.hhs.gov/api/?":"api/npi?";
       let res=await fetch(baseUrl+params);if(!res.ok)throw new Error("NPI lookup failed");let data=await res.json();
       // If city was specified but no results, retry without city
@@ -1370,7 +1371,8 @@ function ConciergeSearch({ans,set}){
               :<span style={{background:C.gn,color:"white",padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:700}}>✓ VERIFIED</span>}
           </div>
           <div style={{fontSize:12,color:"#4B5563",marginTop:3}}>{selected.specialty}{selected.practice?` · ${selected.practice}`:""}</div>
-          <div style={{fontSize:11,color:"#6B7280",marginTop:1}}>{selected.city?`${selected.city}, ${selected.state} · `:""}NPI: {selected.npi}</div>
+          {selected.address&&<div style={{fontSize:11,color:"#6B7280",marginTop:1}}>{selected.address}{selected.address2?`, ${selected.address2}`:""}, {selected.city}, {selected.state} {selected.zip?selected.zip.slice(0,5):""}</div>}
+          {!selected.address&&selected.city&&<div style={{fontSize:11,color:"#6B7280",marginTop:1}}>{selected.city}, {selected.state}</div>}
         </div>
         <button className="btn bo bsm"onClick={()=>{set("concierge_provider",null);set("physician_name","");set("physician_npi_id","");set("physician_fax","");set("physician_fax_verified",false);setResults(null);setNpiResults(null)}}>Change</button>
       </div>
@@ -1392,32 +1394,30 @@ function ConciergeSearch({ans,set}){
     </div>
   </div>;}
 
+  const[showFilters,setShowFilters]=useState(false);
   return<div className="qc fi">
     <div className="qt">Find Your Provider</div>
-    <div style={{fontSize:12,color:C.g500,marginBottom:10}}>Search the CMS NPI Registry and our provider network to connect your Utah-based clinician to your care plan.</div>
-    <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
-      <div style={{flex:1,minWidth:100}}><div className="il">First Name (Optional)</div><input className="inp"value={searchFirst}onChange={e=>setSearchFirst(e.target.value)}placeholder="e.g. Kristen"/></div>
-      <div style={{flex:1,minWidth:120}}><div className="il">Last Name *</div><input className="inp"value={searchLast}onChange={e=>setSearchLast(e.target.value)}placeholder="e.g. Miller"/></div>
-      <div style={{flex:1,minWidth:120}}><div className="il">City (Optional)</div><input className="inp"value={searchCity}onChange={e=>setSearchCity(e.target.value)}placeholder="e.g. Salt Lake City"/></div>
-    </div>
+    <div style={{fontSize:12,color:C.g500,marginBottom:10}}>Enter your doctor's last name and we'll search the national provider registry. Look for the office address you recognize.</div>
     <div style={{marginBottom:8}}>
-      <div className="il">Clinic / Practice Name (Optional — filters demo data)</div>
-      <input className="inp"value={searchPractice}onChange={e=>setSearchPractice(e.target.value)}placeholder="e.g. Women's Health Associates"/>
+      <div className="il">Doctor's Last Name</div>
+      <input className="inp"value={searchLast}onChange={e=>setSearchLast(e.target.value)}onKeyDown={e=>e.key==="Enter"&&searchLast.trim()&&doSearch()}placeholder="e.g. Miller"/>
     </div>
+    {!showFilters&&<button onClick={()=>setShowFilters(true)}style={{fontSize:11,color:C.purp,background:"none",border:"none",cursor:"pointer",marginBottom:8}}>+ Narrow by first name or city</button>}
+    {showFilters&&<div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
+      <div style={{flex:1,minWidth:120}}><div className="il">First Name</div><input className="inp"value={searchFirst}onChange={e=>setSearchFirst(e.target.value)}placeholder="e.g. Kristen"/></div>
+      <div style={{flex:1,minWidth:120}}><div className="il">City</div><input className="inp"value={searchCity}onChange={e=>setSearchCity(e.target.value)}placeholder="e.g. Salt Lake City"/></div>
+    </div>}
     <button className="btn bpu bsm"onClick={doSearch}disabled={!searchLast.trim()||npiLoading}style={{marginBottom:10,opacity:!searchLast.trim()?0.4:1}}>{npiLoading?"Searching...":"Search Providers"}</button>
 
     {npiResults!==null&&npiResults.length>0&&<div style={{marginBottom:10}}>
       <div style={{fontSize:11,fontWeight:600,color:C.gn,marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>✓ Verified Providers</div>
       <div style={{border:`1px solid ${C.g200}`,borderRadius:8,overflow:"hidden",maxHeight:240,overflowY:"auto"}}>
-        {npiResults.map(p=><div key={p.id}onClick={()=>selectProvider(p)}style={{padding:"12px 16px",borderBottom:`1px solid ${C.g100}`,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",background:"white",transition:"background .15s"}}
+        {npiResults.map(p=><div key={p.id}onClick={()=>selectProvider(p)}style={{padding:"12px 16px",borderBottom:`1px solid ${C.g100}`,cursor:"pointer",background:"white",transition:"background .15s"}}
           onMouseOver={e=>e.currentTarget.style.background="#F0FDF4"}onMouseOut={e=>e.currentTarget.style.background="white"}>
-          <div>
-            <div style={{fontWeight:600,fontSize:13,color:C.g800}}>{fmtName(p)}{p.credential?`, ${p.credential}`:""}</div>
-            <div style={{fontSize:11,color:C.g500}}>{p.specialty}{p.practice?` · ${p.practice}`:""}{p.city?` · ${p.city}, ${p.state}`:""}</div>
-          </div>
-          <div style={{textAlign:"right",flexShrink:0}}>
-            <div style={{fontSize:10,color:C.g400}}>NPI: {p.npi}</div>
-          </div>
+          <div style={{fontWeight:600,fontSize:13,color:C.g800}}>{fmtName(p)}{p.credential?`, ${p.credential}`:""}</div>
+          <div style={{fontSize:11,color:C.g500}}>{p.specialty}{p.practice?` · ${p.practice}`:""}</div>
+          {p.address&&<div style={{fontSize:11,color:C.g600,marginTop:2}}>{p.address}{p.address2?`, ${p.address2}`:""}, {p.city}, {p.state} {p.zip?p.zip.slice(0,5):""}</div>}
+          {!p.address&&p.city&&<div style={{fontSize:11,color:C.g600,marginTop:2}}>{p.city}, {p.state}</div>}
         </div>)}
       </div>
     </div>}
@@ -1716,17 +1716,17 @@ function ReferralCard({referral,compact}){
       <a href={"tel:"+prov.phone.replace(/[^\d]/g,"")}style={{display:"inline-flex",alignItems:"center",gap:8,background:C.pink,color:"#fff",padding:"8px 18px",borderRadius:8,fontWeight:600,fontSize:13,textDecoration:"none",cursor:"pointer"}}onClick={()=>L("referral_initiated",{provider:prov.id,reasons:matchedReasons,method:"phone"})}>
         Call to Schedule — {prov.phone}
       </a>
-      <div style={{fontSize:11,color:"#78350F",marginTop:8,lineHeight:1.5}}>{prov.callNote||"When you call, let them know you completed an Expect Health assessment."}</div>
+      <div style={{fontSize:11,color:"#78350F",marginTop:8,lineHeight:1.5}}>{prov.callNote||"When you call, let them know you completed an Expect assessment."}</div>
     </div>})}
     {showPCP&&<div style={{background:"#fff",border:"1px solid #E5E7EB",borderRadius:10,padding:14,marginBottom:10}}>
-      <div style={{fontSize:12,color:"#92400E",lineHeight:1.5,marginBottom:10,padding:"8px 10px",background:"#FEF3C7",borderRadius:6,borderLeft:"3px solid #D97706"}}>{reasonIds.includes("depression")?"Your depression screening was positive — we recommend sharing your results with your primary care provider for follow-up and potential referral to mental health support.":"Your symptoms may benefit from coordination with your primary care provider. Share your Expect Health assessment results at your next visit."}</div>
+      <div style={{fontSize:12,color:"#92400E",lineHeight:1.5,marginBottom:10,padding:"8px 10px",background:"#FEF3C7",borderRadius:6,borderLeft:"3px solid #D97706"}}>{reasonIds.includes("depression")?"Your depression screening was positive — we recommend sharing your results with your primary care provider for follow-up and potential referral to mental health support.":"Your symptoms may benefit from coordination with your primary care provider. Share your Expect assessment results at your next visit."}</div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
         <div>
           <div style={{fontWeight:700,fontSize:14,color:"#111827"}}>Your Primary Care Provider</div>
           <div style={{fontSize:12,color:"#6B7280",marginTop:2}}>PCP / Family Medicine / Internal Medicine</div>
         </div>
       </div>
-      <div style={{fontSize:12,color:"#4B5563",lineHeight:1.6}}>Bring your Expect Health care plan to your next appointment, or call your PCP's office to request a visit. Let them know you completed a pelvic floor assessment with validated screening instruments{reasonIds.includes("depression")?" including a positive PHQ-2 depression screen":""}.</div>
+      <div style={{fontSize:12,color:"#4B5563",lineHeight:1.6}}>Bring your Expect care plan to your next appointment, or call your PCP's office to request a visit. Let them know you completed a pelvic floor assessment with validated screening instruments{reasonIds.includes("depression")?" including a positive PHQ-2 depression screen":""}.</div>
     </div>}
   </div>;
 }
@@ -1742,7 +1742,7 @@ function LandingPage({onDone,onLogin}){
     "I'm constipated or strain to go",
     "I have pelvic symptoms after birth",
   ];
-  const toggleSym=(i)=>setSel(p=>{const n=new Set(p);n.has(i)?n.delete(i):n.add(i);return n});
+  const toggleSym=(i)=>{setSel(p=>{const n=new Set(p);n.has(i)?n.delete(i):n.add(i);return n});L("symptom_self_select",{selected:[symptoms[i]]});onDone()};
   const steps=[
     {n:"1",t:"Answer a few quick questions",d:"A 5-minute assessment about your symptoms. No medical knowledge needed."},
     {n:"2",t:"A licensed PT reviews your results",d:"A Utah Physical Therapist personalizes your care plan before you see it."},
@@ -1787,7 +1787,7 @@ function LandingPage({onDone,onLogin}){
       <div style={{fontSize:11,color:C.g500,lineHeight:1.6}}>This service uses AI to assist licensed professionals in care planning. All treatment decisions are finalized by a human clinician.</div>
     </div>
     <div style={{textAlign:"center"}}>
-      <div style={{fontSize:10,color:C.g400}}>Utah OAIP Regulatory Sandbox Pilot · Expect Health Inc.</div>
+      <div style={{fontSize:10,color:C.g400}}>Utah OAIP Regulatory Sandbox Pilot · Expect Fitness, Inc.</div>
     </div>
   </div>;
 }
@@ -1798,7 +1798,7 @@ function PrivacyModal({onClose}){
     <div style={{background:"#fff",borderRadius:16,padding:"28px 32px",maxWidth:600,width:"92%",maxHeight:"80vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.2)",position:"relative"}} onClick={e=>e.stopPropagation()}>
       <button onClick={onClose} style={{position:"absolute",top:12,right:14,background:"none",border:"none",color:C.g400,cursor:"pointer"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       <div style={{fontSize:20,fontWeight:700,color:C.purp,marginBottom:4}}>Privacy Policy</div>
-      <div style={{fontSize:12,color:C.g400,marginBottom:16}}>Expect Health Inc. · Utah OAIP Regulatory Sandbox Pilot · Effective March 2026</div>
+      <div style={{fontSize:12,color:C.g400,marginBottom:16}}>Expect Fitness, Inc. · Utah OAIP Regulatory Sandbox Pilot · Effective March 2026</div>
 
       <div style={{fontSize:13,color:C.g700,lineHeight:1.8}}>
         <p style={{fontWeight:700,marginTop:0}}>What We Collect</p>
@@ -1849,11 +1849,11 @@ function TermsModal({onClose}){
     <div style={{background:"#fff",borderRadius:16,padding:"28px 32px",maxWidth:600,width:"92%",maxHeight:"80vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.2)",position:"relative"}} onClick={e=>e.stopPropagation()}>
       <button onClick={onClose} style={{position:"absolute",top:12,right:14,background:"none",border:"none",color:C.g400,cursor:"pointer"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       <div style={{fontSize:20,fontWeight:700,color:C.purp,marginBottom:4}}>Terms of Service</div>
-      <div style={{fontSize:12,color:C.g400,marginBottom:16}}>Expect Health Inc. · Utah OAIP Regulatory Sandbox Pilot · Effective March 2026</div>
+      <div style={{fontSize:12,color:C.g400,marginBottom:16}}>Expect Fitness, Inc. · Utah OAIP Regulatory Sandbox Pilot · Effective March 2026</div>
 
       <div style={{fontSize:13,color:C.g700,lineHeight:1.8}}>
         <p style={{fontWeight:700,marginTop:0}}>Pilot Program</p>
-        <p style={{margin:"4px 0 12px"}}>Expect Health is operating under a Regulatory Mitigation Agreement with the Utah Office of Artificial Intelligence Policy. By using this platform, you agree to participate in a supervised pilot program for AI-augmented pelvic floor physical therapy.</p>
+        <p style={{margin:"4px 0 12px"}}>Expect is operating under a Regulatory Mitigation Agreement with the Utah Office of Artificial Intelligence Policy. By using this platform, you agree to participate in a supervised pilot program for AI-augmented pelvic floor physical therapy.</p>
 
         <p style={{fontWeight:700}}>Not Emergency Care</p>
         <p style={{margin:"4px 0 12px"}}>This platform is not a substitute for emergency medical care. If you are experiencing a medical emergency, call 911 or go to your nearest emergency room. This platform does not provide urgent or emergent medical advice.</p>
@@ -1868,7 +1868,7 @@ function TermsModal({onClose}){
         <p style={{margin:"4px 0 12px"}}>Your data will be retained for the duration of the pilot program and any required regulatory reporting period. De-identified data may be retained indefinitely for research and quality improvement. You may request deletion of your identifiable data at any time.</p>
 
         <p style={{fontWeight:700}}>Corrective Care</p>
-        <p style={{margin:"4px 0 12px"}}>If you experience a concern about AI-supported care, Expect Health will provide a no-cost clinical review and, if clinically appropriate, corrective pelvic floor PT follow-up as outlined in our OAIP Regulatory Mitigation Agreement.</p>
+        <p style={{margin:"4px 0 12px"}}>If you experience a concern about AI-supported care, Expect will provide a no-cost clinical review and, if clinically appropriate, corrective pelvic floor PT follow-up as outlined in our OAIP Regulatory Mitigation Agreement.</p>
 
         <p style={{fontWeight:700}}>Contact</p>
         <p style={{margin:"4px 0 0"}}>Questions or concerns: <a href="mailto:team@expect.care" style={{color:C.purp}}>team@expect.care</a></p>
@@ -1889,11 +1889,11 @@ function Consent({onDone,onBack,ck,setCk}){
       :`I understand this platform uses AI — validated through ${PILOT_CASES_VALIDATED}+ supervised cases — to generate my care plan. Complex cases receive direct PT review. All plans are subject to clinical audit.`},
     {id:"pt",tx:"I understand a licensed Utah PT maintains clinical oversight of AI recommendations. The AI supports — but never replaces — clinical judgment."},
     ...(PILOT_PHASE>=2?[{id:"auto",tx:"I understand that lower-complexity plans may be delivered without individual PT review, based on protocols validated during supervised care. Higher-complexity plans continue to receive direct PT review. All plans are subject to a 10% random clinical audit."}]:[]),
-    {id:"rest",tx:"I understand that if I report a concern about AI-supported care, Expect Health will provide a no-cost clinical review and, if clinically appropriate, corrective pelvic floor PT follow-up (telehealth or in-person, as available), subject to program terms."},
+    {id:"rest",tx:"I understand that if I report a concern about AI-supported care, Expect will provide a no-cost clinical review and, if clinically appropriate, corrective pelvic floor PT follow-up (telehealth or in-person, as available), subject to program terms."},
     // Data & Communications
     {id:"coll",tx:"Data collected includes: intake responses, scores, adherence, chat interactions, and outcomes — all in HIPAA-compliant encrypted systems."},
     {id:"data",tx:"I consent to de-identified data sharing with: (1) Utah OAIP for oversight, (2) researchers under IRB protocols, (3) external auditors, (4) anonymized public dashboards."},
-    {id:"coord",tx:"I authorize Expect Health to share my assessment results, treatment plan, and progress reports with the medical provider I identify for care coordination purposes."},
+    {id:"coord",tx:"I authorize Expect to share my assessment results, treatment plan, and progress reports with the medical provider I identify for care coordination purposes."},
     {id:"enotify",tx:"I consent to receive electronic notifications about my care plan. I understand these notifications will link to a secure portal and will not contain sensitive health details directly."},
     // Program & Eligibility
     {id:"pilot",tx:"I understand this is a pilot under a Regulatory Mitigation Agreement with the Utah Office of AI Policy."},
@@ -1986,6 +1986,19 @@ function IdentityVerify({onDone,onBack}){
       </div>}
     </div>
     {onBack&&(st==="input"||st==="sent")&&<div style={{textAlign:"center",marginTop:12}}><button className="btn"onClick={onBack}style={{fontSize:12,color:C.g500}}>← Back to Consent</button></div>}
+  </div>;
+}
+
+// Reusable password input with show/hide toggle
+function PasswordInput(props){
+  const[show,setShow]=useState(false);
+  const{style,...rest}=props;
+  return<div style={{position:"relative",...(style?.width?{width:style.width}:{})}}>
+    <input {...rest} type={show?"text":"password"} style={{...style,paddingRight:36}}/>
+    <button type="button" onClick={()=>setShow(!show)} style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",padding:4,color:C.g400,fontSize:16}} aria-label={show?"Hide password":"Show password"} tabIndex={-1}>
+      {show?<svg width="18"height="18"viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1"y1="1"x2="23"y2="23"/></svg>
+      :<svg width="18"height="18"viewBox="0 0 24 24"fill="none"stroke="currentColor"strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12"cy="12"r="3"/></svg>}
+    </button>
   </div>;
 }
 
@@ -2094,20 +2107,20 @@ function PatientLogin({onDone,onBack}){
     try{
       const tok="tok_"+_uuid();
       await db("createSession",{resetPassword:true,email:addr.trim().toLowerCase(),password:pw,userId:"resetting",sessionToken:tok,expiresAt:Date.now()+60*60*1000,createdAt:new Date().toISOString()},{throw:true});
-      await restoreSession(tok);
+      setSt("reset_success");
     }catch(e){
       setErr("Unable to reset password. Please check your email and try again.");
       setSt("forgot");setPw("");setPw2("");
     }
   };
   return<div className="fi"style={{maxWidth:520,margin:"0 auto"}}>
-    <div className="h1">{st==="forgot"||st==="resetCode"||st==="newpw"?"Reset Password":"Welcome Back"}</div>
-    <div className="sub">{st==="forgot"||st==="resetCode"||st==="newpw"?"Verify your email to set a new password":"Sign in to access your care plan"}</div>
+    <div className="h1">{st==="reset_success"?"Password Reset":st==="forgot"||st==="resetCode"||st==="newpw"?"Reset Password":"Welcome Back"}</div>
+    <div className="sub">{st==="reset_success"?"Your password has been updated":st==="forgot"||st==="resetCode"||st==="newpw"?"Verify your email to set a new password":"Sign in to access your care plan"}</div>
     <div className="card"style={{borderColor:C.blue,padding:32}}>
       {st==="input"&&<div>
         <p style={{fontSize:13,color:C.g600,marginBottom:16,lineHeight:1.7}}>Enter the email and password you created during your intake assessment.</p>
         <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>Email</div><input type="email"value={addr}onChange={e=>setAddr(e.target.value)}placeholder="you@email.com"style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
-        <div style={{marginBottom:4}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>Password</div><input type="password"value={pw}onChange={e=>setPw(e.target.value)}placeholder="Your password"onKeyDown={e=>e.key==="Enter"&&sendCode()}style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
+        <div style={{marginBottom:4}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>Password</div><PasswordInput value={pw}onChange={e=>setPw(e.target.value)}placeholder="Your password"onKeyDown={e=>e.key==="Enter"&&sendCode()}style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
         <div style={{textAlign:"right",marginBottom:12}}><button onClick={()=>{setSt("forgot");setErr(null)}}style={{fontSize:12,color:C.purp,background:"none",border:"none",cursor:"pointer"}}>Forgot password?</button></div>
         {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
         <button className="btn bbl"onClick={sendCode}disabled={sending}style={{width:"100%",opacity:sending?.6:1}}>{sending?"Sending...":"Send Verification Code"}</button>
@@ -2129,8 +2142,8 @@ function PatientLogin({onDone,onBack}){
       </div>}
       {st==="newpw"&&<div>
         <p style={{fontSize:13,color:C.g600,marginBottom:16,lineHeight:1.7}}>Create a new password for your account.</p>
-        <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>New Password</div><input type="password"value={pw}onChange={e=>setPw(e.target.value)}placeholder="8+ characters, 1 uppercase, 1 number"style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
-        <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>Confirm Password</div><input type="password"value={pw2}onChange={e=>setPw2(e.target.value)}placeholder="Re-enter password"onKeyDown={e=>e.key==="Enter"&&submitNewPassword()}style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
+        <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>New Password</div><PasswordInput value={pw}onChange={e=>setPw(e.target.value)}placeholder="8+ characters, 1 uppercase, 1 number"style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
+        <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:600,color:C.g600,marginBottom:4}}>Confirm Password</div><PasswordInput value={pw2}onChange={e=>setPw2(e.target.value)}placeholder="Re-enter password"onKeyDown={e=>e.key==="Enter"&&submitNewPassword()}style={{width:"100%",padding:"10px 14px",fontSize:14,border:`1px solid ${C.g300}`,borderRadius:8,boxSizing:"border-box"}}/></div>
         {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
         <button className="btn bbl"onClick={submitNewPassword}style={{width:"100%"}}>Set Password & Sign In</button>
       </div>}
@@ -2142,6 +2155,12 @@ function PatientLogin({onDone,onBack}){
         {err&&<div style={{fontSize:12,color:C.rd,marginBottom:8}}>{err}</div>}
         <div><button className="btn bbl"onClick={checkCode}disabled={code.length!==6}style={{opacity:code.length===6?1:.4}}>Verify & Sign In</button></div>
         <div style={{marginTop:12}}><button className="btn"onClick={()=>{setSt("input");setCode("");setSentCode(null);setErr(null)}}style={{fontSize:12,color:C.g500}}>Change email or resend</button></div>
+      </div>}
+      {st==="reset_success"&&<div style={{textAlign:"center"}}>
+        <div style={{fontSize:40,marginBottom:12,color:C.gn}}>&#10003;</div>
+        <div style={{fontSize:16,color:C.g800,fontWeight:700,marginBottom:8}}>Password Updated Successfully</div>
+        <div style={{fontSize:13,color:C.g600,marginBottom:20,lineHeight:1.6}}>Your password has been reset. Sign in with your new password to access your care plan.</div>
+        <button className="btn bbl"onClick={()=>{setSt("input");setErr(null);setPw("");setPw2("")}}style={{width:"100%"}}>Sign In</button>
       </div>}
       {st==="verifying"&&<div style={{textAlign:"center"}}>
         <div style={{fontSize:36,marginBottom:12}}>&#x1F50D;</div>
@@ -2378,7 +2397,7 @@ function Intake({onDone,mainRef,initialEmail,partnerRef}){
     try{localStorage.setItem("expect_session",authSession.sessionToken)}catch(e){}
   },[]);
   useEffect(()=>{if(voiceMode!=="techcheck"){if(techAnimRef.current){clearInterval(techAnimRef.current);techAnimRef.current=null}if(techStreamRef.current){techStreamRef.current.getTracks().forEach(t=>t.stop());techStreamRef.current=null}if(playbackUrlRef.current){URL.revokeObjectURL(playbackUrlRef.current);playbackUrlRef.current=null}if(recorderRef.current){try{recorderRef.current.stop()}catch(e){}recorderRef.current=null}}},[voiceMode]);
-  const set=(k,v)=>{setAns(p=>{const next={...p,[k]:v};if(k==="pregnancy_status"){next.prenatal_flag=v==="pregnant";if(v==="pregnant")L("PRENATAL_PROTOCOL_APPLIED",{context:"PATIENT_INDICATED_ACTIVE_PREGNANCY"});if(v!=="pregnant"){delete next.ex_highrisk_preg;setRfs(r=>r.filter(f=>f.id!=="ex_highrisk_preg"));setSafetyTriggered(s=>{const n={...s};delete n.ex_highrisk_preg;return n})}}if(k==="screen_pain"&&v==="no"){["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d","gupi3","gupi4","pain1","pain3","symptoms_trigger"].forEach(key=>delete next[key])}if(k==="screen_pain_male"&&v==="no"){["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d","gupi3","gupi4","pain1","pain3","symptoms_trigger"].forEach(key=>delete next[key])}if(k==="screen_sexual"&&v==="no"){["fs2a","fs2b","fs3a","fs3b","fs4a","fs4b","fs5a","fs5b"].forEach(key=>delete next[key])}if(k==="screen_sexual_male"&&v==="no"){["shim1","shim2","shim3","shim4","shim5"].forEach(key=>delete next[key])}if(k.startsWith("popdi")&&!k.includes("_bother")&&v==="no"){delete next[k+"_bother"]}return next})};
+  const set=(k,v)=>{setAns(p=>{const next={...p,[k]:v};if(k==="pregnancy_status"){next.prenatal_flag=v==="pregnant";if(v==="pregnant")L("PRENATAL_PROTOCOL_APPLIED",{context:"PATIENT_INDICATED_ACTIVE_PREGNANCY"});if(v!=="pregnant"){delete next.ex_highrisk_preg;setRfs(r=>r.filter(f=>f.id!=="ex_highrisk_preg"));setSafetyTriggered(s=>{const n={...s};delete n.ex_highrisk_preg;return n})}}if(k==="screen_pain"&&v==="no"){["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d","gupi3","gupi4","pain1","pain3","symptoms_trigger"].forEach(key=>delete next[key])}if(k==="screen_pain_male"&&v==="no"){["gupi1a","gupi1b","gupi1c","gupi1d","gupi2a","gupi2b","gupi2c","gupi2d","gupi3","gupi4","pain1","pain3","symptoms_trigger"].forEach(key=>delete next[key])}if(k==="screen_sexual"&&v==="no"){["fs2a","fs2b","fs3a","fs3b","fs4a","fs4b","fs5a","fs5b"].forEach(key=>delete next[key])}if(k==="screen_sexual_male"&&v==="no"){["shim1","shim2","shim3","shim4","shim5"].forEach(key=>delete next[key])}if(k.startsWith("popdi")&&!k.includes("_bother")&&v==="no"){delete next[k+"_bother"]}if(k==="cue_preference"&&v==="default"){const cueOpts=["biologic","imaginative","breathing","simple_contract"];next.cue_preference=cueOpts[Math.floor(Math.random()*cueOpts.length)]}return next})};
   const togM=(k,v)=>setAns(p=>{
     const cur=p[k]||[];
     if(cur.includes(v)){return{...p,[k]:cur.filter(x=>x!==v)};}
@@ -2403,7 +2422,7 @@ function Intake({onDone,mainRef,initialEmail,partnerRef}){
     {id:"num_deliveries",text:"How many total deliveries have you had? (Enter 0 if none)",type:"number",min:0,max:20},
     {id:"email",text:"What is your email address?",type:"email",ph:"email@example.com"},
     {id:"phone",text:"What is your phone number?",type:"phone",ph:"(801) 555-0100"},
-    {id:"referral_source",text:"How did you hear about us?",opts:[["A healthcare provider referred me","provider_referral"],["I found you on my own","self"],["My insurance plan referred me","insurance_referral"],["Through the Expect Fitness app","expect_app"],["Other","other"]]},
+    {id:"referral_source",text:"How did you hear about us?",opts:[["A healthcare provider referred me","provider_referral"],["I found you on my own","self"],["My insurance plan referred me","insurance_referral"],["Through the Expect app","expect_app"],["Other","other"]]},
     {id:"physician_npi",text:"Find your physician",type:"concierge_search"},
     {id:"insurance_type",text:"What type of insurance do you have?",opts:[["Utah Medicaid","medicaid"],["Medicare","medicare"],["Commercial insurance","commercial"],["Self-pay","self_pay"],["Uninsured","uninsured"]]},
     {id:"insurance_carrier",text:"What is the name of your insurance company?",type:"text",ph:"e.g. Blue Cross, SelectHealth, Aetna",conditional:a=>a.insurance_type==="commercial"},
@@ -2738,15 +2757,15 @@ function Intake({onDone,mainRef,initialEmail,partnerRef}){
     </div>})}
     {triedNext&&screenerIncomplete&&step===3&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please answer both screening questions to continue.</div>}
     {triedNext&&popdiIncomplete&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please answer all six questions. For each "Yes" answer, please also select how much it bothers you.</div>}
-    {triedNext&&iciqIncomplete&&step===4&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please answer all bladder leakage questions to continue. {ans.iciq1>0&&ans.iciq3===undefined?"Use the slider to rate how much leaking interferes with your life.":""}</div>}
+    {triedNext&&iciqIncomplete&&step===4&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please answer all bladder leakage questions to continue. {ans.iciq1>0&&ans.iciq3===undefined?"Use the scale to rate how much leaking interferes with your life.":""}</div>}
     {triedNext&&bowelIncomplete&&step===6&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please answer the bowel frequency and stool type questions to continue.</div>}
-    {triedNext&&painIncomplete&&step===8&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please use the sliders to rate your current pain level and average pain to continue.</div>}
+    {triedNext&&painIncomplete&&step===8&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please use the scale to rate your current pain level and average pain to continue.</div>}
     {triedNext&&phq2Incomplete&&step===11&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginBottom:14}}>Please answer both mental health screening questions to continue. These are a validated depression screen required for your care plan.</div>}
     {steps[step].custom==="account"?<div className="card"style={{borderColor:C.purp}}>
       <div className="chd">Your Login Credentials</div>
       <div style={{marginBottom:14}}><div className="il">Email</div><input className="inp"type="email"value={ans.email||""}readOnly style={{background:C.g50,color:C.g500}}/><div style={{fontSize:10,color:C.g400,marginTop:2}}>Email from your intake — cannot be changed here</div></div>
-      <div style={{marginBottom:14}}><div className="il">Create Password</div><input className="inp"type="password"value={acctPw}onChange={e=>{setAcctPw(e.target.value);setAcctErr(null)}}placeholder="8+ characters, 1 uppercase, 1 number"/></div>
-      <div style={{marginBottom:14}}><div className="il">Confirm Password</div><input className="inp"type="password"value={acctPwC}onChange={e=>{setAcctPwC(e.target.value);setAcctErr(null)}}placeholder="Re-enter password"/></div>
+      <div style={{marginBottom:14}}><div className="il">Create Password</div><PasswordInput className="inp"value={acctPw}onChange={e=>{setAcctPw(e.target.value);setAcctErr(null)}}placeholder="8+ characters, 1 uppercase, 1 number"/></div>
+      <div style={{marginBottom:14}}><div className="il">Confirm Password</div><PasswordInput className="inp"value={acctPwC}onChange={e=>{setAcctPwC(e.target.value);setAcctErr(null)}}placeholder="Re-enter password"/></div>
       {acctErr&&<div style={{color:C.rd,fontSize:12,marginBottom:8,padding:"6px 10px",background:`${C.rd}10`,borderRadius:6}}>{acctErr}</div>}
       <div style={{fontSize:11,color:C.g400,lineHeight:1.5}}>Your password must be at least 8 characters with at least 1 uppercase letter and 1 number. This account will be used to access your care plan securely.</div>
     </div>:steps[step].qs.map(q=><Q key={q.id}q={q}ans={ans}set={set}togM={togM}rfs={rfs}setRfs={setRfs}safetyTriggered={safetyTriggered}setSafetyTriggered={setSafetyTriggered}showSafetyModal={showSafetyModal}setShowSafetyModal={setShowSafetyModal}/>)}
@@ -2758,7 +2777,7 @@ function Intake({onDone,mainRef,initialEmail,partnerRef}){
     {triedNext&&popdiIncomplete&&step===7&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>Please answer all six questions. For each "Yes" answer, please also select how much it bothers you.</div>}
     {triedNext&&iciqIncomplete&&step===4&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>Please answer all bladder leakage questions to continue.</div>}
     {triedNext&&bowelIncomplete&&step===6&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>Please answer the bowel frequency and stool type questions to continue.</div>}
-    {triedNext&&painIncomplete&&step===8&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>Please use the sliders to rate your current pain level and average pain to continue.</div>}
+    {triedNext&&painIncomplete&&step===8&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>Please use the scale to rate your current pain level and average pain to continue.</div>}
     {triedNext&&phq2Incomplete&&step===11&&<div className="ra"style={{background:"#F0EFF5",borderColor:C.g300,color:C.g600,fontSize:14,fontWeight:500,marginTop:14}}>Please answer both mental health screening questions to continue.</div>}
     {!(isMale&&step===0&&!PHASE2_MALE)&&<div style={{display:"flex",justifyContent:"space-between",marginTop:20}}>
       <button className="btn bo"onClick={()=>step>0&&goStep(prevVisibleStep(step))}disabled={step===0}>← Back</button>
@@ -3572,7 +3591,7 @@ function MyCareplan({data}){
         {referral.needed&&<div className="cp-rpt-section"><div className="cp-rpt-h">In-Person Evaluation Recommended</div>
           {referral.reasons.map((r,i)=><div key={i}className="cp-rpt-row"><span className="cp-rl">{r.id}</span><span className="cp-rv">{r.label}</span></div>)}
           <div className="cp-rpt-row"><span className="cp-rl">Recommended Provider</span><span className="cp-rv">{UTAH_PROVIDERS.map(p=>p.name+" — "+p.phone).join("; ")}</span></div>
-          <div style={{fontSize:11,color:C.g500,marginTop:8,lineHeight:1.5}}>This patient completed an Expect Health digital assessment. Full clinical data available upon request. Contact: support@expecthealth.com</div>
+          <div style={{fontSize:11,color:C.g500,marginTop:8,lineHeight:1.5}}>This patient completed an Expect digital assessment. Full clinical data available upon request. Contact: support@expecthealth.com</div>
         </div>}
         <div className="cp-att"><div className="cp-att-h">PT Attestation</div>
           <p>I have reviewed the AI-generated assessment, the patient's individual responses, and the treatment plan. This plan reflects my independent clinical judgment and is appropriate for this patient's presentation.</p>
@@ -3773,7 +3792,7 @@ function MyCareplan({data}){
       <div className="cp-footer">
         <p>This care plan was generated by Expect's AI-augmented platform and reviewed by a licensed Physical Therapist.</p>
         <p>Expect is a participant in the Utah Office of AI Policy Regulatory Sandbox.</p>
-        <p style={{marginTop:4,fontSize:10}}>© 2026 Expect Health. All rights reserved. <span style={{cursor:"pointer",textDecoration:"underline"}} onClick={()=>setShowPrivacy(true)}>Privacy Policy</span> · <span style={{cursor:"pointer",textDecoration:"underline"}} onClick={()=>setShowTerms(true)}>Terms of Service</span></p>
+        <p style={{marginTop:4,fontSize:10}}>© 2026 Expect. All rights reserved. <span style={{cursor:"pointer",textDecoration:"underline"}} onClick={()=>setShowPrivacy(true)}>Privacy Policy</span> · <span style={{cursor:"pointer",textDecoration:"underline"}} onClick={()=>setShowTerms(true)}>Terms of Service</span></p>
       </div>
       {showPrivacy&&<PrivacyModal onClose={()=>setShowPrivacy(false)}/>}
       {showTerms&&<TermsModal onClose={()=>setShowTerms(false)}/>}
@@ -4250,7 +4269,7 @@ function PTNewIntakeReview({data,onBack}){
           <div style={{fontSize:13,color:C.g600,marginBottom:8}}>Send encounter note + care plan to <b>{ans.physician_name||"Physician"}</b></div>
           <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:10}}>
             <input className="inp"value={ans.physician_fax||""}readOnly style={{width:180}}/>
-            <button className="btn bpu bsm"disabled={faxSt==="sending"||!ans.physician_fax||!editNote}onClick={async()=>{setFaxSt("sending");setFaxErr(null);L("fax_init",{to:ans.physician_name,fax:ans.physician_fax});try{const r=await fetch("/api/fax",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:ans.physician_fax,encounterNote:editNote,patientName:nm,physicianName:ans.physician_name||""})});const d=await r.json();if(r.ok&&d.success){setFaxSt("sent");L("fax_confirmed",{faxId:d.faxId,conf:d.faxId,to:d.to,from:d.from})}else{setFaxSt("error");setFaxErr(d.error||"Fax failed");L("fax_failed",{error:d.error||"Unknown"})}}catch(e){setFaxSt("error");setFaxErr(e.message);L("fax_failed",{error:e.message})}}}style={{opacity:(!ans.physician_fax||!editNote)?0.4:1}}>{faxSt==="sending"?"Sending...":"Send HIPAA Fax"}</button>
+            <button className="btn bpu bsm"disabled={faxSt==="sending"||!ans.physician_fax||!editNote}onClick={async()=>{setFaxSt("sending");setFaxErr(null);L("fax_init",{to:ans.physician_name,fax:ans.physician_fax});if(DEMO_MODE){/* TODO: Remove DEMO_MODE bypass for production — real fax via Telnyx */await new Promise(r=>setTimeout(r,1500));setFaxSt("sent");L("fax_confirmed_demo",{to:ans.physician_name,fax:ans.physician_fax,demo:true});return}try{const r=await fetch("/api/fax",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:ans.physician_fax,encounterNote:editNote,patientName:nm,physicianName:ans.physician_name||""})});const d=await r.json();if(r.ok&&d.success){setFaxSt("sent");L("fax_confirmed",{faxId:d.faxId,conf:d.faxId,to:d.to,from:d.from})}else{setFaxSt("error");setFaxErr(d.error||"Fax failed");L("fax_failed",{error:d.error||"Unknown"})}}catch(e){setFaxSt("error");setFaxErr(e.message);L("fax_failed",{error:e.message})}}}style={{opacity:(!ans.physician_fax||!editNote)?0.4:1}}>{faxSt==="sending"?"Sending...":"Send HIPAA Fax"}</button>
           </div>
           {faxSt==="sent"&&<div style={{padding:"8px 14px",borderRadius:8,background:`${C.gn}10`,color:C.gn,fontSize:12,fontWeight:600}}>Fax queued successfully. Delivery confirmation will be logged.</div>}
           {faxSt==="error"&&<div style={{padding:"8px 14px",borderRadius:8,background:"#FEE2E2",color:"#991B1B",fontSize:12,fontWeight:600}}>Fax failed: {faxErr}. You can retry or download the note to fax manually.</div>}
@@ -4258,17 +4277,18 @@ function PTNewIntakeReview({data,onBack}){
         <div style={{fontSize:13,color:C.g600,marginBottom:8}}>Send encounter note + care plan to <b>{ans.physician_name||"Physician"}</b>{ans.physician_npi_id?<span style={{fontSize:11,color:C.blue,marginLeft:6}}>(NPI: {ans.physician_npi_id} ✓)</span>:""}{ans.prenatal_flag?<span style={{fontSize:11,color:"#065F46",marginLeft:6}}>(Prenatal protocol)</span>:""}</div>
         <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:10}}>
           <input className="inp"value={ans.physician_fax||""}readOnly style={{width:180}}/>
-          <button className="btn bpu bsm"disabled={faxSt==="sending"||!ans.physician_fax||!editNote}onClick={async()=>{setFaxSt("sending");setFaxErr(null);L("fax_init",{to:ans.physician_name,fax:ans.physician_fax});try{const r=await fetch("/api/fax",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:ans.physician_fax,encounterNote:editNote,patientName:nm,physicianName:ans.physician_name||""})});const d=await r.json();if(r.ok&&d.success){setFaxSt("sent");L("fax_confirmed",{faxId:d.faxId,conf:d.faxId,to:d.to,from:d.from})}else{setFaxSt("error");setFaxErr(d.error||"Fax failed");L("fax_failed",{error:d.error||"Unknown"})}}catch(e){setFaxSt("error");setFaxErr(e.message);L("fax_failed",{error:e.message})}}}style={{opacity:(!ans.physician_fax||!editNote)?0.4:1}}>{faxSt==="sending"?"Sending...":"Send HIPAA Fax"}</button>
+          <button className="btn bpu bsm"disabled={faxSt==="sending"||!ans.physician_fax||!editNote}onClick={async()=>{setFaxSt("sending");setFaxErr(null);L("fax_init",{to:ans.physician_name,fax:ans.physician_fax});if(DEMO_MODE){/* TODO: Remove DEMO_MODE bypass for production — real fax via Telnyx */await new Promise(r=>setTimeout(r,1500));setFaxSt("sent");L("fax_confirmed_demo",{to:ans.physician_name,fax:ans.physician_fax,demo:true});return}try{const r=await fetch("/api/fax",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:ans.physician_fax,encounterNote:editNote,patientName:nm,physicianName:ans.physician_name||""})});const d=await r.json();if(r.ok&&d.success){setFaxSt("sent");L("fax_confirmed",{faxId:d.faxId,conf:d.faxId,to:d.to,from:d.from})}else{setFaxSt("error");setFaxErr(d.error||"Fax failed");L("fax_failed",{error:d.error||"Unknown"})}}catch(e){setFaxSt("error");setFaxErr(e.message);L("fax_failed",{error:e.message})}}}style={{opacity:(!ans.physician_fax||!editNote)?0.4:1}}>{faxSt==="sending"?"Sending...":"Send HIPAA Fax"}</button>
         </div>
         {faxSt==="sent"&&<div style={{padding:"8px 14px",borderRadius:8,background:`${C.gn}10`,color:C.gn,fontSize:12,fontWeight:600}}>Fax queued successfully. Delivery confirmation will be logged.</div>}
         {faxSt==="error"&&<div style={{padding:"8px 14px",borderRadius:8,background:"#FEE2E2",color:"#991B1B",fontSize:12,fontWeight:600}}>Fax failed: {faxErr}. You can retry or download the note to fax manually.</div>}
         </>}
       </div>
       <div className="card fi">
+        {/* TODO: Implement real email notification for production — currently demo-only display */}
         <div className="chd"> Patient Notification</div>
-        <div style={{fontSize:13,color:C.g600,marginBottom:8}}><b>{nm}</b> has been notified by email</div>
-        <div style={{fontSize:12,color:C.g500,marginBottom:10}}>An email was automatically sent when the plan was approved. Patient receives a link to sign in and view their care plan.</div>
-        <div style={{display:"flex",alignItems:"center",gap:6,color:C.gn,fontSize:13,fontWeight:600}}><span>&#10003;</span> Email sent to {data?.ans?.email||"patient"}</div>
+        <div style={{fontSize:13,color:C.g600,marginBottom:8}}><b>{nm}</b> will be notified by email</div>
+        <div style={{fontSize:12,color:C.g500,marginBottom:10}}>Patient will receive an email with a link to sign in and view their approved care plan.</div>
+        <div style={{display:"flex",alignItems:"center",gap:6,color:C.gn,fontSize:13,fontWeight:600}}><span>&#10003;</span> Notification queued for {data?.ans?.email||"patient"}</div>
       </div>
     </div>}
     {approved&&((ans.phq2_interest||0)+(ans.phq2_mood||0))>=2&&<div className="card" style={{marginTop:12,borderLeft:"4px solid #D97706"}}>
@@ -4595,7 +4615,7 @@ th{background:#F9FAFB;font-weight:600;color:#6D28D9}
 .metric .val{font-size:22px;font-weight:700;color:#6D28D9}.metric .lbl{font-size:11px;color:#9CA3AF;margin-top:2px}
 .rf{padding:6px 10px;border-left:3px solid #DC2626;margin:4px 0;font-size:13px;background:#FEF2F2;border-radius:0 4px 4px 0}
 @media print{body{margin:20px}}</style></head><body>
-<h1>Expect Health — OAIP Monthly Report</h1>
+<h1>Expect — OAIP Monthly Report</h1>
 <div class="sub">${mo} · Phase ${PILOT_PHASE} · Clinical Logic v${CLINICAL_LOGIC_VERSION}</div>
 <h2>Enrollment & Completion</h2>
 <div><div class="metric"><div class="val">${enrolled}</div><div class="lbl">Enrolled</div></div>
@@ -4625,7 +4645,7 @@ ${redFlags.length>0?`<h2>Active Red Flags</h2>${redFlags.map(rf=>`<div class="rf
 <h2>Compliance Checklist</h2>
 <table><tr><th>Category</th><th>Item</th><th>Status</th></tr>
 ${checks.map(c=>c.items.map(it=>`<tr><td>${c.cat}</td><td>${it.l}</td><td>${it.v||(it.s===1?"Compliant":"Armed")}</td></tr>`).join("")).join("")}</table>
-<div style="text-align:center;margin-top:40px;font-size:11px;color:#9CA3AF">Generated ${now.toLocaleString()} · Expect Health Inc. · Utah OAIP Regulatory Sandbox</div>
+<div style="text-align:center;margin-top:40px;font-size:11px;color:#9CA3AF">Generated ${now.toLocaleString()} · Expect Fitness, Inc. · Utah OAIP Regulatory Sandbox</div>
 </body></html>`);
         w.document.close();
         const doPrint=()=>w.print();
@@ -4659,7 +4679,7 @@ ${checks.map(c=>c.items.map(it=>`<tr><td>${c.cat}</td><td>${it.l}</td><td>${it.v
         const now=new Date();
         const w=window.open("","_blank");
         if(!w){alert("Please allow popups to view the dashboard.");return}
-        w.document.write(`<!DOCTYPE html><html><head><title>Expect Health — Public Pilot Dashboard</title>
+        w.document.write(`<!DOCTYPE html><html><head><title>Expect — Public Pilot Dashboard</title>
 <style>body{font-family:'DM Sans',Helvetica,sans-serif;margin:0;color:#1f2937;background:#F9FAFB}
 .hdr{background:linear-gradient(135deg,#6D28D9,#EC4899);color:#fff;padding:40px;text-align:center}
 .hdr h1{margin:0;font-size:28px;letter-spacing:2px}.hdr .sub{opacity:.8;font-size:14px;margin-top:8px}
@@ -4693,7 +4713,7 @@ h2{color:#6D28D9;font-size:18px;margin-top:32px;border-bottom:2px solid #E5E7EB;
 <div class="card"><div class="val">${medianAdh}%</div><div class="lbl">Median Adherence</div></div>
 <div class="card"><div class="val" style="color:${highConcernRate>0?"#DC2626":"#16A34A"}">${highConcernRate}%</div><div class="lbl">High-Concern Rate</div></div>
 </div>
-<div class="footer">Data is aggregate and de-identified. No protected health information is displayed.<br/>Last updated: ${now.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})} · Expect Health Inc. · Phase ${PILOT_PHASE}</div>
+<div class="footer">Data is aggregate and de-identified. No protected health information is displayed.<br/>Last updated: ${now.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})} · Expect Fitness, Inc. · Phase ${PILOT_PHASE}</div>
 </div></body></html>`);
         w.document.close();
         L("oaip_export",{type:"public_dashboard",enrolled});
@@ -5284,7 +5304,7 @@ function PasswordGate({role,onAuth}){
     <p style={{fontSize:13,color:C.g500,marginBottom:20}}>{isPt?"Sign in with your provider account.":"Enter the oversight access code to continue."}</p>
     {errMsg&&<div style={{color:C.rd,fontSize:12,marginBottom:12}}>{errMsg}</div>}
     {isPt&&<input type="email"className="inp"value={email}onChange={e=>{setEmail(e.target.value);setErrMsg("")}}onKeyDown={e=>e.key==="Enter"&&submit()}placeholder="Email address"style={{textAlign:"center",marginBottom:10}}disabled={loading}/>}
-    <input type="password"className="inp"value={pw}onChange={e=>{setPw(e.target.value);setErrMsg("")}}onKeyDown={e=>e.key==="Enter"&&submit()}placeholder={isPt?"Password":"Access code"}style={{textAlign:"center",marginBottom:16}}disabled={loading}/>
+    <PasswordInput className="inp"value={pw}onChange={e=>{setPw(e.target.value);setErrMsg("")}}onKeyDown={e=>e.key==="Enter"&&submit()}placeholder={isPt?"Password":"Access code"}style={{textAlign:"center",marginBottom:16}}disabled={loading}/>
     <button className="btn bbl"onClick={submit}disabled={loading||(isPt&&!email)}style={{width:"100%",justifyContent:"center",opacity:loading?.6:1}}>{loading?"Verifying...":"Sign In"}</button>
   </div></div>;
 }
@@ -5307,7 +5327,7 @@ const ors=await db("listOutcomeRecords",{});if(ors&&ors.length>0){const exIds=ne
   return<><style>{css}</style>
     {warn&&<SessionWarningModal cd={cd} onDismiss={dismiss}/>}
     <div className="topnav">
-      <div className="topnav-logo"><img src="Expect_Logo_WhiteTM.png" alt="Expect Health" style={{height:"32px"}}/></div>
+      <div className="topnav-logo"><img src="Expect_Logo_WhiteTM.png" alt="Expect" style={{height:"32px"}}/></div>
       <div className="topnav-tabs">
         {modes.map(m=><div key={m.id}className={`tt ${mode===m.id?"a":""}`}onClick={()=>{if(mode!==m.id)setMode(m.id)}}>{m.l}</div>)}
       </div>
