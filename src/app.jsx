@@ -1356,7 +1356,7 @@ function ConciergeSearch({ans,set}){
       let res=await fetch(baseUrl+params);if(!res.ok)throw new Error("NPI lookup failed");let data=await res.json();
       // If city was specified but no results, retry without city
       if(data.result_count===0&&searchCity.trim()){params.delete("city");res=await fetch(baseUrl+params);if(res.ok)data=await res.json()}
-      if(data.result_count>0){const mapped=data.results.map(mapNpi);setNpiResults(mapped);npiCount=mapped.length}else{setNpiErr("No providers found in NPI Registry. Try different spelling or use the concierge option below.")}
+      if(data.result_count>0){const mapped=data.results.map(mapNpi).filter(p=>{const ln=p.last.toLowerCase(),q=searchLast.trim().toLowerCase();return ln===q||ln.startsWith(q)||q.startsWith(ln)});if(mapped.length>0){setNpiResults(mapped);npiCount=mapped.length}else{setNpiErr("No exact matches found. Try the full last name or use the concierge option below.")}}else{setNpiErr("No providers found in NPI Registry. Try different spelling or use the concierge option below.")}
     }catch(e){setNpiErr("NPI Registry lookup unavailable. You can search our demo providers or use the concierge option below.")}
     setNpiLoading(false);
     L("CONCIERGE_SEARCH",{first:searchFirst,last:searchLast,city:searchCity,practice:searchPractice,mockCount:found.length,npiCount});
