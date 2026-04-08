@@ -1331,7 +1331,7 @@ function ConciergeSearch({ans,set}){
   const[conciergeName,setConciergeName]=useState("");
   const[conciergeCity,setConciergeCity]=useState("");
   const[conciergeSubmitted,setConciergeSubmitted]=useState(!!ans.concierge_pending);
-  const selected=ans.concierge_provider;
+  const selected=ans.concierge_provider?(typeof ans.concierge_provider==="string"?JSON.parse(ans.concierge_provider):ans.concierge_provider):null;
 
   const doSearch=async()=>{
     if(!searchLast.trim())return;
@@ -1357,7 +1357,7 @@ function ConciergeSearch({ans,set}){
     L("CONCIERGE_SEARCH",{first:searchFirst,last:searchLast,city:searchCity,practice:searchPractice,mockCount:found.length,npiCount});
   };
   const fmtName=(p)=>{const md=["OB/GYN","Urogynecology","Urology","Family Medicine"].includes(p.specialty);return md?`Dr. ${p.first} ${p.last}`:`${p.first} ${p.last}`};
-  const selectProvider=(p)=>{try{console.log("[selectProvider] selecting:",p.first,p.last,p.npi);set("concierge_provider",p);set("physician_name",fmtName(p));set("physician_npi_id",String(p.npi));
+  const selectProvider=(p)=>{try{console.log("[selectProvider] selecting:",p.first,p.last,p.npi);set("concierge_provider",JSON.stringify(p));set("physician_name",fmtName(p));set("physician_npi_id",String(p.npi));
     const demoFax=DEMO_NPI_FAXES[p.npi];
     if(demoFax){set("physician_fax",demoFax);set("physician_fax_verified",false);set("physician_fax_default","Demo pre-populated")}
     else if(!p.demo&&p.fax){set("physician_fax",p.fax);set("physician_fax_verified",true);set("physician_fax_default","")}
