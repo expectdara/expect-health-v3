@@ -1034,7 +1034,9 @@ function AW(){return<span className="aw">AI-Generated · Requires PT Review</spa
 function NPILookup({q,ans,set}){
   const[npiFirst,setNpiFirst]=useState("");const[npiLast,setNpiLast]=useState("");const[npiState,setNpiState]=useState("UT");
   const[npiResults,setNpiResults]=useState(null);const[npiLoading,setNpiLoading]=useState(false);const[npiErr,setNpiErr]=useState(null);
-  const selected=ans.physician_npi_selected;
+  // Provider selection kept in local state (NOT in ans) to prevent React error #300
+  const[selectedProvider,setSelectedProvider]=useState(null);
+  const selected=selectedProvider||(ans.physician_name&&ans.physician_npi_id?{npi:ans.physician_npi_id,name:ans.physician_name,credential:"",specialty:"",practice:"",city:"",state:"",fax:ans.physician_fax||"",_restored:true}:null);
   const doSearch=async()=>{
     if(!npiFirst.trim()||!npiLast.trim()){setNpiErr("Enter first and last name.");return}
     setNpiLoading(true);setNpiErr(null);setNpiResults(null);
@@ -1054,7 +1056,7 @@ function NPILookup({q,ans,set}){
     }catch(e){setNpiErr("NPI lookup unavailable. Please enter provider info manually below.")}
     setNpiLoading(false);
   };
-  const selectProvider=(p)=>{set("physician_name",p.name+(p.credential?`, ${p.credential}`:""));const demoFax=DEMO_NPI_FAXES[p.npi];const fax=demoFax||p.fax?.replace(/[^\d]/g,"")||"";if(fax){set("physician_fax",fax);set("physician_fax_verified",!!demoFax||!!fax);set("physician_fax_default","")}else{const def=getDefaultFax({practice:p.practice,specialty:p.specialty});if(def){set("physician_fax",def.fax);set("physician_fax_default",def.label);set("physician_fax_verified",false)}else{set("physician_fax","");set("physician_fax_default","");set("physician_fax_verified",false)}}set("physician_npi_id",p.npi);set("physician_npi_selected",p)};
+  const selectProvider=(p)=>{set("physician_name",p.name+(p.credential?`, ${p.credential}`:""));const demoFax=DEMO_NPI_FAXES[p.npi];const fax=demoFax||p.fax?.replace(/[^\d]/g,"")||"";if(fax){set("physician_fax",fax);set("physician_fax_verified",!!demoFax||!!fax);set("physician_fax_default","")}else{const def=getDefaultFax({practice:p.practice,specialty:p.specialty});if(def){set("physician_fax",def.fax);set("physician_fax_default",def.label);set("physician_fax_verified",false)}else{set("physician_fax","");set("physician_fax_default","");set("physician_fax_verified",false)}}set("physician_npi_id",p.npi);setSelectedProvider(p)};
   return<div className="qc fi"><div className="qt">{q.text}</div>
     <div style={{fontSize:12,color:C.g500,marginBottom:10}}>Search the CMS NPI Registry to find your physician. This ensures accurate provider information for your care team.</div>
     {!selected?<>
@@ -1083,7 +1085,7 @@ function NPILookup({q,ans,set}){
           <div style={{fontSize:11,color:"#4B5563",marginTop:2}}>{selected.specialty} · NPI: {selected.npi}</div>
           {selected.fax&&<div style={{fontSize:11,color:C.blue,marginTop:1}}>Fax: {selected.fax}</div>}
         </div>
-        <button className="btn bo bsm"onClick={()=>{set("physician_npi_selected",null);set("physician_name","");set("physician_fax","");set("physician_npi_id","")}}>Change</button>
+        <button className="btn bo bsm"onClick={()=>{setSelectedProvider(null);set("physician_name","");set("physician_fax","");set("physician_npi_id","")}}>Change</button>
       </div>
     </div>}
   </div>;
@@ -1331,7 +1333,9 @@ function ConciergeSearch({ans,set}){
   const[conciergeName,setConciergeName]=useState("");
   const[conciergeCity,setConciergeCity]=useState("");
   const[conciergeSubmitted,setConciergeSubmitted]=useState(!!ans.concierge_pending);
-  const selected=ans.concierge_provider?(typeof ans.concierge_provider==="string"?JSON.parse(ans.concierge_provider):ans.concierge_provider):null;
+  // Provider selection kept in local state (NOT in ans) to prevent React error #300
+  const[selectedProvider,setSelectedProvider]=useState(null);
+  const selected=selectedProvider||(ans.physician_name&&ans.physician_npi_id?{first:"",last:"",specialty:"",practice:"",city:"",state:"",address:"",address2:"",zip:"",npi:ans.physician_npi_id,fax:ans.physician_fax||"",credential:"",_restored:true}:null);
 
   const doSearch=async()=>{
     if(!searchLast.trim())return;
@@ -1357,7 +1361,7 @@ function ConciergeSearch({ans,set}){
     L("CONCIERGE_SEARCH",{first:searchFirst,last:searchLast,city:searchCity,practice:searchPractice,mockCount:found.length,npiCount});
   };
   const fmtName=(p)=>{const md=["OB/GYN","Urogynecology","Urology","Family Medicine"].includes(p.specialty);return md?`Dr. ${p.first} ${p.last}`:`${p.first} ${p.last}`};
-  const selectProvider=(p)=>{try{console.log("[selectProvider] selecting:",p.first,p.last,p.npi);set("concierge_provider",JSON.stringify(p));set("physician_name",fmtName(p));set("physician_npi_id",String(p.npi));
+  const selectProvider=(p)=>{try{console.log("[selectProvider] selecting:",p.first,p.last,p.npi);setSelectedProvider(p);set("physician_name",fmtName(p));set("physician_npi_id",String(p.npi));
     const demoFax=DEMO_NPI_FAXES[p.npi];
     if(demoFax){set("physician_fax",demoFax);set("physician_fax_verified",false);set("physician_fax_default","Demo pre-populated")}
     else if(!p.demo&&p.fax){set("physician_fax",p.fax);set("physician_fax_verified",true);set("physician_fax_default","")}
@@ -1368,7 +1372,7 @@ function ConciergeSearch({ans,set}){
     setConciergeSubmitted(true);
     set("concierge_pending",{practice:conciergeName,city:conciergeCity,ts:new Date().toISOString()});
     set("physician_name",conciergeName+" (Pending Verification)");
-    set("physician_fax","");set("physician_npi_id","");set("physician_fax_verified",false);set("concierge_provider",null);
+    set("physician_fax","");set("physician_npi_id","");set("physician_fax_verified",false);setSelectedProvider(null);
     L("CONCIERGE_VERIFICATION_REQUEST",{practice:conciergeName,city:conciergeCity});
   };
 
@@ -1386,7 +1390,7 @@ function ConciergeSearch({ans,set}){
           {selected.address&&<div style={{fontSize:11,color:"#6B7280",marginTop:1}}>{selected.address}{selected.address2?`, ${selected.address2}`:""}, {selected.city}, {selected.state} {selected.zip?selected.zip.slice(0,5):""}</div>}
           {!selected.address&&selected.city&&<div style={{fontSize:11,color:"#6B7280",marginTop:1}}>{selected.city}, {selected.state}</div>}
         </div>
-        <button className="btn bo bsm"onClick={()=>{set("concierge_provider",null);set("physician_name","");set("physician_npi_id","");set("physician_fax","");set("physician_fax_verified",false);setResults(null);setNpiResults(null)}}>Change</button>
+        <button className="btn bo bsm"onClick={()=>{setSelectedProvider(null);set("physician_name","");set("physician_npi_id","");set("physician_fax","");set("physician_fax_verified",false);setResults(null);setNpiResults(null)}}>Change</button>
       </div>
     </div>
     <div style={{fontSize:12,color:C.g500,marginTop:10,lineHeight:1.5}}>Note: We will coordinate your care by sharing your assessment results and treatment plan with the provider you select above.</div>
