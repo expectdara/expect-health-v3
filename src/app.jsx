@@ -1,6 +1,18 @@
 const { useState, useEffect, useRef } = React;
 
-
+// ErrorBoundary — prevents blank screen on unhandled render errors
+class ErrorBoundary extends React.Component{constructor(p){super(p);this.state={error:null}}
+static getDerivedStateFromError(e){return{error:e}}
+componentDidCatch(e,info){console.error("[ErrorBoundary]",e,info?.componentStack)}
+render(){if(this.state.error)return React.createElement("div",{style:{padding:40,textAlign:"center",fontFamily:"'DM Sans',sans-serif"}},
+  React.createElement("div",{style:{fontSize:32,marginBottom:12}},"⚠️"),
+  React.createElement("div",{style:{fontSize:18,fontWeight:700,color:"#1F2937",marginBottom:8}},"Something went wrong"),
+  React.createElement("div",{style:{fontSize:13,color:"#6B7280",marginBottom:20,maxWidth:400,margin:"0 auto 20px",lineHeight:1.6}},"An unexpected error occurred. Please refresh the page and try again. Your progress has been saved."),
+  React.createElement("button",{onClick:()=>window.location.reload(),style:{background:"#7C3AED",color:"#fff",border:"none",padding:"10px 24px",borderRadius:8,fontSize:14,fontWeight:600,cursor:"pointer"}},"Refresh Page"),
+  React.createElement("details",{style:{marginTop:20,fontSize:11,color:"#9CA3AF",textAlign:"left",maxWidth:500,margin:"20px auto 0"}},
+    React.createElement("summary",{style:{cursor:"pointer"}},"Error details"),
+    React.createElement("pre",{style:{whiteSpace:"pre-wrap",marginTop:8,padding:12,background:"#F3F4F6",borderRadius:6,overflow:"auto",maxHeight:200}},String(this.state.error)))
+);return this.props.children}}
 
 // PILOT PHASE CONFIG — change when OAIP approves phase advancement
 // Phase 1: 100% PT review (Months 1-4)
@@ -1345,12 +1357,12 @@ function ConciergeSearch({ans,set}){
     L("CONCIERGE_SEARCH",{first:searchFirst,last:searchLast,city:searchCity,practice:searchPractice,mockCount:found.length,npiCount});
   };
   const fmtName=(p)=>{const md=["OB/GYN","Urogynecology","Urology","Family Medicine"].includes(p.specialty);return md?`Dr. ${p.first} ${p.last}`:`${p.first} ${p.last}`};
-  const selectProvider=(p)=>{set("concierge_provider",p);set("physician_name",fmtName(p));set("physician_npi_id",p.npi);
+  const selectProvider=(p)=>{try{console.log("[selectProvider] selecting:",p.first,p.last,p.npi);set("concierge_provider",p);set("physician_name",fmtName(p));set("physician_npi_id",String(p.npi));
     const demoFax=DEMO_NPI_FAXES[p.npi];
     if(demoFax){set("physician_fax",demoFax);set("physician_fax_verified",false);set("physician_fax_default","Demo pre-populated")}
-    else if(!p.demo&&p.fax){set("physician_fax",p.fax);set("physician_fax_verified",true);set("physician_fax_default",false)}
+    else if(!p.demo&&p.fax){set("physician_fax",p.fax);set("physician_fax_verified",true);set("physician_fax_default","")}
     else{const def=getDefaultFax(p);if(def){set("physician_fax",def.fax);set("physician_fax_default",def.label)}else{set("physician_fax",p.fax||"")}set("physician_fax_verified",false)}
-    L("CONCIERGE_PROVIDER_SELECTED",{provider:`${p.first} ${p.last}`,npi:p.npi})};
+    L("CONCIERGE_PROVIDER_SELECTED",{provider:`${p.first} ${p.last}`,npi:p.npi})}catch(e){console.error("[selectProvider] error:",e)}};
   const submitConcierge=()=>{
     if(!conciergeName.trim()||!conciergeCity.trim())return;
     setConciergeSubmitted(true);
@@ -5367,4 +5379,4 @@ const ors=await db("listOutcomeRecords",{});if(ors&&ors.length>0){const exIds=ne
 }
 
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+ReactDOM.createRoot(document.getElementById('root')).render(<ErrorBoundary><App /></ErrorBoundary>);
