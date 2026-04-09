@@ -1,5 +1,10 @@
 const { useState, useEffect, useRef } = React;
 
+// TODO: REVERT AFTER RHAU CONFERENCE (April 11, 2026)
+// "OAIP" was removed from all user-facing text for the rural demo.
+// Search this file for "Utah" and restore "OAIP" references per git diff of this commit.
+// Git: `git diff HEAD~1 src/app.jsx` to see all changes to revert.
+
 // ErrorBoundary — prevents blank screen on unhandled render errors
 class ErrorBoundary extends React.Component{constructor(p){super(p);this.state={error:null}}
 static getDerivedStateFromError(e){return{error:e}}
@@ -1803,7 +1808,7 @@ function LandingPage({onDone,onLogin}){
       <div style={{fontSize:11,color:C.g500,lineHeight:1.6}}>This service uses AI to assist licensed professionals in care planning. All treatment decisions are finalized by a human clinician.</div>
     </div>
     <div style={{textAlign:"center"}}>
-      <div style={{fontSize:10,color:C.g400}}>Utah OAIP Regulatory Sandbox Pilot · Expect Fitness, Inc.</div>
+      <div style={{fontSize:10,color:C.g400}}>Utah Regulatory Sandbox Pilot · Expect Fitness, Inc.</div>
     </div>
   </div>;
 }
@@ -1814,7 +1819,7 @@ function PrivacyModal({onClose}){
     <div style={{background:"#fff",borderRadius:16,padding:"28px 32px",maxWidth:600,width:"92%",maxHeight:"80vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.2)",position:"relative"}} onClick={e=>e.stopPropagation()}>
       <button onClick={onClose} style={{position:"absolute",top:12,right:14,background:"none",border:"none",color:C.g400,cursor:"pointer"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       <div style={{fontSize:20,fontWeight:700,color:C.purp,marginBottom:4}}>Privacy Policy</div>
-      <div style={{fontSize:12,color:C.g400,marginBottom:16}}>Expect Fitness, Inc. · Utah OAIP Regulatory Sandbox Pilot · Effective March 2026</div>
+      <div style={{fontSize:12,color:C.g400,marginBottom:16}}>Expect Fitness, Inc. · Utah Regulatory Sandbox Pilot · Effective March 2026</div>
 
       <div style={{fontSize:13,color:C.g700,lineHeight:1.8}}>
         <p style={{fontWeight:700,marginTop:0}}>What We Collect</p>
@@ -1829,7 +1834,7 @@ function PrivacyModal({onClose}){
         <ul style={{paddingLeft:18,margin:"4px 0 12px"}}>
           <li>Generate your personalized pelvic floor care plan</li>
           <li>Enable licensed Physical Therapist review of your assessment</li>
-          <li>Report de-identified, aggregate outcomes to the Utah OAIP for regulatory oversight</li>
+          <li>Report de-identified, aggregate outcomes to the State of Utah for regulatory oversight</li>
           <li>Support IRB-approved research using de-identified data only</li>
         </ul>
 
@@ -1851,7 +1856,7 @@ function PrivacyModal({onClose}){
         </ul>
 
         <p style={{fontWeight:700}}>Regulatory Context</p>
-        <p style={{margin:"4px 0 12px"}}>This platform operates under a Regulatory Mitigation Agreement with the Utah Office of Artificial Intelligence Policy (OAIP). All AI-generated care plans are reviewed by licensed Physical Therapists during Phase 1 of the pilot.</p>
+        <p style={{margin:"4px 0 12px"}}>This platform operates under a Regulatory Mitigation Agreement with the State of Utah. All AI-generated care plans are reviewed by licensed Physical Therapists during Phase 1 of the pilot.</p>
 
         <p style={{fontWeight:700}}>Contact</p>
         <p style={{margin:"4px 0 0"}}>Questions about your privacy: <a href="mailto:team@expect.care" style={{color:C.purp}}>team@expect.care</a></p>
@@ -1865,7 +1870,7 @@ function TermsModal({onClose}){
     <div style={{background:"#fff",borderRadius:16,padding:"28px 32px",maxWidth:600,width:"92%",maxHeight:"80vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.2)",position:"relative"}} onClick={e=>e.stopPropagation()}>
       <button onClick={onClose} style={{position:"absolute",top:12,right:14,background:"none",border:"none",color:C.g400,cursor:"pointer"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       <div style={{fontSize:20,fontWeight:700,color:C.purp,marginBottom:4}}>Terms of Service</div>
-      <div style={{fontSize:12,color:C.g400,marginBottom:16}}>Expect Fitness, Inc. · Utah OAIP Regulatory Sandbox Pilot · Effective March 2026</div>
+      <div style={{fontSize:12,color:C.g400,marginBottom:16}}>Expect Fitness, Inc. · Utah Regulatory Sandbox Pilot · Effective March 2026</div>
 
       <div style={{fontSize:13,color:C.g700,lineHeight:1.8}}>
         <p style={{fontWeight:700,marginTop:0}}>Pilot Program</p>
@@ -1884,7 +1889,7 @@ function TermsModal({onClose}){
         <p style={{margin:"4px 0 12px"}}>Your data will be retained for the duration of the pilot program and any required regulatory reporting period. De-identified data may be retained indefinitely for research and quality improvement. You may request deletion of your identifiable data at any time.</p>
 
         <p style={{fontWeight:700}}>Corrective Care</p>
-        <p style={{margin:"4px 0 12px"}}>If you experience a concern about AI-supported care, Expect will provide a no-cost clinical review and, if clinically appropriate, corrective pelvic floor PT follow-up as outlined in our OAIP Regulatory Mitigation Agreement.</p>
+        <p style={{margin:"4px 0 12px"}}>If you experience a concern about AI-supported care, Expect will provide a no-cost clinical review and, if clinically appropriate, corrective pelvic floor PT follow-up as outlined in our Regulatory Mitigation Agreement.</p>
 
         <p style={{fontWeight:700}}>Contact</p>
         <p style={{margin:"4px 0 0"}}>Questions or concerns: <a href="mailto:team@expect.care" style={{color:C.purp}}>team@expect.care</a></p>
@@ -1908,7 +1913,7 @@ function Consent({onDone,onBack,ck,setCk}){
     {id:"rest",tx:"I understand that if I report a concern about AI-supported care, Expect will provide a no-cost clinical review and, if clinically appropriate, corrective pelvic floor PT follow-up (telehealth or in-person, as available), subject to program terms."},
     // Data & Communications
     {id:"coll",tx:"Data collected includes: intake responses, scores, adherence, chat interactions, and outcomes — all in HIPAA-compliant encrypted systems."},
-    {id:"data",tx:"I consent to de-identified data sharing with: (1) Utah OAIP for oversight, (2) researchers under IRB protocols, (3) external auditors, (4) anonymized public dashboards."},
+    {id:"data",tx:"I consent to de-identified data sharing with: (1) the State of Utah for oversight, (2) researchers under IRB protocols, (3) external auditors, (4) anonymized public dashboards."},
     {id:"coord",tx:"I authorize Expect to share my assessment results, treatment plan, and progress reports with the medical provider I identify for care coordination purposes."},
     {id:"enotify",tx:"I consent to receive electronic notifications about my care plan. I understand these notifications will link to a secure portal and will not contain sensitive health details directly."},
     // Program & Eligibility
@@ -1917,7 +1922,7 @@ function Consent({onDone,onBack,ck,setCk}){
     {id:"age",tx:"I confirm I am at least 18 years old and provide this consent voluntarily."},
   ];
   const ok=items.every(i=>ck[i.id]);
-  return<div className="fi"><div className="h1">Informed Consent</div><div className="sub">AI-Augmented Pelvic Floor Physical Therapy · Utah OAIP Pilot</div>
+  return<div className="fi"><div className="h1">Informed Consent</div><div className="sub">AI-Augmented Pelvic Floor Physical Therapy · Utah Pilot</div>
     <div className="card"style={{borderColor:C.blue}}>
       <p style={{fontSize:13,color:C.g600,marginBottom:16,lineHeight:1.7}}>Please read each statement and check the box to confirm you understand.</p>
       {items.map(i=><div key={i.id}className="ck"onClick={()=>setCk(p=>({...p,[i.id]:!p[i.id]}))}><div className={`cb ${ck[i.id]?"on":""}`}>{ck[i.id]?"✓":""}</div><div style={{fontSize:13,color:ck[i.id]?C.g800:C.g500,lineHeight:1.6}}>{i.tx}</div></div>)}
@@ -3967,7 +3972,7 @@ function PTNewIntakeReview({data,onBack}){
   if(phq2>=2&&!psiRefer)guardrails.push({lvl:"info",msg:"PHQ-2 score "+phq2+"/6 — patient received support resources. Consider checking the PSI Utah referral box if appropriate."});
   if((ans.symptoms_trigger||[]).includes("sitting_long")&&pain.composite>6)guardrails.push({lvl:"alert",msg:"⚠ POTENTIAL PUDENDAL NEURALGIA: Patient reports pain while sitting for long periods with composite pain >6/10. Evaluate for pudendal nerve involvement."});
   if(iciq.severity==="Very Severe"&&editExs.length<4)guardrails.push({lvl:"warn",msg:"Very Severe ICIQ score but fewer than 4 exercises — consider whether prescription is sufficient."});
-  if(notes.trim().length===0&&(editExs.length!==(initPlan.ex||[]).length||editExs.some((e,i)=>JSON.stringify(e)!==JSON.stringify((initPlan.ex||[])[i]))))guardrails.push({lvl:"warn",msg:"You modified exercises but haven't added clinical rationale in the notes. CMS and OAIP require documented reasoning."});
+  if(notes.trim().length===0&&(editExs.length!==(initPlan.ex||[]).length||editExs.some((e,i)=>JSON.stringify(e)!==JSON.stringify((initPlan.ex||[])[i]))))guardrails.push({lvl:"warn",msg:"You modified exercises but haven't added clinical rationale in the notes. CMS and Utah require documented reasoning."});
   if(plan.prenatal)guardrails.push({lvl:"info",msg:"PRENATAL PROTOCOL: Supine exercises auto-modified to incline/side-lying. Verify modifications are appropriate for patient's current trimester."});
   if(data?.plan?.review_flags?.some(f=>f.id==="PROLAPSE_REVIEW"))guardrails.push({lvl:"alert",msg:"PROLAPSE SUSPECTED: Patient reported bulge/protrusion or significant bother on POPDI-6. Pelvic exam recommended for staging. Consider pessary evaluation or urogynecology referral."});
   if(!noteGenerated)guardrails.push({lvl:"info",msg:"Generate and review the encounter note before approving."});
@@ -4089,7 +4094,7 @@ function PTNewIntakeReview({data,onBack}){
           <div style={{fontWeight:700}}>⚠ SAFETY ANSWER CHANGED</div>
           <div style={{marginTop:4}}>Patient initially answered "Yes" to safety question(s) but later changed to "No":</div>
           {(ans._safety_changes||[]).map((c,i)=><div key={i}style={{marginTop:2,fontSize:11}}>• {c.id} — changed at {new Date(c.ts).toLocaleTimeString()}</div>)}
-          <div style={{marginTop:6,fontStyle:"italic",fontSize:11}}>This answer change has been flagged in the encounter note and OAIP compliance log.</div>
+          <div style={{marginTop:6,fontStyle:"italic",fontSize:11}}>This answer change has been flagged in the encounter note and Utah compliance log.</div>
         </div>}
       </Section>
       <Section title="Eligibility Screening" tag={activeExcl.some(r=>ans[r.id]==="yes")?"⚠ EXCLUSION":"✓ Eligible"} defaultOpen={activeExcl.some(r=>ans[r.id]==="yes")}>
@@ -4098,13 +4103,13 @@ function PTNewIntakeReview({data,onBack}){
       {((ans.phq2_interest||0)+(ans.phq2_mood||0))>=3&&<div className="card" style={{background:"#FEE2E2",borderLeft:"4px solid #DC2626",marginBottom:10}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontSize:13,fontWeight:700,color:"#991B1B"}}>🚨 PHQ-2 Positive — Depression Risk ({(ans.phq2_interest||0)+(ans.phq2_mood||0)}/6){(ans.phq2_interest||0)+(ans.phq2_mood||0)>=5?" — HIGH SEVERITY":""}</div>
-          <div style={{background:"#7C3AED",color:"white",padding:"2px 8px",borderRadius:10,fontSize:9,fontWeight:700}}>OAIP REPORTABLE</div>
+          <div style={{background:"#7C3AED",color:"white",padding:"2px 8px",borderRadius:10,fontSize:9,fontWeight:700}}>UTAH REPORTABLE</div>
         </div>
         <div style={{fontSize:11,color:"#7F1D1D",marginTop:6,lineHeight:1.6}}>
           <div>• <strong>Little interest or pleasure:</strong> {["Not at all","Several days","More than half the days","Nearly every day"][ans.phq2_interest||0]} ({ans.phq2_interest||0}/3)</div>
           <div>• <strong>Feeling down, depressed, hopeless:</strong> {["Not at all","Several days","More than half the days","Nearly every day"][ans.phq2_mood||0]} ({ans.phq2_mood||0}/3)</div>
           <div style={{marginTop:6,fontWeight:600}}>→ Clinical threshold met (≥3/6). Recommend: PHQ-9 full screening, assess capacity to consent, mental health resource referral{ans.pregnancy_status&&ans.pregnancy_status!=="not_pregnant"?", postpartum depression pathway evaluation":""}.</div>
-          <div style={{marginTop:4,fontSize:10,color:"#991B1B"}}>This flag has been automatically reported to Utah OAIP (de-identified) per regulatory requirements.</div>
+          <div style={{marginTop:4,fontSize:10,color:"#991B1B"}}>This flag has been automatically reported to the State of Utah (de-identified) per regulatory requirements.</div>
         </div>
       </div>}
       {((ans.phq2_interest||0)+(ans.phq2_mood||0))>=2&&<div className="card" style={{background:psiRefer?"#F0FDF4":"#FEFCE8",borderLeft:`4px solid ${psiRefer?"#16A34A":"#D97706"}`,marginBottom:10,transition:"all .3s"}}>
@@ -4482,9 +4487,9 @@ function OAIPView(){
   const[viewMode,setViewMode]=useState("safety");
   const checks=[
     {cat:"Consumer Protection",items:[{l:"Informed consent with AI disclosure",s:1},{l:"Right to opt out",s:1},{l:"100% PT review (Phase 1)",s:1},{l:"Corrective care commitment (scope-defined)",s:1},{l:"Malpractice + Tech E&O coverage",s:1}]},
-    {cat:"Data Transparency",items:[{l:"OAIP monthly dashboard",s:1},{l:"Public anonymized dashboard",s:1},{l:"Researcher dataset (IRB)",s:1},{l:"External auditor access",s:1},{l:"FDA CDS exemption",s:1}]},
+    {cat:"Data Transparency",items:[{l:"Utah monthly dashboard",s:1},{l:"Public anonymized dashboard",s:1},{l:"Researcher dataset (IRB)",s:1},{l:"External auditor access",s:1},{l:"FDA CDS exemption",s:1}]},
     {cat:"Operational Metrics",items:[{l:"AI-PT agreement ≥95%",s:1,v:(()=>{const ar=computeAgreementRate(OUTCOME_RECORDS);return ar.total>0?ar.rate+"%":"N/A"})()},{l:"Adverse events",s:1,v:"0"},{l:"PHI breaches",s:1,v:"0"},{l:"Complaint rate",s:1,v:"0%"},{l:"Audit log",s:1,v:`${log.length} entries`}]},
-    {cat:"Termination Triggers",items:[{l:"Adverse event → immediate pause",s:2},{l:"PHI breach → pause + notify",s:2},{l:"PT license action → removal",s:2},{l:"OAIP request → 48hr wind-down",s:2}]},
+    {cat:"Termination Triggers",items:[{l:"Adverse event → immediate pause",s:2},{l:"PHI breach → pause + notify",s:2},{l:"PT license action → removal",s:2},{l:"Utah request → 48hr wind-down",s:2}]},
   ];
   const n=DPTS.length+(sharedIntake?1:0),aa=DPTS.length>0?Math.round(DPTS.reduce((s,p)=>s+p.adh,0)/DPTS.length):0;
 
@@ -4588,7 +4593,7 @@ function OAIPView(){
   const intakeSubmitted=enrolled;const planApproved=allRecs.length;const week8Done=w8Completed;const month12Done=m12Logs.length;
   const fmtTime=(sec)=>sec<60?sec+"s":Math.round(sec/60*10)/10+"m";
 
-  return<div className="fi"><div className="h1">OAIP Pilot Dashboard</div><div className="sub">Utah Office of AI Policy · Safe oversight, measurable improvement, timely review, clear follow-through</div>
+  return<div className="fi"><div className="h1">Utah Pilot Dashboard</div><div className="sub">State of Utah · Safe oversight, measurable improvement, timely review, clear follow-through</div>
     {/* Persistent Summary Cards */}
     <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:16}}>
       <div className="sc"><div className="scl2">Active Patients</div><div className="scv2"style={{color:C.purp}}>{enrolled}</div></div>
@@ -4621,7 +4626,7 @@ function OAIPView(){
         const ar=computeAgreementRate(OUTCOME_RECORDS);
         const w=window.open("","_blank");
         if(!w){alert("Please allow popups to generate the report.");return}
-        w.document.write(`<!DOCTYPE html><html><head><title>Expect OAIP Monthly Report — ${mo}</title>
+        w.document.write(`<!DOCTYPE html><html><head><title>Expect Utah Monthly Report — ${mo}</title>
 <style>body{font-family:'DM Sans',Helvetica,sans-serif;margin:40px;color:#1f2937;max-width:800px}
 h1{color:#6D28D9;font-size:24px;margin-bottom:4px}h2{color:#6D28D9;font-size:16px;border-bottom:2px solid #E5E7EB;padding-bottom:6px;margin-top:28px}
 .sub{color:#9CA3AF;font-size:13px;margin-bottom:24px}
@@ -4631,7 +4636,7 @@ th{background:#F9FAFB;font-weight:600;color:#6D28D9}
 .metric .val{font-size:22px;font-weight:700;color:#6D28D9}.metric .lbl{font-size:11px;color:#9CA3AF;margin-top:2px}
 .rf{padding:6px 10px;border-left:3px solid #DC2626;margin:4px 0;font-size:13px;background:#FEF2F2;border-radius:0 4px 4px 0}
 @media print{body{margin:20px}}</style></head><body>
-<h1>Expect — OAIP Monthly Report</h1>
+<h1>Expect — Utah Monthly Report</h1>
 <div class="sub">${mo} · Phase ${PILOT_PHASE} · Clinical Logic v${CLINICAL_LOGIC_VERSION}</div>
 <h2>Enrollment & Completion</h2>
 <div><div class="metric"><div class="val">${enrolled}</div><div class="lbl">Enrolled</div></div>
@@ -4661,7 +4666,7 @@ ${redFlags.length>0?`<h2>Active Red Flags</h2>${redFlags.map(rf=>`<div class="rf
 <h2>Compliance Checklist</h2>
 <table><tr><th>Category</th><th>Item</th><th>Status</th></tr>
 ${checks.map(c=>c.items.map(it=>`<tr><td>${c.cat}</td><td>${it.l}</td><td>${it.v||(it.s===1?"Compliant":"Armed")}</td></tr>`).join("")).join("")}</table>
-<div style="text-align:center;margin-top:40px;font-size:11px;color:#9CA3AF">Generated ${now.toLocaleString()} · Expect Fitness, Inc. · Utah OAIP Regulatory Sandbox</div>
+<div style="text-align:center;margin-top:40px;font-size:11px;color:#9CA3AF">Generated ${now.toLocaleString()} · Expect Fitness, Inc. · Utah Regulatory Sandbox</div>
 </body></html>`);
         w.document.close();
         const doPrint=()=>w.print();
@@ -4708,7 +4713,7 @@ h2{color:#6D28D9;font-size:18px;margin-top:32px;border-bottom:2px solid #E5E7EB;
 .bar{height:20px;background:linear-gradient(90deg,#6D28D9,#EC4899);border-radius:4px;min-width:2px}
 .footer{text-align:center;padding:32px;font-size:11px;color:#9CA3AF;border-top:1px solid #E5E7EB;margin-top:40px}
 </style></head><body>
-<div class="hdr"><h1>E X P E C T</h1><div class="sub">Utah OAIP Regulatory Sandbox · Public Pilot Dashboard</div></div>
+<div class="hdr"><h1>E X P E C T</h1><div class="sub">Utah Regulatory Sandbox · Public Pilot Dashboard</div></div>
 <div class="wrap">
 <div class="grid">
 <div class="card"><div class="val">${enrolled}</div><div class="lbl">Patients Enrolled</div></div>
@@ -4780,7 +4785,7 @@ h2{color:#6D28D9;font-size:18px;margin-top:32px;border-bottom:2px solid #E5E7EB;
     {/* Section C: Human Oversight Metrics */}
     <div className="card"style={{marginTop:16}}>
       <div className="chd">Human Oversight Metrics</div>
-      <div style={{fontSize:11,color:C.g500,marginBottom:12}}>Licensed clinician review performance. OAIP requires documented human-in-the-loop functioning.</div>
+      <div style={{fontSize:11,color:C.g500,marginBottom:12}}>Licensed clinician review performance. Utah requires documented human-in-the-loop functioning.</div>
       {allRecs.length===0?<div style={{textAlign:"center",padding:24,color:C.g400,fontSize:13}}>No plans reviewed yet.</div>:<>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
         <div className="sc"><div className="scl2">PT Review Rate</div><div className="scv2"style={{color:C.gn}}>100%</div><div className="scs">Phase 1: all plans reviewed</div></div>
@@ -5316,7 +5321,7 @@ function PasswordGate({role,onAuth}){
   const submit=async()=>{if(loading)return;setLoading(true);setErrMsg("");try{const tok=genTok();const sessionArgs={userId:role+"_user",email:role+"@expect.care",sessionToken:tok,expiresAt:Date.now()+30*60*1000,createdAt:new Date().toISOString()};if(role==="pt"){sessionArgs.email=email;sessionArgs.password=pw}else{sessionArgs.accessCode=pw}await db("createSession",sessionArgs,{throw:true});ptSessionToken=tok;localStorage.setItem("expect_session",tok);const sess=await db("getSessionByToken",{sessionToken:tok});if(sess&&sess.ptName){ptIdentity={email:sess.email,name:sess.ptName,userId:sess.userId}}L(role+"_login",{email:role==="pt"?email:undefined});onAuth()}catch(e){const msg=e.message||"";if(msg.includes("Invalid")){setErrMsg(role==="pt"?"Invalid email or password.":"Incorrect access code.");L("login_failed",{role,email:role==="pt"?email:undefined,reason:"invalid_credentials"})}else{setErrMsg("Unable to connect. Please try again later.");L("login_failed",{role,email:role==="pt"?email:undefined,reason:"connection_error"})}setPw("");setLoading(false)}};
   const isPt=role==="pt";
   return<div className="mn"><div className="card fi"style={{maxWidth:400,margin:"80px auto",textAlign:"center",padding:32}}>
-    <div style={{fontSize:20,fontWeight:700,color:C.purp,marginBottom:8}}>{isPt?"PT Provider":"OAIP"} Portal</div>
+    <div style={{fontSize:20,fontWeight:700,color:C.purp,marginBottom:8}}>{isPt?"PT Provider":"Utah"} Portal</div>
     <p style={{fontSize:13,color:C.g500,marginBottom:20}}>{isPt?"Sign in with your provider account.":"Enter the oversight access code to continue."}</p>
     {errMsg&&<div style={{color:C.rd,fontSize:12,marginBottom:12}}>{errMsg}</div>}
     {isPt&&<input type="email"className="inp"value={email}onChange={e=>{setEmail(e.target.value);setErrMsg("")}}onKeyDown={e=>e.key==="Enter"&&submit()}placeholder="Email address"style={{textAlign:"center",marginBottom:10}}disabled={loading}/>}
@@ -5338,7 +5343,7 @@ if(sess.userId.startsWith("pt_")&&sess.userId!=="pt_user"){ptSessionToken=tok;pt
 authSession={userId:sess.userId,email:sess.email,sessionToken:sess.sessionToken,expiresAt:sess.expiresAt,createdAt:sess.createdAt};const pt=await db("getPatientByUserId",{userId:sess.userId});if(pt){sharedIntake={ans:pt.ans,iciq:pt.iciq,pain:pt.pain,gupi:pt.gupi,fluts:pt.fluts,fsex:pt.fsex,popdi:pt.popdi,plan:pt.plan,depressionFlag:pt.depressionFlag,prenatalFlag:pt.prenatalFlag,name:pt.name,physicianName:pt.physicianName,physicianFax:pt.physicianFax,physicianNPI:pt.physicianNPI,safetyAnswerChanged:pt.safetyAnswerChanged,safetyChanges:pt.safetyChanges,outcomeRecordId:pt.outcomeRecordId,week8:pt.week8,psiRefer:pt.psiRefer};setPView("done")}}const events=await db("listAuditEvents",{limit:500});if(events&&events.length>0){const existing=new Set(log.map(e=>e.id));events.forEach(e=>{if(!existing.has(e.eventId))log.push({id:e.eventId,ts:e.ts,type:e.type,...(e.details||{})})});log.sort((a,b)=>b.ts.localeCompare(a.ts));_lid=Math.max(_lid,events.length)}// Hydrate outcome records for OAIP dashboard metrics
 const ors=await db("listOutcomeRecords",{});if(ors&&ors.length>0){const exIds=new Set(OUTCOME_RECORDS.map(r=>r.id));ors.forEach(or=>{if(!exIds.has(or.recordId))OUTCOME_RECORDS.push({id:or.recordId,created:or.createdAt,baseline:or.baseline,treatment:or.treatment,outcome:or.outcome||null})});_orid=Math.max(_orid,OUTCOME_RECORDS.length)}}catch(e){console.warn("[hydrate]",e)}})()},[]);
   const{warn,cd,rem,dismiss}=useSessionTimeout(()=>{if(ptSessionToken){db("deleteSession",{sessionToken:ptSessionToken});ptSessionToken=null}ptIdentity=null;localStorage.removeItem("expect_session");setPView("landing");setMode("patient");setPtAuthed(false);setOaipAuthed(false);setConsentCk({});setRk(r=>r+1)});
-  const modes=[{id:"patient",l:"Patient View"},{id:"pt",l:"PT Provider View"},{id:"oaip",l:"Utah OAIP View"}];
+  const modes=[{id:"patient",l:"Patient View"},{id:"pt",l:"PT Provider View"},{id:"oaip",l:"Utah View"}];
 
   return<><style>{css}</style>
     {warn&&<SessionWarningModal cd={cd} onDismiss={dismiss}/>}
