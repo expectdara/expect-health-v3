@@ -1039,12 +1039,13 @@ function AW(){return<span className="aw">AI-Generated · Requires PT Review</spa
 function NPILookup({q,ans,set}){
   const[npiFirst,setNpiFirst]=useState("");const[npiLast,setNpiLast]=useState("");const[npiState,setNpiState]=useState("UT");
   const[npiResults,setNpiResults]=useState(null);const[npiLoading,setNpiLoading]=useState(false);const[npiErr,setNpiErr]=useState(null);
+  const[showAllNpi,setShowAllNpi]=useState(false);
   // Provider selection kept in local state (NOT in ans) to prevent React error #300
   const[selectedProvider,setSelectedProvider]=useState(null);
   const selected=selectedProvider||(ans.physician_name&&ans.physician_npi_id?{npi:ans.physician_npi_id,name:ans.physician_name,credential:"",specialty:"",practice:"",city:"",state:"",fax:ans.physician_fax||"",_restored:true}:null);
   const doSearch=async()=>{
     if(!npiFirst.trim()||!npiLast.trim()){setNpiErr("Enter first and last name.");return}
-    setNpiLoading(true);setNpiErr(null);setNpiResults(null);
+    setNpiLoading(true);setNpiErr(null);setNpiResults(null);setShowAllNpi(false);
     try{
       const qs=`version=2.1&first_name=${encodeURIComponent(npiFirst)}&last_name=${encodeURIComponent(npiLast)}&state=${npiState}&enumeration_type=NPI-1&limit=10`;
       const apiUrl=location.protocol==="file:"?`https://npiregistry.cms.hhs.gov/api/?${qs}`:`/api/npi?${qs}`;
@@ -1056,6 +1057,7 @@ function NPILookup({q,ans,set}){
           const taxonomy=(r.taxonomies||[]).find(t=>t.primary)||{};
           return{npi:r.number,name:`${basic.first_name||""} ${basic.last_name||""}`.trim(),credential:basic.credential||"",specialty:taxonomy.desc||"",practice:basic.organization_name||addr.organization_name||"",city:addr.city||"",state:addr.state||"",fax:addr.fax_number||"",phone:addr.telephone_number||""};
         });
+        providers.sort((a,b)=>npiTier(a.specialty)-npiTier(b.specialty));
         setNpiResults(providers);
       }else{setNpiErr("No providers found. Try different spelling or state.")}
     }catch(e){setNpiErr("NPI lookup unavailable. Please enter provider info manually below.")}
@@ -1072,13 +1074,15 @@ function NPILookup({q,ans,set}){
       </div>
       <button className="btn bpu bsm"onClick={doSearch}disabled={npiLoading}style={{marginBottom:10}}>{npiLoading?"Searching NPI Registry...":"Search NPI Registry"}</button>
       {npiErr&&<div style={{color:C.or,fontSize:12,marginBottom:8}}>{npiErr}</div>}
-      {npiResults&&<div style={{maxHeight:200,overflowY:"auto",border:`1px solid ${C.g200}`,borderRadius:8}}>
-        {npiResults.map((p,i)=><div key={i}onClick={()=>selectProvider(p)}style={{padding:"10px 14px",borderBottom:`1px solid ${C.g100}`,cursor:"pointer",fontSize:12,display:"flex",justifyContent:"space-between",alignItems:"center",background:i%2?"#FAFAFA":"white"}}
-          onMouseOver={e=>e.currentTarget.style.background="#EDE9FE"}onMouseOut={e=>e.currentTarget.style.background=i%2?"#FAFAFA":"white"}>
+      {npiResults&&(()=>{const primary=npiResults.filter(p=>npiTier(p.specialty)<=2);const other=npiResults.filter(p=>npiTier(p.specialty)===3);const renderRow=(p,i)=><div key={i}onClick={()=>selectProvider(p)}style={{padding:"10px 14px",borderBottom:`1px solid ${C.g100}`,cursor:"pointer",fontSize:12,display:"flex",justifyContent:"space-between",alignItems:"center",background:"white"}}
+          onMouseOver={e=>e.currentTarget.style.background="#EDE9FE"}onMouseOut={e=>e.currentTarget.style.background="white"}>
           <div><div style={{fontWeight:600,color:C.g800}}>{p.name}{p.credential?`, ${p.credential}`:""}</div><div style={{color:C.g500,fontSize:11}}>{p.specialty} {p.city?`· ${p.city}, ${p.state}`:""}</div></div>
           <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:10,color:C.g400}}>NPI: {p.npi}</div>{p.fax&&<div style={{fontSize:10,color:C.blue}}>Fax: {p.fax}</div>}</div>
-        </div>)}
-      </div>}
+        </div>;return<div style={{maxHeight:240,overflowY:"auto",border:`1px solid ${C.g200}`,borderRadius:8}}>
+        {primary.map(renderRow)}
+        {other.length>0&&!showAllNpi&&<div onClick={()=>setShowAllNpi(true)}style={{padding:"10px 14px",cursor:"pointer",background:"#F9FAFB",textAlign:"center",fontSize:12,color:C.purp,fontWeight:600,borderTop:`1px solid ${C.g200}`}}>Show {other.length} more (other specialties)</div>}
+        {other.length>0&&showAllNpi&&<><div style={{padding:"6px 14px",background:"#F9FAFB",fontSize:10,fontWeight:600,color:C.g400,textTransform:"uppercase",letterSpacing:1,borderTop:`1px solid ${C.g200}`}}>Other specialties</div>{other.map(renderRow)}</>}
+      </div>})()}
       <div style={{marginTop:12,paddingTop:10,borderTop:`1px solid ${C.g100}`}}>
         <div style={{fontSize:11,color:C.g400,marginBottom:6}}>Can't find your provider? Enter manually:</div>
         <div style={{display:"flex",gap:8}}><div style={{flex:1}}><div className="il">Doctor Name</div><input className="inp"value={ans.physician_name||""}onChange={e=>set("physician_name",e.target.value)}placeholder="Dr. Smith"/></div>
@@ -1297,6 +1301,10 @@ function getDefaultFax(provider){
   if(provider.specialty&&DEFAULT_SPECIALTY_FAXES[provider.specialty])return{fax:DEFAULT_SPECIALTY_FAXES[provider.specialty],label:provider.specialty+" default fax"};
   return null;
 }
+// NPI specialty tiering — Tier 1: common pelvic floor referrers, Tier 2: plausible, Tier 3: everything else
+const TIER1_SPEC=["obstetric","gynecol","ob/gyn","urogyn","urology","urolog","family med","family prac","general prac","internal med","nurse practit","physician assist","midwif","certified nurse midwi","physical therap","rehabilitat","pm&r","phys med","pain med","pain manag"];
+const TIER2_SPEC=["endocrin","geriatr","acute care","hospitalist","osteopath","general surgery","colorectal","gastroenter","neurolog","oncol","primary care"];
+function npiTier(specialty){if(!specialty)return 3;const s=specialty.toLowerCase();if(TIER1_SPEC.some(t=>s.includes(t)))return 1;if(TIER2_SPEC.some(t=>s.includes(t)))return 2;return 3}
 const MOCK_PROVIDERS=[
   {id:"P100",first:"Kristen",last:"Miller",specialty:"OB/GYN",practice:"Women's Health Associates",city:"Salt Lake City",state:"UT",npi:"1234567890",fax:"8015550100",demo:true},
   {id:"P101",first:"Sarah",last:"Johnson",specialty:"Urogynecology",practice:"Utah Pelvic Health Center",city:"Provo",state:"UT",npi:"1234567891",fax:"8015550101",demo:true},
@@ -1339,6 +1347,7 @@ function ConciergeSearch({ans,set}){
   const[conciergeCity,setConciergeCity]=useState("");
   const[conciergeSubmitted,setConciergeSubmitted]=useState(!!ans.concierge_pending);
   const[showFilters,setShowFilters]=useState(false);
+  const[showAllNpi,setShowAllNpi]=useState(false);
   // Provider selection kept in local state (NOT in ans) to prevent React error #300
   const[selectedProvider,setSelectedProvider]=useState(null);
   const selected=selectedProvider||(ans.physician_name&&ans.physician_npi_id?{first:"",last:"",specialty:"",practice:"",city:"",state:"",address:"",address2:"",zip:"",npi:ans.physician_npi_id,fax:ans.physician_fax||"",credential:"",_restored:true}:null);
@@ -1349,7 +1358,7 @@ function ConciergeSearch({ans,set}){
     const found=MOCK_PROVIDERS.filter(p=>typoMatch(searchLast,p.last)&&(!searchCity.trim()||typoMatch(searchCity,p.city))&&(!searchFirst.trim()||typoMatch(searchFirst,p.first))&&(!searchPractice.trim()||typoMatch(searchPractice,p.practice)));
     setResults(found);
     // CMS NPI Registry search with CORS proxy fallback
-    setNpiLoading(true);setNpiErr(null);setNpiResults(null);
+    setNpiLoading(true);setNpiErr(null);setNpiResults(null);setShowAllNpi(false);
     let npiCount=0;
     try{
       const params=new URLSearchParams({version:"2.1",last_name:searchLast.trim()+"*",enumeration_type:"NPI-1",limit:"200"});
@@ -1361,12 +1370,12 @@ function ConciergeSearch({ans,set}){
       let res=await fetch(baseUrl+params);if(!res.ok)throw new Error("NPI lookup failed");let data=await res.json();
       // If city was specified but no results, retry without city
       if(data.result_count===0&&searchCity.trim()){params.delete("city");res=await fetch(baseUrl+params);if(res.ok)data=await res.json()}
-      if(data.result_count>0){const q=searchLast.trim().toLowerCase();const mapped=data.results.map(mapNpi).filter(p=>p.last.toLowerCase().startsWith(q));if(mapped.length>0){setNpiResults(mapped);npiCount=mapped.length}else{setNpiErr("No exact matches found. Try the full last name or use the concierge option below.")}}else{setNpiErr("No providers found in NPI Registry. Try different spelling or use the concierge option below.")}
+      if(data.result_count>0){const q=searchLast.trim().toLowerCase();const mapped=data.results.map(mapNpi).filter(p=>p.last.toLowerCase().startsWith(q));if(mapped.length>0){mapped.sort((a,b)=>npiTier(a.specialty)-npiTier(b.specialty));setNpiResults(mapped);npiCount=mapped.length}else{setNpiErr("No exact matches found. Try the full last name or use the concierge option below.")}}else{setNpiErr("No providers found in NPI Registry. Try different spelling or use the concierge option below.")}
     }catch(e){setNpiErr("NPI Registry lookup unavailable. You can search our demo providers or use the concierge option below.")}
     setNpiLoading(false);
     L("CONCIERGE_SEARCH",{first:searchFirst,last:searchLast,city:searchCity,practice:searchPractice,mockCount:found.length,npiCount});
   };
-  const fmtName=(p)=>{const md=["OB/GYN","Urogynecology","Urology","Family Medicine"].includes(p.specialty);return md?`Dr. ${p.first} ${p.last}`:`${p.first} ${p.last}`};
+  const fmtName=(p)=>{const t=npiTier(p.specialty);return t<=2?`Dr. ${p.first} ${p.last}`:`${p.first} ${p.last}`};
   const selectProvider=(p)=>{try{console.log("[selectProvider] selecting:",p.first,p.last,p.npi);setSelectedProvider(p);set("physician_name",fmtName(p));set("physician_npi_id",String(p.npi));
     const demoFax=DEMO_NPI_FAXES[p.npi];
     if(demoFax){set("physician_fax",demoFax);set("physician_fax_verified",false);set("physician_fax_default","Demo pre-populated")}
@@ -1430,18 +1439,20 @@ function ConciergeSearch({ans,set}){
     </div>}
     <button className="btn bpk"onClick={doSearch}disabled={!searchLast.trim()||npiLoading}style={{width:"100%",marginBottom:10,opacity:!searchLast.trim()?0.4:1}}>{npiLoading?"Searching...":"Search Providers"}</button>
 
-    {npiResults!==null&&npiResults.length>0&&<div style={{marginBottom:10}}>
-      <div style={{fontSize:11,fontWeight:600,color:C.gn,marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>✓ Verified Providers</div>
-      <div style={{border:`1px solid ${C.g200}`,borderRadius:8,overflow:"hidden",maxHeight:240,overflowY:"auto"}}>
-        {npiResults.map(p=><div key={p.id}onClick={e=>{e.preventDefault();e.stopPropagation();selectProvider(p)}}style={{padding:"12px 16px",borderBottom:`1px solid ${C.g100}`,cursor:"pointer",background:"white",transition:"background .15s"}}
+    {npiResults!==null&&npiResults.length>0&&(()=>{const primary=npiResults.filter(p=>npiTier(p.specialty)<=2);const other=npiResults.filter(p=>npiTier(p.specialty)===3);const renderRow=(p)=><div key={p.id}onClick={e=>{e.preventDefault();e.stopPropagation();selectProvider(p)}}style={{padding:"12px 16px",borderBottom:`1px solid ${C.g100}`,cursor:"pointer",background:"white",transition:"background .15s"}}
           onMouseOver={e=>e.currentTarget.style.background="#F0FDF4"}onMouseOut={e=>e.currentTarget.style.background="white"}>
           <div style={{fontWeight:600,fontSize:13,color:C.g800}}>{fmtName(p)}{p.credential?`, ${p.credential}`:""}</div>
           <div style={{fontSize:11,color:C.g500}}>{p.specialty}{p.practice?` · ${p.practice}`:""}</div>
           {p.address&&<div style={{fontSize:11,color:C.g600,marginTop:2}}>{p.address}{p.address2?`, ${p.address2}`:""}, {p.city}, {p.state} {p.zip?p.zip.slice(0,5):""}</div>}
           {!p.address&&p.city&&<div style={{fontSize:11,color:C.g600,marginTop:2}}>{p.city}, {p.state}</div>}
-        </div>)}
+        </div>;return<div style={{marginBottom:10}}>
+      <div style={{fontSize:11,fontWeight:600,color:C.gn,marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>✓ Verified Providers{primary.length>0&&` (${primary.length})`}</div>
+      <div style={{border:`1px solid ${C.g200}`,borderRadius:8,overflow:"hidden",maxHeight:280,overflowY:"auto"}}>
+        {primary.map(renderRow)}
+        {other.length>0&&!showAllNpi&&<div onClick={()=>setShowAllNpi(true)}style={{padding:"10px 16px",cursor:"pointer",background:"#F9FAFB",textAlign:"center",fontSize:12,color:C.purp,fontWeight:600,borderTop:`1px solid ${C.g200}`}}>Show {other.length} more provider{other.length!==1?"s":""} (other specialties)</div>}
+        {other.length>0&&showAllNpi&&<><div style={{padding:"6px 16px",background:"#F9FAFB",fontSize:10,fontWeight:600,color:C.g400,textTransform:"uppercase",letterSpacing:1,borderTop:`1px solid ${C.g200}`}}>Other specialties</div>{other.map(renderRow)}</>}
       </div>
-    </div>}
+    </div>})()}
 
     {results!==null&&results.length>0&&<div style={{marginBottom:10}}>
       <div style={{fontSize:11,fontWeight:600,color:C.or,marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>Demo Providers</div>
